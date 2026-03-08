@@ -198,29 +198,33 @@ function renderSingleTextElement(ctx, cx, cy, scale, textEl, isPrint) {
 
 /**
  * Draw text along a circular arc using character-by-character placement.
- * Positive radius curves upward (text on top of circle),
- * negative radius curves downward (text on bottom of circle).
+ * Positive radius curves upward (text bows up, like the top of a circle),
+ * negative radius curves downward (text bows down, like the bottom of a circle).
+ *
+ * The text is positioned so its baseline sits on the arc. The arc center
+ * is computed from the text position and radius.
  *
  * @param {CanvasRenderingContext2D} ctx
  * @param {string} text
- * @param {number} centerX - arc center X
- * @param {number} centerY - arc center Y (adjusted based on radius direction)
- * @param {number} radius - arc radius in pixels (sign indicates direction)
- * @param {number} fontSizePx - font size in pixels for spacing
- * @param {string} align - text alignment
+ * @param {number} textX - text anchor X position in canvas pixels
+ * @param {number} textY - text anchor Y position in canvas pixels
+ * @param {number} radius - arc radius in pixels (positive = top arc, negative = bottom arc)
+ * @param {number} fontSizePx - font size in pixels
+ * @param {string} align - text alignment ("left", "center", "right")
  */
-function drawCurvedText(ctx, text, centerX, centerY, radius, fontSizePx, align) {
+function drawCurvedText(ctx, text, textX, textY, radius, fontSizePx, align) {
   if (Math.abs(radius) < 10) {
-    // Radius too small, render straight to avoid issues
-    ctx.fillText(text, centerX, centerY);
+    // Radius too small, render straight to avoid visual glitches
+    ctx.fillText(text, textX, textY);
     return;
   }
 
   const isTopArc = radius > 0;
   const absRadius = Math.abs(radius);
 
-  // The arc center is offset from the text position
-  const arcCenterY = isTopArc ? centerY + absRadius : centerY - absRadius;
+  // The arc center is directly below (top arc) or above (bottom arc) the text position
+  const arcCenterX = textX;
+  const arcCenterY = isTopArc ? textY + absRadius : textY - absRadius;
 
   ctx.save();
   ctx.textAlign = 'center';
@@ -231,44 +235,45 @@ function drawCurvedText(ctx, text, centerX, centerY, radius, fontSizePx, align) 
   const charWidths = chars.map(ch => ctx.measureText(ch).width);
   const totalWidth = charWidths.reduce((sum, w) => sum + w, 0);
 
-  // Compute angle for each character
-  const startAngle = isTopArc ? -Math.PI / 2 : Math.PI / 2;
+  // Total angle the text string spans along the arc
   const totalAngle = totalWidth / absRadius;
 
-  // Alignment offset
-  let angleOffset = 0;
+  // Start angle: top of circle for top arc, bottom for bottom arc
+  // Canvas angles: 0=right, PI/2=down, PI=left, -PI/2 or 3PI/2=up
+  const midAngle = isTopArc ? -Math.PI / 2 : Math.PI / 2;
+
+  // Alignment offset (center the text span around the midpoint)
+  let startAngle;
   if (align === 'center') {
-    angleOffset = -totalAngle / 2;
+    startAngle = midAngle - (totalAngle / 2) * (isTopArc ? 1 : -1);
   } else if (align === 'right') {
-    angleOffset = -totalAngle;
+    startAngle = midAngle - totalAngle * (isTopArc ? 1 : -1);
+  } else {
+    startAngle = midAngle;
   }
 
-  let currentAngle = startAngle + angleOffset;
+  let angle = startAngle;
   const direction = isTopArc ? 1 : -1;
 
   chars.forEach((ch, i) => {
     const halfCharAngle = (charWidths[i] / 2) / absRadius;
-    currentAngle += halfCharAngle * direction;
+    angle += halfCharAngle * direction;
 
-    const x = centerX + absRadius * Math.cos(currentAngle);
-    const y = arcCenterY - absRadius * Math.sin(currentAngle) * (isTopArc ? 1 : -1);
+    // Character position on the arc
+    const x = arcCenterX + absRadius * Math.cos(angle);
+    const y = arcCenterY + absRadius * Math.sin(angle);
 
     ctx.save();
     ctx.translate(x, y);
 
-    // Rotate character to follow the arc
-    let rotation;
-    if (isTopArc) {
-      rotation = -currentAngle + Math.PI / 2;
-    } else {
-      rotation = Math.PI / 2 - currentAngle + Math.PI;
-    }
+    // Rotate character so its baseline follows the arc tangent
+    const rotation = angle + (isTopArc ? Math.PI / 2 : -Math.PI / 2);
     ctx.rotate(rotation);
 
     ctx.fillText(ch, 0, 0);
     ctx.restore();
 
-    currentAngle += halfCharAngle * direction;
+    angle += halfCharAngle * direction;
   });
 
   ctx.restore();
@@ -312,7 +317,8 @@ function renderLibraryInfoTextWithDesign(ctx, cx, cy, safeRadius, scale, design,
  * @param {boolean} isPrint - render at print DPI
  */
 function renderLibraryInfoTextInternal(ctx, cx, cy, safeRadius, scale, text, color, isPrint) {
-  // Font size: 4.3pt at print size -> convert to canvas pixels
+  // Font size: 4.3pt at print size -> convert to current scale pixels.
+  // Points are 1/72 inch; multiply by scale (px/inch) to get pixels.
   const fontSizePt = CONFIG.DEFAULTS.libraryInfoFontSize;
   const fontSizePx = fontSizePt * (scale / 72);
 
@@ -322,19 +328,23 @@ function renderLibraryInfoTextInternal(ctx, cx, cy, safeRadius, scale, text, col
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  // Place text along the bottom arc of the safe zone
-  // The arc runs along the inside of the safe zone, near the bottom
-  const textRadius = safeRadius - fontSizePx * 0.8;
+  // Place text along the bottom inside arc of the safe zone circle.
+  // The text curves along the circle, centered at the very bottom.
+  // textRadius is slightly inside the safe zone so characters don't touch the edge.
+  const textRadius = safeRadius - fontSizePx * 1.0;
 
   const chars = text.split('');
   const charWidths = chars.map(ch => ctx.measureText(ch).width);
   const totalWidth = charWidths.reduce((sum, w) => sum + w, 0);
 
-  // Total angle the text spans
+  // Total angle spanned by the text string along the arc
   const totalAngle = totalWidth / textRadius;
 
-  // Start angle: centered at the bottom (PI/2 in standard canvas coords)
-  // Canvas: 0 = right, PI/2 = bottom, PI = left, 3PI/2 = top
+  // Center the text at the bottom of the circle.
+  // Canvas coordinate angles: 0=right, PI/2=bottom, PI=left.
+  // We go clockwise (positive direction in canvas) from left to right
+  // when viewed from outside the circle. At the bottom, characters
+  // should read left-to-right with their tops pointing toward center.
   const centerAngle = Math.PI / 2;
   let currentAngle = centerAngle - totalAngle / 2;
 
@@ -342,14 +352,18 @@ function renderLibraryInfoTextInternal(ctx, cx, cy, safeRadius, scale, text, col
     const halfCharAngle = (charWidths[i] / 2) / textRadius;
     currentAngle += halfCharAngle;
 
+    // Position on the arc
     const x = cx + textRadius * Math.cos(currentAngle);
     const y = cy + textRadius * Math.sin(currentAngle);
 
     ctx.save();
     ctx.translate(x, y);
-    // Rotate so the character baseline follows the arc
-    // At the bottom, characters should be upright, reading left-to-right
-    ctx.rotate(currentAngle + Math.PI / 2);
+
+    // Rotate so the character reads left-to-right along the bottom arc.
+    // The tangent at angle θ is θ + PI/2. For bottom-arc text that reads
+    // left-to-right (upside-down relative to top), we rotate by θ - PI/2
+    // so the top of each character points toward the center.
+    ctx.rotate(currentAngle - Math.PI / 2);
     ctx.fillText(ch, 0, 0);
     ctx.restore();
 
