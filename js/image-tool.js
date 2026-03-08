@@ -30,8 +30,8 @@
 //   imgObj: Image,                           // DOM Image object (not serialized)
 //   x: 0,                                   // inches from center (center of image)
 //   y: 0,                                   // inches from center (center of image)
-//   width: 0.5,                             // inches
-//   height: 0.5,                            // inches
+//   width: 1.35,                            // inches (defaults to safe zone diameter)
+//   height: 1.35,                           // inches
 //   naturalWidth: 400,                      // original pixel width
 //   naturalHeight: 300,                     // original pixel height
 //   lockAspect: true                        // maintain aspect ratio when resizing
@@ -50,8 +50,10 @@ function handleImageUpload(file) {
     const dataUrl = e.target.result;
     const img = new Image();
     img.onload = function() {
-      // Default size: fit within ~0.5 inches, maintaining aspect ratio
-      const maxSizeInches = 0.5;
+      // Default size: fill the safe zone (1.35" for 1.5" buttons).
+      // The image's largest dimension matches the safe zone diameter.
+      const btnSize = getCurrentButtonSize();
+      const maxSizeInches = btnSize.safeDiameter;
       let width, height;
       if (img.naturalWidth >= img.naturalHeight) {
         width = maxSizeInches;

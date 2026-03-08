@@ -340,17 +340,21 @@ function renderLibraryInfoTextInternal(ctx, cx, cy, safeRadius, scale, text, col
   // Total angle spanned by the text string along the arc
   const totalAngle = totalWidth / textRadius;
 
-  // Center the text at the bottom of the circle.
-  // Canvas coordinate angles: 0=right, PI/2=bottom, PI=left.
-  // We go clockwise (positive direction in canvas) from left to right
-  // when viewed from outside the circle. At the bottom, characters
-  // should read left-to-right with their tops pointing toward center.
+  // Center the text at the bottom of the circle (PI/2 in canvas coords).
+  //
+  // Canvas angles go CLOCKWISE: 0=right, PI/2=bottom, PI=left.
+  // To make text read LEFT-TO-RIGHT along the bottom arc, we need to
+  // iterate COUNTER-CLOCKWISE (decreasing angle), because at the bottom:
+  //   - larger angle = further LEFT on screen
+  //   - smaller angle = further RIGHT on screen
+  // So the first character starts at the LEFT side (high angle) and we
+  // move toward the RIGHT (decreasing angle).
   const centerAngle = Math.PI / 2;
-  let currentAngle = centerAngle - totalAngle / 2;
+  let currentAngle = centerAngle + totalAngle / 2;  // start on the LEFT
 
   chars.forEach((ch, i) => {
     const halfCharAngle = (charWidths[i] / 2) / textRadius;
-    currentAngle += halfCharAngle;
+    currentAngle -= halfCharAngle;  // move counter-clockwise (toward right)
 
     // Position on the arc
     const x = cx + textRadius * Math.cos(currentAngle);
@@ -359,15 +363,14 @@ function renderLibraryInfoTextInternal(ctx, cx, cy, safeRadius, scale, text, col
     ctx.save();
     ctx.translate(x, y);
 
-    // Rotate so the character reads left-to-right along the bottom arc.
-    // The tangent at angle θ is θ + PI/2. For bottom-arc text that reads
-    // left-to-right (upside-down relative to top), we rotate by θ - PI/2
-    // so the top of each character points toward the center.
-    ctx.rotate(currentAngle - Math.PI / 2);
+    // Rotate so the character's top points toward center and it reads
+    // naturally left-to-right. At angle θ, rotating by θ + PI/2 makes
+    // the character upright with its top pointing toward the circle center.
+    ctx.rotate(currentAngle + Math.PI / 2);
     ctx.fillText(ch, 0, 0);
     ctx.restore();
 
-    currentAngle += halfCharAngle;
+    currentAngle -= halfCharAngle;  // advance past this character
   });
 
   ctx.restore();
