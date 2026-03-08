@@ -374,14 +374,31 @@ function updateSheetSelectionUI() {
 
 /**
  * Update the right sidebar to show override controls for the selected slot(s).
- * When a single slot is selected, shows its current values.
- * When multiple slots are selected, shows shared override controls.
+ * When a single slot is selected, shows its current (overridden or inherited) values
+ * in the sidebar controls. When multiple slots are selected, the controls
+ * will apply changes as overrides to all selected slots.
  */
 function updateSheetOverridePanel() {
-  // For now, background color override is the main control.
-  // When in sheet mode and a slot is selected, the background color picker
-  // applies to the selected slots as overrides instead of the master.
-  // This is wired up in app.js through the mode-aware event handlers.
+  if (selectedSlots.length === 1) {
+    // Single slot selected — show its current values
+    const slotIndex = selectedSlots[0];
+    const overrides = getSlotOverrides(slotIndex);
+
+    // Background color: show override value or master value
+    const bgColor = overrides.backgroundColor || currentDesign.backgroundColor;
+    document.getElementById('bg-color-picker').value = bgColor;
+    updateBackgroundSwatches(bgColor);
+
+    // Library info text
+    const libText = overrides.libraryInfoText !== undefined
+      ? overrides.libraryInfoText : currentDesign.libraryInfoText;
+    const libColor = overrides.libraryInfoColor !== undefined
+      ? overrides.libraryInfoColor : currentDesign.libraryInfoColor;
+    document.getElementById('library-info-input').value = libText;
+    document.getElementById('library-info-color').value = libColor;
+  }
+  // For multi-select, the controls just apply to all selected slots
+  // without updating to show a specific slot's values (they may differ).
 }
 
 /**

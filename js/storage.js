@@ -294,5 +294,13 @@ function initStorage() {
     saveCurrentDesign(name);
   });
 
+  // Allow Enter key to save
+  document.getElementById('save-name-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const name = e.target.value;
+      saveCurrentDesign(name);
+    }
+  });
+
   renderSavedDesignsList();
 }
