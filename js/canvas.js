@@ -245,8 +245,10 @@ let dragOffset = { x: 0, y: 0 };
 function handleCanvasMouseDown(e) {
   const canvas = e.target;
   const rect = canvas.getBoundingClientRect();
-  const mouseX = e.clientX - rect.left;
-  const mouseY = e.clientY - rect.top;
+  // Account for CSS sizing vs canvas pixel size
+  const cssToCanvas = canvas.width / rect.width;
+  const mouseX = (e.clientX - rect.left) * cssToCanvas;
+  const mouseY = (e.clientY - rect.top) * cssToCanvas;
   const scale = getCanvasScale();
   const cx = CONFIG.CANVAS_DISPLAY_DIAMETER / 2;
   const cy = CONFIG.CANVAS_DISPLAY_DIAMETER / 2;
@@ -299,8 +301,9 @@ function handleCanvasMouseMove(e) {
 
   const canvas = e.target;
   const rect = canvas.getBoundingClientRect();
-  const mouseX = e.clientX - rect.left;
-  const mouseY = e.clientY - rect.top;
+  const cssToCanvas = canvas.width / rect.width;
+  const mouseX = (e.clientX - rect.left) * cssToCanvas;
+  const mouseY = (e.clientY - rect.top) * cssToCanvas;
   const scale = getCanvasScale();
   const cx = CONFIG.CANVAS_DISPLAY_DIAMETER / 2;
   const cy = CONFIG.CANVAS_DISPLAY_DIAMETER / 2;
