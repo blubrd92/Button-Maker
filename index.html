@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Button Maker</title>
+
+  <!-- Google Fonts — families listed in config.js -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,700;1,400;1,700&family=Merriweather:ital,wght@0,400;0,700;1,400;1,700&family=Open+Sans:ital,wght@0,400;0,700;1,400;1,700&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Pacifico&family=Oswald:wght@400;700&family=Lobster&family=Lora:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+
+  <!-- jsPDF for PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- ─── Top Bar ─────────────────────────────────────────────────── -->
+  <header id="top-bar">
+    <div class="top-bar-left">
+      <h1 class="app-title">Button Maker</h1>
+      <span class="button-size-label" id="button-size-label">1.5" Button</span>
+    </div>
+    <div class="top-bar-center">
+      <div class="mode-toggle" id="mode-toggle">
+        <button class="mode-btn active" data-mode="design" id="btn-design-mode">Design Mode</button>
+        <button class="mode-btn" data-mode="sheet" id="btn-sheet-mode">Sheet Mode</button>
+      </div>
+    </div>
+    <div class="top-bar-right">
+      <button class="btn btn-primary" id="btn-export">Export PDF</button>
+    </div>
+  </header>
+
+  <!-- ─── Main Content ────────────────────────────────────────────── -->
+  <main id="main-content">
+
+    <!-- Left Sidebar: Templates & Saved Designs -->
+    <aside id="left-sidebar" class="sidebar">
+      <div class="sidebar-section" id="template-section">
+        <h2 class="sidebar-heading">Templates</h2>
+        <div id="template-list" class="template-grid">
+          <!-- Populated by templates.js -->
+        </div>
+      </div>
+      <div class="sidebar-section" id="saved-section">
+        <h2 class="sidebar-heading">Saved Designs</h2>
+        <div id="saved-list" class="saved-list">
+          <!-- Populated by storage.js -->
+        </div>
+        <div class="save-controls">
+          <input type="text" id="save-name-input" placeholder="Design name..." class="input">
+          <button class="btn btn-small" id="btn-save">Save</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Center: Canvas Area -->
+    <section id="canvas-area">
+      <!-- Design Mode canvas wrapper -->
+      <div id="design-canvas-wrapper" class="canvas-wrapper">
+        <canvas id="design-canvas"></canvas>
+        <div class="canvas-controls">
+          <label class="toggle-label">
+            <input type="checkbox" id="toggle-guides" checked>
+            <span>Show Guides</span>
+          </label>
+        </div>
+      </div>
+      <!-- Sheet Mode grid (hidden by default) -->
+      <div id="sheet-view" class="sheet-view hidden">
+        <!-- Populated by sheet-mode.js -->
+      </div>
+    </section>
+
+    <!-- Right Sidebar: Properties Panel -->
+    <aside id="right-sidebar" class="sidebar">
+      <!-- Background section -->
+      <div class="sidebar-section" id="background-section">
+        <h2 class="sidebar-heading">Background</h2>
+        <div class="color-swatches" id="bg-color-swatches">
+          <!-- Populated from CONFIG.COLOR_PALETTE -->
+        </div>
+        <div class="color-picker-row">
+          <label for="bg-color-picker">Custom:</label>
+          <input type="color" id="bg-color-picker" value="#FFFFFF" class="color-input">
+        </div>
+      </div>
+
+      <!-- Text section -->
+      <div class="sidebar-section" id="text-section">
+        <h2 class="sidebar-heading">Text</h2>
+        <button class="btn btn-small btn-full" id="btn-add-text">+ Add Text</button>
+        <div id="text-controls" class="text-controls hidden">
+          <div class="control-row">
+            <label for="text-input">Text:</label>
+            <input type="text" id="text-input" class="input" placeholder="Enter text...">
+          </div>
+          <div class="control-row">
+            <label for="font-select">Font:</label>
+            <select id="font-select" class="input">
+              <!-- Populated from CONFIG.FONTS -->
+            </select>
+          </div>
+          <div class="control-row">
+            <label for="font-size">Size:</label>
+            <input type="range" id="font-size" min="8" max="72" value="24">
+            <span id="font-size-display">24</span>
+          </div>
+          <div class="control-row">
+            <label for="text-color-picker">Color:</label>
+            <input type="color" id="text-color-picker" value="#222222" class="color-input">
+          </div>
+          <div class="control-row button-row">
+            <button class="btn btn-small btn-icon" id="btn-bold" title="Bold"><b>B</b></button>
+            <button class="btn btn-small btn-icon" id="btn-italic" title="Italic"><i>I</i></button>
+            <button class="btn btn-small btn-icon" id="btn-align-left" title="Align Left">&#9776;</button>
+            <button class="btn btn-small btn-icon" id="btn-align-center" title="Align Center">&#9776;</button>
+            <button class="btn btn-small btn-icon" id="btn-align-right" title="Align Right">&#9776;</button>
+          </div>
+          <div class="control-row">
+            <label class="toggle-label">
+              <input type="checkbox" id="text-curved">
+              <span>Curved Text</span>
+            </label>
+          </div>
+          <div class="control-row" id="curve-radius-row" style="display:none;">
+            <label for="curve-radius">Curve:</label>
+            <input type="range" id="curve-radius" min="-200" max="200" value="100">
+          </div>
+          <button class="btn btn-small btn-danger" id="btn-delete-text">Delete Text</button>
+        </div>
+      </div>
+
+      <!-- Library Info Text section -->
+      <div class="sidebar-section" id="library-info-section">
+        <h2 class="sidebar-heading">Library Info Text</h2>
+        <div class="control-row">
+          <input type="text" id="library-info-input" class="input" placeholder="e.g. San Rafael Public Library">
+        </div>
+        <div class="control-row">
+          <label for="library-info-color">Color:</label>
+          <input type="color" id="library-info-color" value="#666666" class="color-input">
+        </div>
+      </div>
+
+      <!-- Image section -->
+      <div class="sidebar-section" id="image-section">
+        <h2 class="sidebar-heading">Images</h2>
+        <label class="btn btn-small btn-full upload-label" for="image-upload">
+          Upload Image
+          <input type="file" id="image-upload" accept="image/png,image/jpeg,image/svg+xml" hidden>
+        </label>
+        <div id="image-controls" class="image-controls hidden">
+          <div class="control-row button-row">
+            <button class="btn btn-small" id="btn-bring-front">Bring to Front</button>
+            <button class="btn btn-small" id="btn-send-back">Send to Back</button>
+          </div>
+          <div class="control-row">
+            <label class="toggle-label">
+              <input type="checkbox" id="lock-aspect" checked>
+              <span>Lock Aspect Ratio</span>
+            </label>
+          </div>
+          <button class="btn btn-small btn-danger" id="btn-delete-image">Delete Image</button>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- ─── Export Modal ────────────────────────────────────────────── -->
+  <div id="export-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <h2>Export PDF</h2>
+      <div class="modal-body">
+        <div class="control-row">
+          <label>Layout:</label>
+          <div class="layout-options">
+            <label class="radio-label">
+              <input type="radio" name="layout" value="15" checked>
+              Standard (15 per sheet) — 3×5
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="layout" value="20">
+              Max (20 per sheet) — 4×5
+            </label>
+          </div>
+        </div>
+        <div class="control-row">
+          <label class="toggle-label">
+            <input type="checkbox" id="export-cut-guides" checked>
+            <span>Show cut line guides</span>
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" id="btn-export-cancel">Cancel</button>
+        <button class="btn btn-primary" id="btn-export-confirm">Generate PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Scripts (order matters: config first, then modules, then app) ── -->
+  <script src="js/config.js"></script>
+  <script src="js/templates.js"></script>
+  <script src="js/canvas.js"></script>
+  <script src="js/text-tool.js"></script>
+  <script src="js/image-tool.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/pdf-export.js"></script>
+  <script src="js/sheet-mode.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
