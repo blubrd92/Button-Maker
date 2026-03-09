@@ -222,7 +222,7 @@ html, body {
 /* Info Labels & Mode Toggles (Now in Sidebar) */
 
 .button-size-label {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--secondary-light);
   background: var(--border-light);
   padding: 4px 10px;
@@ -243,7 +243,7 @@ html, body {
   padding: 5px 12px;
   border: none;
   background: transparent;
-  font-size: 0.8rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--text-light);
   cursor: pointer;
@@ -334,6 +334,15 @@ html, body {
   border-color: var(--primary-color);
 }
 
+/* Sidebar Specific Scaling */
+.sidebar .btn-small {
+  font-size: 1rem;
+}
+
+.sidebar .input {
+  font-size: 1.06rem;
+}
+
 /* Sidebar Sections */
 
 .sidebar-section {
@@ -349,7 +358,7 @@ html, body {
 }
 
 .sidebar-heading {
-  font-size: 0.8rem;
+  font-size: 1rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.4px;
@@ -433,7 +442,7 @@ html, body {
 
 .control-row label {
   display: block;
-  font-size: 0.85rem;
+  font-size: 1.06rem;
   font-weight: 500;
   color: var(--text-color);
   margin: 0;
@@ -449,7 +458,7 @@ html, body {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.9rem;
+  font-size: 1.125rem;
   font-weight: 500;
   color: var(--text-color);
   cursor: pointer;
@@ -719,6 +728,7 @@ input[type="checkbox"], input[type="radio"] {
   text-align: center;
   border-radius: var(--radius);
   transition: all var(--transition-fast);
+  font-size: 1.1rem;
 }
 
 .upload-label:hover {
