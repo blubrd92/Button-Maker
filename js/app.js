@@ -144,6 +144,7 @@ function initTopLevelControls() {
   });
 
   // -- Gradient toggle --
+  renderGradientPresets();
   document.getElementById('toggle-gradient').addEventListener('change', function(e) {
     var gradientControls = document.getElementById('gradient-controls');
     gradientControls.classList.toggle('hidden', !e.target.checked);
@@ -152,6 +153,10 @@ function initTopLevelControls() {
     } else {
       currentDesign.gradient = null;
       currentDesign.templateDraw = null;
+      // Clear active preset highlight
+      document.querySelectorAll('.gradient-preset-btn').forEach(function(btn) {
+        btn.classList.remove('active');
+      });
       // Re-apply solid bg color
       handleBackgroundColorChange(currentDesign.backgroundColor);
     }
@@ -159,13 +164,27 @@ function initTopLevelControls() {
 
   document.getElementById('bg-gradient-color2').addEventListener('input', function() {
     if (document.getElementById('toggle-gradient').checked) {
+      // Manual color change clears preset
+      clearGradientPresetHighlight();
       applyGradientFromUI();
     }
   });
 
   document.getElementById('gradient-direction').addEventListener('change', function() {
     if (document.getElementById('toggle-gradient').checked) {
-      applyGradientFromUI();
+      // Changing direction re-applies current gradient (preset or custom)
+      if (currentDesign.gradient && currentDesign.gradient.stops) {
+        // Re-apply with new direction but keep stops
+        var direction = document.getElementById('gradient-direction').value;
+        currentDesign.gradient.direction = direction;
+        currentDesign.templateDraw = buildGradientDrawFunction(currentDesign.gradient);
+        renderDesignCanvas();
+        if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
+          refreshSheetThumbnails();
+        }
+      } else {
+        applyGradientFromUI();
+      }
     }
   });
 
@@ -194,7 +213,9 @@ function applyGradientFromUI() {
   currentDesign.gradient = {
     color1: color1,
     color2: color2,
-    direction: direction
+    stops: null,  // null = use color1/color2; array = multi-stop
+    direction: direction,
+    preset: null
   };
 
   currentDesign.templateDraw = buildGradientDrawFunction(currentDesign.gradient);
@@ -206,8 +227,45 @@ function applyGradientFromUI() {
 }
 
 /**
+ * Apply a gradient preset by name.
+ * @param {string} presetName - key in GRADIENT_PRESETS
+ */
+function applyGradientPreset(presetName) {
+  var preset = GRADIENT_PRESETS[presetName];
+  if (!preset) return;
+
+  var direction = document.getElementById('gradient-direction').value;
+
+  currentDesign.gradient = {
+    color1: preset.stops[0].color,
+    color2: preset.stops[preset.stops.length - 1].color,
+    stops: preset.stops,
+    direction: direction,
+    preset: presetName
+  };
+
+  // Update the two color pickers to reflect the first/last stops
+  document.getElementById('bg-color-picker').value = currentDesign.gradient.color1;
+  document.getElementById('bg-gradient-color2').value = currentDesign.gradient.color2;
+  updateBackgroundSwatches(currentDesign.gradient.color1);
+
+  // Highlight active preset
+  document.querySelectorAll('.gradient-preset-btn').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.preset === presetName);
+  });
+
+  currentDesign.templateDraw = buildGradientDrawFunction(currentDesign.gradient);
+  currentDesign.templateId = null;
+  renderDesignCanvas();
+  if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
+    refreshSheetThumbnails();
+  }
+}
+
+/**
  * Build a draw function for a gradient specification.
- * @param {{ color1: string, color2: string, direction: string }} grad
+ * Supports both 2-color (color1/color2) and multi-stop (stops array) gradients.
+ * @param {Object} grad - { color1, color2, stops, direction }
  * @returns {Function} draw(ctx, cx, cy, radius)
  */
 function buildGradientDrawFunction(grad) {
@@ -225,14 +283,181 @@ function buildGradientDrawFunction(grad) {
       // top-bottom (default)
       gradient = ctx.createLinearGradient(cx, cy - radius, cx, cy + radius);
     }
-    gradient.addColorStop(0, grad.color1);
-    gradient.addColorStop(1, grad.color2);
+
+    if (grad.stops && grad.stops.length >= 2) {
+      grad.stops.forEach(function(stop) {
+        gradient.addColorStop(stop.offset, stop.color);
+      });
+    } else {
+      gradient.addColorStop(0, grad.color1);
+      gradient.addColorStop(1, grad.color2);
+    }
+
     ctx.fillStyle = gradient;
     ctx.beginPath();
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.fill();
   };
 }
+
+/**
+ * Clear the active highlight from all gradient preset buttons.
+ */
+function clearGradientPresetHighlight() {
+  document.querySelectorAll('.gradient-preset-btn').forEach(function(btn) {
+    btn.classList.remove('active');
+  });
+  if (currentDesign.gradient) {
+    currentDesign.gradient.preset = null;
+    currentDesign.gradient.stops = null;
+  }
+}
+
+/**
+ * Render gradient preset swatch buttons into the preset container.
+ */
+function renderGradientPresets() {
+  var container = document.getElementById('gradient-presets');
+  if (!container) return;
+  container.innerHTML = '';
+
+  Object.keys(GRADIENT_PRESETS).forEach(function(key) {
+    var preset = GRADIENT_PRESETS[key];
+    var btn = document.createElement('button');
+    btn.className = 'gradient-preset-btn';
+    btn.dataset.preset = key;
+    btn.title = preset.label;
+
+    // Build a CSS linear-gradient for the swatch preview
+    var cssStops = preset.stops.map(function(s) {
+      return s.color + ' ' + Math.round(s.offset * 100) + '%';
+    }).join(', ');
+    btn.style.background = 'linear-gradient(to right, ' + cssStops + ')';
+
+    btn.addEventListener('click', function() {
+      // Ensure gradient toggle is on
+      document.getElementById('toggle-gradient').checked = true;
+      document.getElementById('gradient-controls').classList.remove('hidden');
+      applyGradientPreset(key);
+    });
+
+    container.appendChild(btn);
+  });
+}
+
+// ─── Gradient Presets ─────────────────────────────────────────────
+var GRADIENT_PRESETS = {
+  rainbow: {
+    label: 'Rainbow',
+    stops: [
+      { offset: 0,    color: '#FF0000' },
+      { offset: 0.17, color: '#FF8000' },
+      { offset: 0.33, color: '#FFFF00' },
+      { offset: 0.50, color: '#00CC00' },
+      { offset: 0.67, color: '#0000FF' },
+      { offset: 0.83, color: '#4B0082' },
+      { offset: 1,    color: '#8B00FF' }
+    ]
+  },
+  'pride-progress': {
+    label: 'Progress',
+    stops: [
+      { offset: 0,    color: '#000000' },
+      { offset: 0.12, color: '#784F17' },
+      { offset: 0.24, color: '#E40303' },
+      { offset: 0.40, color: '#FF8C00' },
+      { offset: 0.52, color: '#FFED00' },
+      { offset: 0.64, color: '#008026' },
+      { offset: 0.76, color: '#004DFF' },
+      { offset: 1,    color: '#750787' }
+    ]
+  },
+  'pride-trans': {
+    label: 'Trans',
+    stops: [
+      { offset: 0,    color: '#5BCEFA' },
+      { offset: 0.25, color: '#F5A9B8' },
+      { offset: 0.5,  color: '#FFFFFF' },
+      { offset: 0.75, color: '#F5A9B8' },
+      { offset: 1,    color: '#5BCEFA' }
+    ]
+  },
+  'pride-bi': {
+    label: 'Bisexual',
+    stops: [
+      { offset: 0,    color: '#D60270' },
+      { offset: 0.35, color: '#D60270' },
+      { offset: 0.5,  color: '#9B4F96' },
+      { offset: 0.65, color: '#0038A8' },
+      { offset: 1,    color: '#0038A8' }
+    ]
+  },
+  'pride-pan': {
+    label: 'Pansexual',
+    stops: [
+      { offset: 0,    color: '#FF218C' },
+      { offset: 0.33, color: '#FF218C' },
+      { offset: 0.34, color: '#FFD800' },
+      { offset: 0.66, color: '#FFD800' },
+      { offset: 0.67, color: '#21B1FF' },
+      { offset: 1,    color: '#21B1FF' }
+    ]
+  },
+  'pride-nonbinary': {
+    label: 'Non-binary',
+    stops: [
+      { offset: 0,    color: '#FCF434' },
+      { offset: 0.25, color: '#FCF434' },
+      { offset: 0.26, color: '#FFFFFF' },
+      { offset: 0.50, color: '#FFFFFF' },
+      { offset: 0.51, color: '#9C59D1' },
+      { offset: 0.75, color: '#9C59D1' },
+      { offset: 0.76, color: '#2C2C2C' },
+      { offset: 1,    color: '#2C2C2C' }
+    ]
+  },
+  'pride-lesbian': {
+    label: 'Lesbian',
+    stops: [
+      { offset: 0,    color: '#D52D00' },
+      { offset: 0.20, color: '#EF7627' },
+      { offset: 0.40, color: '#FF9A56' },
+      { offset: 0.50, color: '#FFFFFF' },
+      { offset: 0.60, color: '#D162A4' },
+      { offset: 0.80, color: '#B55690' },
+      { offset: 1,    color: '#A30262' }
+    ]
+  },
+  'pride-ace': {
+    label: 'Asexual',
+    stops: [
+      { offset: 0,    color: '#000000' },
+      { offset: 0.25, color: '#000000' },
+      { offset: 0.26, color: '#A3A3A3' },
+      { offset: 0.50, color: '#A3A3A3' },
+      { offset: 0.51, color: '#FFFFFF' },
+      { offset: 0.75, color: '#FFFFFF' },
+      { offset: 0.76, color: '#800080' },
+      { offset: 1,    color: '#800080' }
+    ]
+  },
+  sunset: {
+    label: 'Sunset',
+    stops: [
+      { offset: 0,    color: '#FF512F' },
+      { offset: 0.5,  color: '#F09819' },
+      { offset: 1,    color: '#FFED00' }
+    ]
+  },
+  ocean: {
+    label: 'Ocean',
+    stops: [
+      { offset: 0,    color: '#2E3192' },
+      { offset: 0.5,  color: '#1BFFFF' },
+      { offset: 1,    color: '#2E3192' }
+    ]
+  }
+};
 
 /**
  * Reset the current design to factory defaults.

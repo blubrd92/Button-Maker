@@ -721,6 +721,35 @@ html, body {
   color: #fff;
 }
 
+/* ─── Gradient Presets ─────────────────────────────────────────────── */
+
+.gradient-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.gradient-preset-btn {
+  width: 42px;
+  height: 24px;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s, border-color 0.1s;
+}
+
+.gradient-preset-btn:hover {
+  transform: scale(1.1);
+  border-color: #999;
+}
+
+.gradient-preset-btn.active {
+  border-color: #333;
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.2);
+}
+
 /* ─── Range slider ─────────────────────────────────────────────────── */
 
 input[type="range"] {
