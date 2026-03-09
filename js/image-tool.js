@@ -50,20 +50,14 @@ function handleImageUpload(file) {
     const dataUrl = e.target.result;
     const img = new Image();
     img.onload = function() {
-      // Default size: fit within the safe zone circle (1.35" for 1.5" buttons).
-      // For a square image, both dimensions equal the safe zone diameter and
-      // the circular clip handles the corners. For non-square images, the
-      // largest dimension matches the diameter so nothing extends beyond.
+      // Default size: width always matches the safe zone diameter (1.35")
+      // so the image's side edges are flush with the circle's side points.
+      // Height scales proportionally to preserve aspect ratio. For portrait
+      // images, the extra height gets clipped by the circular mask.
       const btnSize = getCurrentButtonSize();
       const fitSize = btnSize.safeDiameter;
-      let width, height;
-      if (img.naturalWidth >= img.naturalHeight) {
-        width = fitSize;
-        height = fitSize * (img.naturalHeight / img.naturalWidth);
-      } else {
-        height = fitSize;
-        width = fitSize * (img.naturalWidth / img.naturalHeight);
-      }
+      let width = fitSize;
+      let height = fitSize * (img.naturalHeight / img.naturalWidth);
 
       const imageElement = {
         dataUrl: dataUrl,
