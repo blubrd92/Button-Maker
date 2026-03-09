@@ -319,54 +319,51 @@ function renderLibraryInfoTextWithDesign(ctx, cx, cy, safeRadius, scale, design,
 function renderLibraryInfoTextInternal(ctx, cx, cy, safeRadius, scale, text, color, isPrint) {
   // Font size: 4.3pt at print size -> convert to current scale pixels.
   // Points are 1/72 inch; multiply by scale (px/inch) to get pixels.
-  const fontSizePt = CONFIG.DEFAULTS.libraryInfoFontSize;
-  const fontSizePx = fontSizePt * (scale / 72);
+  var fontSizePt = CONFIG.DEFAULTS.libraryInfoFontSize;
+  var fontSizePx = fontSizePt * (scale / 72);
 
   ctx.save();
-  ctx.font = `normal normal ${fontSizePx}px "Roboto"`;
+  ctx.font = 'normal normal ' + fontSizePx + 'px "Roboto"';
   ctx.fillStyle = color;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  // Place text along the bottom inside arc of the safe zone circle.
-  // The text curves along the circle, centered at the very bottom.
-  // textRadius is slightly inside the safe zone so characters don't touch the edge.
-  const textRadius = safeRadius - fontSizePx * 1.0;
+  // Place text in the band between the safe zone and the button face edge,
+  // so it sits OUTSIDE the image area (which is clipped to safe zone).
+  var btnSize = getCurrentButtonSize();
+  var faceRadius = (btnSize.faceDiameter / 2) * scale;
+  // Center the text vertically in the band between safe zone and face edge
+  var textRadius = (safeRadius + faceRadius) / 2;
 
-  const chars = text.split('');
-  const charWidths = chars.map(ch => ctx.measureText(ch).width);
-  const totalWidth = charWidths.reduce((sum, w) => sum + w, 0);
+  var chars = text.split('');
+  var charWidths = chars.map(function(ch) { return ctx.measureText(ch).width; });
+  var totalWidth = charWidths.reduce(function(sum, w) { return sum + w; }, 0);
 
   // Total angle spanned by the text string along the arc
-  const totalAngle = totalWidth / textRadius;
+  var totalAngle = totalWidth / textRadius;
 
   // Center the text at the bottom of the circle (PI/2 in canvas coords).
-  //
   // Canvas angles go CLOCKWISE: 0=right, PI/2=bottom, PI=left.
-  // To make text read LEFT-TO-RIGHT along the bottom arc, we need to
-  // iterate COUNTER-CLOCKWISE (decreasing angle), because at the bottom:
-  //   - larger angle = further LEFT on screen
-  //   - smaller angle = further RIGHT on screen
-  // So the first character starts at the LEFT side (high angle) and we
-  // move toward the RIGHT (decreasing angle).
-  const centerAngle = Math.PI / 2;
-  let currentAngle = centerAngle + totalAngle / 2;  // start on the LEFT
+  // To read left-to-right along the bottom, iterate counter-clockwise
+  // (decreasing angle): higher angle = left, lower angle = right.
+  var centerAngle = Math.PI / 2;
+  var currentAngle = centerAngle + totalAngle / 2;  // start on the LEFT
 
-  chars.forEach((ch, i) => {
-    const halfCharAngle = (charWidths[i] / 2) / textRadius;
+  chars.forEach(function(ch, i) {
+    var halfCharAngle = (charWidths[i] / 2) / textRadius;
     currentAngle -= halfCharAngle;  // move counter-clockwise (toward right)
 
     // Position on the arc
-    const x = cx + textRadius * Math.cos(currentAngle);
-    const y = cy + textRadius * Math.sin(currentAngle);
+    var x = cx + textRadius * Math.cos(currentAngle);
+    var y = cy + textRadius * Math.sin(currentAngle);
 
     ctx.save();
     ctx.translate(x, y);
 
-    // Rotate so the character's top points toward center and it reads
-    // naturally left-to-right. At angle θ, rotating by θ + PI/2 makes
-    // the character upright with its top pointing toward the circle center.
-    ctx.rotate(currentAngle + Math.PI / 2);
+    // Rotate so the character reads upright with its top pointing OUTWARD
+    // (away from center). At angle θ on the bottom arc, θ - PI/2 gives
+    // the correct outward-facing orientation.
+    ctx.rotate(currentAngle - Math.PI / 2);
     ctx.fillText(ch, 0, 0);
     ctx.restore();
 
