@@ -39,13 +39,18 @@
   padding: 0;
 }
 
-html, body {
-  height: 100%;
+body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-size: 14px;
-  color: var(--text-color);
   background-color: var(--bg-color);
+  color: var(--text-color);
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
+  font-size: 14px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -59,25 +64,23 @@ html, body {
 
 .sidebar {
   width: 340px;
+  background-color: var(--sidebar-bg);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
   flex-shrink: 0;
-  background: var(--sidebar-bg);
+  box-shadow: 2px 0 12px rgba(0,0,0,0.06);
+  position: relative;
+  transition: width var(--transition-normal), margin var(--transition-normal);
+  z-index: 5;
   overflow-y: auto;
   padding: 16px;
-  box-shadow: 2px 0 12px rgba(0,0,0,0.06);
-  z-index: 5;
-  transition: width var(--transition-normal), margin var(--transition-normal), padding var(--transition-normal);
 }
 
 .sidebar.collapsed {
   width: 0;
   margin-left: -1px;
-  padding-left: 0;
-  padding-right: 0;
   overflow: hidden;
-}
-
-#left-sidebar {
-  border-right: 1px solid var(--border-color);
 }
 
 #canvas-area {
@@ -102,7 +105,7 @@ html, body {
   justify-content: space-between;
   flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  z-index: 100;
+  z-index: 20;
   gap: 16px;
 }
 
@@ -336,11 +339,11 @@ html, body {
 
 /* Sidebar Specific Scaling */
 .sidebar .btn-small {
-  font-size: 1rem;
+  font-size: 0.8rem;
 }
 
 .sidebar .input {
-  font-size: 1.06rem;
+  font-size: 0.85rem;
 }
 
 /* Sidebar Sections */
@@ -358,12 +361,12 @@ html, body {
 }
 
 .sidebar-heading {
-  font-size: 1rem;
+  font-size: 0.8rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.4px;
   color: var(--text-light);
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 /* Inputs */
@@ -442,7 +445,7 @@ html, body {
 
 .control-row label {
   display: block;
-  font-size: 1.06rem;
+  font-size: 0.85rem;
   font-weight: 500;
   color: var(--text-color);
   margin: 0;
@@ -458,7 +461,7 @@ html, body {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 1.125rem;
+  font-size: 0.9rem;
   font-weight: 500;
   color: var(--text-color);
   cursor: pointer;
@@ -669,7 +672,7 @@ input[type="checkbox"], input[type="radio"] {
   text-align: center;
   border-radius: var(--radius);
   transition: all var(--transition-fast);
-  font-size: 1.1rem;
+  font-size: 0.85rem;
 }
 
 .upload-label:hover {
