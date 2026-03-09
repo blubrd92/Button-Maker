@@ -319,8 +319,10 @@ function exportDesignsToJSON() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  var ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  a.download = 'buttonmaker-' + ts + '.buttons';
+  var name = (typeof sheetName === 'string' && sheetName.trim())
+    ? sheetName.trim()
+    : 'buttonmaker-designs';
+  a.download = name + '.buttons';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
