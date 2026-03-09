@@ -301,8 +301,11 @@ function applyTemplate(templateId) {
     card.classList.toggle('selected', card.dataset.templateId === templateId);
   });
 
-  // Re-render the design canvas
+  // Re-render: design canvas always, plus sheet thumbnails if in sheet mode
   renderDesignCanvas();
+  if (typeof currentMode !== 'undefined' && currentMode === 'sheet') {
+    refreshSheetThumbnails();
+  }
 }
 
 /**

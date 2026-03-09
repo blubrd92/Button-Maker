@@ -31,67 +31,74 @@
  * @param {string} [options.layout] - Layout key ("15" or "20"), defaults to current
  * @param {boolean} [options.showCutGuides] - Draw cut circle guides on each button
  */
-function generatePDF(options = {}) {
-  const layoutKey = options.layout || CONFIG.currentLayout;
-  const showCutGuides = options.showCutGuides !== undefined ? options.showCutGuides : CONFIG.PDF.showCutGuides;
+function generatePDF(options) {
+  options = options || {};
+  var layoutKey = options.layout || CONFIG.currentLayout;
+  var showCutGuides = options.showCutGuides !== undefined ? options.showCutGuides : CONFIG.PDF.showCutGuides;
 
-  const layout = CONFIG.SHEET_LAYOUTS[layoutKey];
-  const btnSize = getCurrentButtonSize();
-  const { columnGutter, rowGutter } = computeSheetGutters(layoutKey);
-
-  // Total buttons on the sheet
-  const totalButtons = layout.cols * layout.rows;
-
-  // Get per-button designs (master + overrides from sheet mode)
-  const buttonDesigns = getButtonDesignsForExport(totalButtons);
-
-  // ── Create offscreen canvases for each button at 300 DPI ──
-  // Each button is rendered as a square image at cutDiameter * DPI pixels
-  const printPixels = Math.ceil(btnSize.cutDiameter * CONFIG.DPI);
-
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'in',
-    format: 'letter'
-  });
-
-  // Render each button and place on the PDF
-  for (let row = 0; row < layout.rows; row++) {
-    for (let col = 0; col < layout.cols; col++) {
-      const slotIndex = row * layout.cols + col;
-      const design = buttonDesigns[slotIndex];
-
-      // Create offscreen canvas for this button
-      const offCanvas = document.createElement('canvas');
-      offCanvas.width = printPixels;
-      offCanvas.height = printPixels;
-      const offCtx = offCanvas.getContext('2d');
-
-      // Render the button design at print resolution
-      const printScale = CONFIG.DPI; // pixels per inch at 300 DPI
-      const printCx = printPixels / 2;
-      const printCy = printPixels / 2;
-
-      renderButtonDesign(offCtx, printCx, printCy, printScale, design, {
-        showCutGuide: showCutGuides,
-        isPrint: true
-      });
-
-      // Position on the PDF page (in inches)
-      // Each button is centered in its grid cell
-      // Cell position: margin + col * (cutDiameter + columnGutter)
-      const cellX = CONFIG.PAGE.margin + col * (btnSize.cutDiameter + columnGutter);
-      const cellY = CONFIG.PAGE.margin + row * (btnSize.cutDiameter + rowGutter);
-
-      // Add the rendered button as an image to the PDF
-      const imgData = offCanvas.toDataURL('image/png');
-      doc.addImage(imgData, 'PNG', cellX, cellY, btnSize.cutDiameter, btnSize.cutDiameter);
-    }
+  // Check that jsPDF is loaded
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    alert('PDF library (jsPDF) is not loaded. Check your internet connection and reload the page.');
+    return;
   }
 
-  // Save the PDF
-  doc.save('buttons.pdf');
+  var layout = CONFIG.SHEET_LAYOUTS[layoutKey];
+  var btnSize = getCurrentButtonSize();
+  var gutters = computeSheetGutters(layoutKey);
+  var columnGutter = gutters.columnGutter;
+  var rowGutter = gutters.rowGutter;
+
+  var totalButtons = layout.cols * layout.rows;
+  var buttonDesigns = getButtonDesignsForExport(totalButtons);
+
+  // Each button rendered at 300 DPI as an offscreen canvas image
+  var printPixels = Math.ceil(btnSize.cutDiameter * CONFIG.DPI);
+
+  try {
+    var jsPDF = window.jspdf.jsPDF;
+    var doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'in',
+      format: 'letter'
+    });
+
+    for (var row = 0; row < layout.rows; row++) {
+      for (var col = 0; col < layout.cols; col++) {
+        var slotIndex = row * layout.cols + col;
+        var design = buttonDesigns[slotIndex];
+
+        var offCanvas = document.createElement('canvas');
+        offCanvas.width = printPixels;
+        offCanvas.height = printPixels;
+        var offCtx = offCanvas.getContext('2d');
+
+        var printScale = CONFIG.DPI;
+        var printCx = printPixels / 2;
+        var printCy = printPixels / 2;
+
+        renderButtonDesign(offCtx, printCx, printCy, printScale, design, {
+          showCutGuide: showCutGuides,
+          isPrint: true
+        });
+
+        var cellX = CONFIG.PAGE.margin + col * (btnSize.cutDiameter + columnGutter);
+        var cellY = CONFIG.PAGE.margin + row * (btnSize.cutDiameter + rowGutter);
+
+        var imgData = offCanvas.toDataURL('image/png');
+        doc.addImage(imgData, 'PNG', cellX, cellY, btnSize.cutDiameter, btnSize.cutDiameter);
+      }
+    }
+
+    // Use sheet name as filename (with spaces preserved), fallback to 'buttons'
+    var filename = (typeof sheetName === 'string' && sheetName.trim())
+      ? sheetName.trim() + '.pdf'
+      : 'buttons.pdf';
+    doc.save(filename);
+
+  } catch (err) {
+    console.error('PDF generation failed:', err);
+    alert('PDF generation failed: ' + err.message);
+  }
 }
 
 /**
@@ -184,28 +191,36 @@ function initPDFExport() {
   const confirmBtn = document.getElementById('btn-export-confirm');
   const backdrop = modal.querySelector('.modal-backdrop');
 
-  // Open modal
-  exportBtn.addEventListener('click', () => {
+  // Open modal — sync radio with current layout
+  exportBtn.addEventListener('click', function() {
+    var radio = document.querySelector('input[name="layout"][value="' + CONFIG.currentLayout + '"]');
+    if (radio) radio.checked = true;
+    // Pre-fill filename display if sheet name exists
     modal.classList.remove('hidden');
   });
 
   // Close modal
-  cancelBtn.addEventListener('click', () => {
+  cancelBtn.addEventListener('click', function() {
     modal.classList.add('hidden');
   });
-  backdrop.addEventListener('click', () => {
+  backdrop.addEventListener('click', function() {
     modal.classList.add('hidden');
   });
 
   // Generate PDF
-  confirmBtn.addEventListener('click', () => {
-    const layoutRadio = document.querySelector('input[name="layout"]:checked');
-    const layout = layoutRadio ? layoutRadio.value : CONFIG.currentLayout;
-    const showCutGuides = document.getElementById('export-cut-guides').checked;
+  confirmBtn.addEventListener('click', function() {
+    var layoutRadio = document.querySelector('input[name="layout"]:checked');
+    var layout = layoutRadio ? layoutRadio.value : CONFIG.currentLayout;
+    var showCutGuides = document.getElementById('export-cut-guides').checked;
 
-    CONFIG.currentLayout = layout;
+    // Sync layout choice back to the top bar toggle
+    if (typeof setLayout === 'function') {
+      setLayout(layout);
+    } else {
+      CONFIG.currentLayout = layout;
+    }
 
-    generatePDF({ layout, showCutGuides });
+    generatePDF({ layout: layout, showCutGuides: showCutGuides });
     modal.classList.add('hidden');
   });
 }

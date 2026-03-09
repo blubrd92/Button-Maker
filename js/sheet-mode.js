@@ -27,7 +27,7 @@
  *   These are re-rendered when the master or overrides change.
  */
 
-// ─── Sheet state ───────────────────────────────────────────────────
+// --- Sheet state ---
 
 // Array of slot objects. Initialized/resized when entering sheet mode.
 // Each slot: { slotIndex, row, col, overrides: {} }
@@ -36,7 +36,10 @@ let sheetSlots = [];
 // Currently selected slot indices (supports multi-select)
 let selectedSlots = [];
 
-// ─── Slot management ───────────────────────────────────────────────
+// User-editable name for this sheet (shown above grid, used as PDF filename)
+let sheetName = '';
+
+// --- Slot management ---
 
 /**
  * Initialize sheet slots for the current layout.
@@ -67,8 +70,6 @@ function initSheetSlots() {
 
 /**
  * Get overrides for a specific slot.
- * @param {number} slotIndex
- * @returns {Object} Override properties (empty if no overrides)
  */
 function getSlotOverrides(slotIndex) {
   const slot = sheetSlots[slotIndex];
@@ -77,8 +78,6 @@ function getSlotOverrides(slotIndex) {
 
 /**
  * Set overrides for a specific slot.
- * @param {number} slotIndex
- * @param {Object} overrides
  */
 function setSlotOverrides(slotIndex, overrides) {
   if (sheetSlots[slotIndex]) {
@@ -88,8 +87,6 @@ function setSlotOverrides(slotIndex, overrides) {
 
 /**
  * Check if a slot has any overrides.
- * @param {number} slotIndex
- * @returns {boolean}
  */
 function slotHasOverrides(slotIndex) {
   const slot = sheetSlots[slotIndex];
@@ -98,7 +95,6 @@ function slotHasOverrides(slotIndex) {
 
 /**
  * Reset a slot to match the master (clear all overrides).
- * @param {number} slotIndex
  */
 function resetSlotToMaster(slotIndex) {
   if (sheetSlots[slotIndex]) {
@@ -108,7 +104,6 @@ function resetSlotToMaster(slotIndex) {
 
 /**
  * Get all sheet slots (for save/load).
- * @returns {Array}
  */
 function getSheetSlots() {
   return sheetSlots.map(slot => ({
@@ -121,7 +116,6 @@ function getSheetSlots() {
 
 /**
  * Set sheet slots from saved data (for load).
- * @param {Array} slots
  */
 function setSheetSlots(slots) {
   sheetSlots = slots.map(s => ({
@@ -132,11 +126,12 @@ function setSheetSlots(slots) {
   }));
 }
 
-// ─── Sheet view rendering ──────────────────────────────────────────
+// --- Sheet view rendering ---
 
 /**
  * Render the full sheet grid view.
- * Creates a grid of small button canvases with row/column headers.
+ * The button grid is centered. Row/column headers sit outside the grid
+ * and are purely for the UI (they don't appear on the PDF).
  */
 function renderSheetView() {
   const container = document.getElementById('sheet-view');
@@ -145,86 +140,112 @@ function renderSheetView() {
 
   container.innerHTML = '';
 
-  // Create grid container
-  const grid = document.createElement('div');
-  grid.className = 'sheet-grid';
-  // Grid template: header column + button columns
-  grid.style.gridTemplateColumns = `40px repeat(${layout.cols}, 80px)`;
-  grid.style.gridTemplateRows = `30px repeat(${layout.rows}, 80px)`;
+  // -- Sheet name input (centered above the grid) --
+  const nameRow = document.createElement('div');
+  nameRow.className = 'sheet-name-row';
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.id = 'sheet-name-input';
+  nameInput.className = 'sheet-name-input';
+  nameInput.placeholder = 'Sheet name (used as PDF filename)...';
+  nameInput.value = sheetName;
+  nameInput.addEventListener('input', function(e) { sheetName = e.target.value; });
+  nameRow.appendChild(nameInput);
+  container.appendChild(nameRow);
 
-  // ── Corner cell (empty) ──
-  const corner = document.createElement('div');
-  grid.appendChild(corner);
+  // -- Wrapper: headers + button grid --
+  const wrapper = document.createElement('div');
+  wrapper.className = 'sheet-wrapper';
 
-  // ── Column headers (A, B, C, ...) ──
+  // Thumbnail size: large enough to be useful
+  const thumbSize = 120;
+  const cellSize = thumbSize + 12; // cell includes border/padding
+
+  // -- Column headers (A, B, C, ...) above the grid --
+  const colHeaderRow = document.createElement('div');
+  colHeaderRow.className = 'sheet-col-headers';
+  // Spacer for row-header width
+  const spacer = document.createElement('div');
+  spacer.style.width = '36px';
+  colHeaderRow.appendChild(spacer);
   for (let col = 0; col < layout.cols; col++) {
     const header = document.createElement('div');
     header.className = 'sheet-header';
-    header.textContent = String.fromCharCode(65 + col); // A, B, C, D
+    header.style.width = cellSize + 'px';
+    header.textContent = String.fromCharCode(65 + col);
     header.dataset.col = col;
-    header.addEventListener('click', (e) => handleColumnHeaderClick(col, e));
-    grid.appendChild(header);
+    header.addEventListener('click', function(e) { handleColumnHeaderClick(col, e); });
+    colHeaderRow.appendChild(header);
+  }
+  wrapper.appendChild(colHeaderRow);
+
+  // -- Main area: row headers (left) + button grid --
+  const mainArea = document.createElement('div');
+  mainArea.className = 'sheet-main-area';
+
+  // Row headers column
+  const rowHeaderCol = document.createElement('div');
+  rowHeaderCol.className = 'sheet-row-headers';
+  for (let row = 0; row < layout.rows; row++) {
+    const header = document.createElement('div');
+    header.className = 'sheet-header';
+    header.style.height = cellSize + 'px';
+    header.textContent = String(row + 1);
+    header.dataset.row = row;
+    header.addEventListener('click', function(e) { handleRowHeaderClick(row, e); });
+    rowHeaderCol.appendChild(header);
   }
 
-  // ── Rows ──
-  for (let row = 0; row < layout.rows; row++) {
-    // Row header
-    const rowHeader = document.createElement('div');
-    rowHeader.className = 'sheet-header';
-    rowHeader.textContent = String(row + 1);
-    rowHeader.dataset.row = row;
-    rowHeader.addEventListener('click', (e) => handleRowHeaderClick(row, e));
-    grid.appendChild(rowHeader);
+  // Button grid (only buttons, no headers)
+  const grid = document.createElement('div');
+  grid.className = 'sheet-grid';
+  grid.style.gridTemplateColumns = 'repeat(' + layout.cols + ', ' + cellSize + 'px)';
+  grid.style.gridTemplateRows = 'repeat(' + layout.rows + ', ' + cellSize + 'px)';
 
-    // Button cells
+  for (let row = 0; row < layout.rows; row++) {
     for (let col = 0; col < layout.cols; col++) {
-      const slotIndex = row * layout.cols + col;
-      const cell = document.createElement('div');
+      var slotIndex = row * layout.cols + col;
+      var cell = document.createElement('div');
       cell.className = 'sheet-cell';
       cell.dataset.slotIndex = slotIndex;
 
-      // Create thumbnail canvas
-      const thumbCanvas = document.createElement('canvas');
-      const thumbSize = 76;
+      var thumbCanvas = document.createElement('canvas');
       thumbCanvas.width = thumbSize;
       thumbCanvas.height = thumbSize;
       cell.appendChild(thumbCanvas);
 
-      // Override badge
       if (slotHasOverrides(slotIndex)) {
-        const badge = document.createElement('div');
+        var badge = document.createElement('div');
         badge.className = 'override-badge';
         badge.title = 'This button has custom overrides';
         cell.appendChild(badge);
       }
 
-      // Click handler
-      cell.addEventListener('click', (e) => handleCellClick(slotIndex, e));
+      (function(idx) {
+        cell.addEventListener('click', function(e) { handleCellClick(idx, e); });
+      })(slotIndex);
 
       grid.appendChild(cell);
-
-      // Render the button thumbnail
       renderSheetThumbnail(thumbCanvas, slotIndex);
     }
   }
 
-  container.appendChild(grid);
+  mainArea.appendChild(rowHeaderCol);
+  mainArea.appendChild(grid);
+  wrapper.appendChild(mainArea);
+  container.appendChild(wrapper);
 
-  // Add reset button for selected slots
-  const controlsDiv = document.createElement('div');
+  // -- Controls below the grid --
+  var controlsDiv = document.createElement('div');
   controlsDiv.id = 'sheet-controls';
-  controlsDiv.style.marginTop = '16px';
-  controlsDiv.style.display = 'flex';
-  controlsDiv.style.gap = '8px';
-  controlsDiv.innerHTML = `
-    <button class="btn btn-small" id="btn-sheet-reset" style="display:none;">Reset Selected to Master</button>
-    <span id="sheet-selection-info" style="font-size:12px; color:#888;"></span>
-  `;
+  controlsDiv.className = 'sheet-controls-bar';
+  controlsDiv.innerHTML =
+    '<button class="btn btn-small" id="btn-sheet-reset" style="display:none;">Reset Selected to Master</button>' +
+    '<span id="sheet-selection-info" style="font-size:12px; color:#888;">Click a button to select it</span>';
   container.appendChild(controlsDiv);
 
-  // Wire reset button
-  document.getElementById('btn-sheet-reset').addEventListener('click', () => {
-    selectedSlots.forEach(idx => resetSlotToMaster(idx));
+  document.getElementById('btn-sheet-reset').addEventListener('click', function() {
+    selectedSlots.forEach(function(idx) { resetSlotToMaster(idx); });
     renderSheetView();
     updateSheetSelectionUI();
   });
@@ -234,22 +255,18 @@ function renderSheetView() {
 
 /**
  * Render a single button thumbnail for the sheet view.
- * @param {HTMLCanvasElement} canvas - The thumbnail canvas
- * @param {number} slotIndex - The slot index
  */
 function renderSheetThumbnail(canvas, slotIndex) {
-  const ctx = canvas.getContext('2d');
-  const size = canvas.width;
-  const cx = size / 2;
-  const cy = size / 2;
+  var ctx = canvas.getContext('2d');
+  var size = canvas.width;
+  var cx = size / 2;
+  var cy = size / 2;
 
-  // Scale: map cutDiameter to thumbnail size
-  const btnSize = getCurrentButtonSize();
-  const thumbScale = size / btnSize.cutDiameter;
+  var btnSize = getCurrentButtonSize();
+  var thumbScale = size / btnSize.cutDiameter;
 
-  // Build the design for this slot (master + overrides)
-  const design = cloneDesignForRender(currentDesign);
-  const overrides = getSlotOverrides(slotIndex);
+  var design = cloneDesignForRender(currentDesign);
+  var overrides = getSlotOverrides(slotIndex);
   if (Object.keys(overrides).length > 0) {
     applyOverridesToDesign(design, overrides);
   }
@@ -257,182 +274,132 @@ function renderSheetThumbnail(canvas, slotIndex) {
   renderButtonDesign(ctx, cx, cy, thumbScale, design, { showGuides: false });
 }
 
-// ─── Selection handling ────────────────────────────────────────────
+// --- Selection handling ---
 
-/**
- * Handle click on a button cell in the sheet grid.
- */
 function handleCellClick(slotIndex, event) {
   if (event.ctrlKey || event.metaKey) {
-    // Toggle selection (multi-select)
-    const idx = selectedSlots.indexOf(slotIndex);
+    var idx = selectedSlots.indexOf(slotIndex);
     if (idx >= 0) {
       selectedSlots.splice(idx, 1);
     } else {
       selectedSlots.push(slotIndex);
     }
   } else {
-    // Single select
     selectedSlots = [slotIndex];
   }
-
   updateSheetSelectionUI();
   updateSheetOverridePanel();
 }
 
-/**
- * Handle click on a column header. Selects all slots in that column.
- */
 function handleColumnHeaderClick(col, event) {
-  const layout = getCurrentLayout();
-  const columnSlots = [];
-  for (let row = 0; row < layout.rows; row++) {
+  var layout = getCurrentLayout();
+  var columnSlots = [];
+  for (var row = 0; row < layout.rows; row++) {
     columnSlots.push(row * layout.cols + col);
   }
-
   if (event.shiftKey) {
-    // Add to selection
-    columnSlots.forEach(idx => {
+    columnSlots.forEach(function(idx) {
       if (!selectedSlots.includes(idx)) selectedSlots.push(idx);
     });
   } else {
     selectedSlots = columnSlots;
   }
-
   updateSheetSelectionUI();
   updateSheetOverridePanel();
 }
 
-/**
- * Handle click on a row header. Selects all slots in that row.
- */
 function handleRowHeaderClick(row, event) {
-  const layout = getCurrentLayout();
-  const rowSlots = [];
-  for (let col = 0; col < layout.cols; col++) {
+  var layout = getCurrentLayout();
+  var rowSlots = [];
+  for (var col = 0; col < layout.cols; col++) {
     rowSlots.push(row * layout.cols + col);
   }
-
   if (event.shiftKey) {
-    // Add to selection
-    rowSlots.forEach(idx => {
+    rowSlots.forEach(function(idx) {
       if (!selectedSlots.includes(idx)) selectedSlots.push(idx);
     });
   } else {
     selectedSlots = rowSlots;
   }
-
   updateSheetSelectionUI();
   updateSheetOverridePanel();
 }
 
-/**
- * Update the visual selection state in the sheet grid.
- */
 function updateSheetSelectionUI() {
-  // Update cell selection highlights
-  document.querySelectorAll('.sheet-cell').forEach(cell => {
-    const idx = parseInt(cell.dataset.slotIndex);
+  document.querySelectorAll('.sheet-cell').forEach(function(cell) {
+    var idx = parseInt(cell.dataset.slotIndex);
     cell.classList.toggle('selected', selectedSlots.includes(idx));
   });
 
-  // Update row/column header highlights
-  const layout = getCurrentLayout();
-  document.querySelectorAll('.sheet-header[data-col]').forEach(header => {
-    const col = parseInt(header.dataset.col);
-    const colSlots = [];
-    for (let row = 0; row < layout.rows; row++) {
+  var layout = getCurrentLayout();
+  document.querySelectorAll('.sheet-header[data-col]').forEach(function(header) {
+    var col = parseInt(header.dataset.col);
+    var colSlots = [];
+    for (var row = 0; row < layout.rows; row++) {
       colSlots.push(row * layout.cols + col);
     }
-    header.classList.toggle('selected', colSlots.every(idx => selectedSlots.includes(idx)));
+    header.classList.toggle('selected', colSlots.every(function(idx) { return selectedSlots.includes(idx); }));
   });
 
-  document.querySelectorAll('.sheet-header[data-row]').forEach(header => {
-    const row = parseInt(header.dataset.row);
-    const rowSlots = [];
-    for (let col = 0; col < layout.cols; col++) {
+  document.querySelectorAll('.sheet-header[data-row]').forEach(function(header) {
+    var row = parseInt(header.dataset.row);
+    var rowSlots = [];
+    for (var col = 0; col < layout.cols; col++) {
       rowSlots.push(row * layout.cols + col);
     }
-    header.classList.toggle('selected', rowSlots.every(idx => selectedSlots.includes(idx)));
+    header.classList.toggle('selected', rowSlots.every(function(idx) { return selectedSlots.includes(idx); }));
   });
 
-  // Update info text and reset button
-  const info = document.getElementById('sheet-selection-info');
-  const resetBtn = document.getElementById('btn-sheet-reset');
+  var info = document.getElementById('sheet-selection-info');
+  var resetBtn = document.getElementById('btn-sheet-reset');
   if (info) {
     info.textContent = selectedSlots.length > 0
-      ? `${selectedSlots.length} button(s) selected`
+      ? selectedSlots.length + ' button(s) selected'
       : 'Click a button to select it';
   }
-
-  // Show reset button only if any selected slot has overrides
   if (resetBtn) {
-    const hasOverrides = selectedSlots.some(idx => slotHasOverrides(idx));
+    var hasOverrides = selectedSlots.some(function(idx) { return slotHasOverrides(idx); });
     resetBtn.style.display = hasOverrides ? '' : 'none';
   }
 }
 
-/**
- * Update the right sidebar to show override controls for the selected slot(s).
- * When a single slot is selected, shows its current (overridden or inherited) values
- * in the sidebar controls. When multiple slots are selected, the controls
- * will apply changes as overrides to all selected slots.
- */
 function updateSheetOverridePanel() {
   if (selectedSlots.length === 1) {
-    // Single slot selected — show its current values
-    const slotIndex = selectedSlots[0];
-    const overrides = getSlotOverrides(slotIndex);
-
-    // Background color: show override value or master value
-    const bgColor = overrides.backgroundColor || currentDesign.backgroundColor;
+    var slotIndex = selectedSlots[0];
+    var overrides = getSlotOverrides(slotIndex);
+    var bgColor = overrides.backgroundColor || currentDesign.backgroundColor;
     document.getElementById('bg-color-picker').value = bgColor;
     updateBackgroundSwatches(bgColor);
-
-    // Library info text
-    const libText = overrides.libraryInfoText !== undefined
+    var libText = overrides.libraryInfoText !== undefined
       ? overrides.libraryInfoText : currentDesign.libraryInfoText;
-    const libColor = overrides.libraryInfoColor !== undefined
+    var libColor = overrides.libraryInfoColor !== undefined
       ? overrides.libraryInfoColor : currentDesign.libraryInfoColor;
     document.getElementById('library-info-input').value = libText;
     document.getElementById('library-info-color').value = libColor;
   }
-  // For multi-select, the controls just apply to all selected slots
-  // without updating to show a specific slot's values (they may differ).
 }
 
-/**
- * Apply a background color override to all currently selected slots.
- * @param {string} color - hex color
- */
 function applyOverrideToSelectedSlots(property, value) {
-  selectedSlots.forEach(slotIndex => {
-    const slot = sheetSlots[slotIndex];
+  selectedSlots.forEach(function(slotIndex) {
+    var slot = sheetSlots[slotIndex];
     if (slot) {
       slot.overrides[property] = value;
     }
   });
-
-  // Re-render affected thumbnails
   refreshSheetThumbnails();
 }
 
-/**
- * Refresh all sheet thumbnails (e.g., after master or overrides change).
- */
 function refreshSheetThumbnails() {
-  document.querySelectorAll('.sheet-cell').forEach(cell => {
-    const slotIndex = parseInt(cell.dataset.slotIndex);
-    const canvas = cell.querySelector('canvas');
+  document.querySelectorAll('.sheet-cell').forEach(function(cell) {
+    var slotIndex = parseInt(cell.dataset.slotIndex);
+    var canvas = cell.querySelector('canvas');
     if (canvas) {
       renderSheetThumbnail(canvas, slotIndex);
     }
-
-    // Update override badge
-    const existingBadge = cell.querySelector('.override-badge');
+    var existingBadge = cell.querySelector('.override-badge');
     if (slotHasOverrides(slotIndex)) {
       if (!existingBadge) {
-        const badge = document.createElement('div');
+        var badge = document.createElement('div');
         badge.className = 'override-badge';
         badge.title = 'This button has custom overrides';
         cell.appendChild(badge);
@@ -443,20 +410,14 @@ function refreshSheetThumbnails() {
   });
 }
 
-// ─── Mode switching ────────────────────────────────────────────────
+// --- Mode switching ---
 
-/**
- * Enter Sheet Mode: show the sheet grid, hide the design canvas.
- */
 function enterSheetMode() {
   document.getElementById('design-canvas-wrapper').classList.add('hidden');
   document.getElementById('sheet-view').classList.remove('hidden');
   renderSheetView();
 }
 
-/**
- * Exit Sheet Mode: show the design canvas, hide the sheet grid.
- */
 function exitSheetMode() {
   document.getElementById('sheet-view').classList.add('hidden');
   document.getElementById('design-canvas-wrapper').classList.remove('hidden');
@@ -464,18 +425,13 @@ function exitSheetMode() {
   renderDesignCanvas();
 }
 
-/**
- * Initialize sheet mode: wire up mode toggle buttons.
- * Called once from app.js.
- */
 function initSheetMode() {
-  document.getElementById('btn-design-mode').addEventListener('click', () => {
+  document.getElementById('btn-design-mode').addEventListener('click', function() {
     document.getElementById('btn-design-mode').classList.add('active');
     document.getElementById('btn-sheet-mode').classList.remove('active');
     exitSheetMode();
   });
-
-  document.getElementById('btn-sheet-mode').addEventListener('click', () => {
+  document.getElementById('btn-sheet-mode').addEventListener('click', function() {
     document.getElementById('btn-sheet-mode').classList.add('active');
     document.getElementById('btn-design-mode').classList.remove('active');
     enterSheetMode();
