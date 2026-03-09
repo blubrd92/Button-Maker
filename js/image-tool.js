@@ -1,13 +1,15 @@
 /**
  * image-tool.js
  *
- * Manages image elements on the button design canvas.
+ * Manages a single background image on the button design canvas.
  *
  * Responsibilities:
  * - Uploading images (PNG, JPG, SVG)
- * - Positioning and resizing images with drag handles
- * - Layer ordering (bring to front, send to back)
- * - Hit-testing for image element selection
+ * - Single-image model: new upload replaces existing image
+ * - Cover-fill: image always fills the safe zone (no white gaps)
+ * - Scale slider for zooming in beyond cover-fill minimum
+ * - Drag to reposition with constraints so safe zone stays covered
+ * - In-canvas placeholder hint when no image is present
  * - Rendering image elements onto any canvas context
  *
  * Depends on:
@@ -21,67 +23,76 @@
  *   serialization. This means large images will increase save data size.
  * - The Image object (DOM) is stored as `imgObj` but is NOT serialized.
  *   On load, it's reconstructed from the dataUrl.
+ * - `imageScale` is a multiplier >= 1.0 over the cover-fill size.
  */
 
 // ─── Image element data structure ──────────────────────────────────
-// Each image element in currentDesign.imageElements looks like:
+// currentDesign.imageElements contains at most ONE element:
 // {
-//   dataUrl: "data:image/png;base64,...",   // base64 encoded image data
-//   imgObj: Image,                           // DOM Image object (not serialized)
-//   x: 0,                                   // inches from center (center of image)
-//   y: 0,                                   // inches from center (center of image)
-//   width: 1.35,                            // inches (defaults to safe zone diameter)
-//   height: 1.35,                           // inches
-//   naturalWidth: 400,                      // original pixel width
-//   naturalHeight: 300,                     // original pixel height
-//   lockAspect: true                        // maintain aspect ratio when resizing
+//   dataUrl: "data:image/png;base64,...",
+//   imgObj: Image,
+//   x: 0,              // inches from center
+//   y: 0,              // inches from center
+//   width: 1.35,       // inches (at current scale)
+//   height: 1.35,      // inches (at current scale)
+//   naturalWidth: 400,  // original pixel width
+//   naturalHeight: 300, // original pixel height
+//   baseWidth: 1.35,   // cover-fill width (scale=1)
+//   baseHeight: 1.35,  // cover-fill height (scale=1)
+//   imageScale: 1.0    // current scale multiplier (>= 1.0)
 // }
 
 /**
+ * Compute cover-fill dimensions for an image so it fills the safe zone.
+ * The smaller dimension matches the safe zone diameter; the larger extends beyond.
+ */
+function computeCoverFillSize(naturalWidth, naturalHeight) {
+  var btnSize = getCurrentButtonSize();
+  var d = btnSize.safeDiameter;
+  var w, h;
+  if (naturalWidth <= naturalHeight) {
+    w = d;
+    h = d * (naturalHeight / naturalWidth);
+  } else {
+    h = d;
+    w = d * (naturalWidth / naturalHeight);
+  }
+  return { width: w, height: h };
+}
+
+/**
  * Handle image file upload. Reads the file, creates an Image object,
- * and adds it to the design.
+ * and replaces any existing image (single-image model).
  * @param {File} file - The uploaded file
  */
 function handleImageUpload(file) {
   if (!file) return;
 
-  const reader = new FileReader();
+  var reader = new FileReader();
   reader.onload = function(e) {
-    const dataUrl = e.target.result;
-    const img = new Image();
+    var dataUrl = e.target.result;
+    var img = new Image();
     img.onload = function() {
-      // Default size: the smaller dimension matches the safe zone diameter
-      // (1.35") so the circle is completely filled. The larger dimension
-      // extends beyond and gets clipped by the circular mask.
-      // Square: both = diameter. Landscape: height = diameter, width wider.
-      // Portrait: width = diameter, height taller.
-      const btnSize = getCurrentButtonSize();
-      const d = btnSize.safeDiameter;
-      let width, height;
-      if (img.naturalWidth <= img.naturalHeight) {
-        width = d;
-        height = d * (img.naturalHeight / img.naturalWidth);
-      } else {
-        height = d;
-        width = d * (img.naturalWidth / img.naturalHeight);
-      }
+      var cover = computeCoverFillSize(img.naturalWidth, img.naturalHeight);
 
-      const imageElement = {
+      var imageElement = {
         dataUrl: dataUrl,
         imgObj: img,
         x: 0,
         y: 0,
-        width: width,
-        height: height,
+        width: cover.width,
+        height: cover.height,
         naturalWidth: img.naturalWidth,
         naturalHeight: img.naturalHeight,
-        lockAspect: true
+        baseWidth: cover.width,
+        baseHeight: cover.height,
+        imageScale: 1.0
       };
 
-      currentDesign.imageElements.push(imageElement);
-      const index = currentDesign.imageElements.length - 1;
-      selectedElement = { type: 'image', index };
-      showImageControls(index);
+      // Replace any existing image (single-image model)
+      currentDesign.imageElements = [imageElement];
+      selectedElement = { type: 'image', index: 0 };
+      showImageControls(0);
       renderDesignCanvas();
     };
     img.src = dataUrl;
@@ -90,46 +101,12 @@ function handleImageUpload(file) {
 }
 
 /**
- * Delete the currently selected image element.
+ * Delete the current image.
  */
 function deleteSelectedImage() {
-  if (!selectedElement || selectedElement.type !== 'image') return;
-
-  currentDesign.imageElements.splice(selectedElement.index, 1);
+  currentDesign.imageElements = [];
   selectedElement = null;
   hideImageControls();
-  renderDesignCanvas();
-}
-
-/**
- * Bring the selected image to the front (top of z-order).
- */
-function bringImageToFront() {
-  if (!selectedElement || selectedElement.type !== 'image') return;
-
-  const index = selectedElement.index;
-  const imageElements = currentDesign.imageElements;
-  if (index >= imageElements.length - 1) return; // already on top
-
-  const [element] = imageElements.splice(index, 1);
-  imageElements.push(element);
-  selectedElement.index = imageElements.length - 1;
-  renderDesignCanvas();
-}
-
-/**
- * Send the selected image to the back (bottom of z-order).
- */
-function sendImageToBack() {
-  if (!selectedElement || selectedElement.type !== 'image') return;
-
-  const index = selectedElement.index;
-  const imageElements = currentDesign.imageElements;
-  if (index === 0) return; // already at back
-
-  const [element] = imageElements.splice(index, 1);
-  imageElements.unshift(element);
-  selectedElement.index = 0;
   renderDesignCanvas();
 }
 
@@ -138,13 +115,19 @@ function sendImageToBack() {
  * @param {number} index - index in currentDesign.imageElements
  */
 function showImageControls(index) {
-  const imgEl = currentDesign.imageElements[index];
+  var imgEl = currentDesign.imageElements[index];
   if (!imgEl) return;
 
-  const controls = document.getElementById('image-controls');
+  var controls = document.getElementById('image-controls');
   controls.classList.remove('hidden');
 
-  document.getElementById('lock-aspect').checked = imgEl.lockAspect;
+  // Update scale slider
+  var slider = document.getElementById('image-scale');
+  if (slider) {
+    slider.value = ((imgEl.imageScale || 1.0) * 100).toFixed(0);
+    var display = document.getElementById('image-scale-display');
+    if (display) display.textContent = slider.value + '%';
+  }
 
   // Hide text controls if visible
   hideTextControls();
@@ -157,13 +140,83 @@ function hideImageControls() {
   document.getElementById('image-controls').classList.add('hidden');
 }
 
+/**
+ * Apply the scale slider value to the current image.
+ * Recalculates dimensions and constrains position.
+ */
+function applyImageScale(scalePercent) {
+  if (currentDesign.imageElements.length === 0) return;
+  var imgEl = currentDesign.imageElements[0];
+  var s = Math.max(1.0, scalePercent / 100);
+  imgEl.imageScale = s;
+  imgEl.width = imgEl.baseWidth * s;
+  imgEl.height = imgEl.baseHeight * s;
+  constrainImagePosition(imgEl);
+  renderDesignCanvas();
+}
+
+/**
+ * Constrain image position so the safe zone circle is always fully covered.
+ * The image rectangle must contain the entire safe zone circle.
+ */
+function constrainImagePosition(imgEl) {
+  var btnSize = getCurrentButtonSize();
+  var r = btnSize.safeDiameter / 2; // safe zone radius
+
+  // Image half-sizes
+  var hw = imgEl.width / 2;
+  var hh = imgEl.height / 2;
+
+  // The image left edge must be at most -r from center:
+  //   imgEl.x - hw <= -r  =>  imgEl.x <= hw - r
+  // The image right edge must be at least +r from center:
+  //   imgEl.x + hw >= r   =>  imgEl.x >= r - hw
+  var maxX = hw - r;
+  var minX = r - hw;
+  var maxY = hh - r;
+  var minY = r - hh;
+
+  imgEl.x = Math.max(minX, Math.min(maxX, imgEl.x));
+  imgEl.y = Math.max(minY, Math.min(maxY, imgEl.y));
+}
+
 // ─── Rendering ─────────────────────────────────────────────────────
+
+/**
+ * Draw the "Click to add image" placeholder hint on the canvas.
+ */
+function renderImagePlaceholder(ctx, cx, cy, scale) {
+  if (currentDesign.imageElements.length > 0) return;
+  var btnSize = getCurrentButtonSize();
+  var safeRadius = (btnSize.safeDiameter / 2) * scale;
+
+  ctx.save();
+  // Light dashed circle
+  ctx.beginPath();
+  ctx.arc(cx, cy, safeRadius * 0.75, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([6, 4]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Hint text
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.font = '14px Roboto, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Click to add image', cx, cy - 10);
+  ctx.font = '11px Roboto, sans-serif';
+  ctx.fillText('Safe image area', cx, cy + 10);
+  ctx.restore();
+}
 
 /**
  * Render all image elements onto the editing canvas.
  * Images are clipped to the safe zone circle.
  */
 function renderImageElements(ctx, cx, cy, scale) {
+  renderImagePlaceholder(ctx, cx, cy, scale);
   if (currentDesign.imageElements.length === 0) return;
   var btnSize = getCurrentButtonSize();
   var safeRadius = (btnSize.safeDiameter / 2) * scale;
@@ -216,10 +269,10 @@ function renderSingleImageElement(ctx, cx, cy, scale, imgEl) {
  * Check if a point (in inches, relative to center) is inside an image element.
  */
 function isPointInImageElement(inchX, inchY, imgEl) {
-  const left = imgEl.x - imgEl.width / 2;
-  const right = imgEl.x + imgEl.width / 2;
-  const top = imgEl.y - imgEl.height / 2;
-  const bottom = imgEl.y + imgEl.height / 2;
+  var left = imgEl.x - imgEl.width / 2;
+  var right = imgEl.x + imgEl.width / 2;
+  var top = imgEl.y - imgEl.height / 2;
+  var bottom = imgEl.y + imgEl.height / 2;
 
   return inchX >= left && inchX <= right && inchY >= top && inchY <= bottom;
 }
@@ -228,59 +281,29 @@ function isPointInImageElement(inchX, inchY, imgEl) {
  * Draw selection box around an image element.
  */
 function drawImageSelectionBox(ctx, imgEl, cx, cy, scale) {
-  const px = cx + (imgEl.x - imgEl.width / 2) * scale;
-  const py = cy + (imgEl.y - imgEl.height / 2) * scale;
-  const pw = imgEl.width * scale;
-  const ph = imgEl.height * scale;
+  var px = cx + (imgEl.x - imgEl.width / 2) * scale;
+  var py = cy + (imgEl.y - imgEl.height / 2) * scale;
+  var pw = imgEl.width * scale;
+  var ph = imgEl.height * scale;
 
   ctx.strokeStyle = '#4A90D9';
   ctx.lineWidth = 1.5;
   ctx.setLineDash([4, 3]);
   ctx.strokeRect(px, py, pw, ph);
   ctx.setLineDash([]);
-
-  // Draw resize handles at corners
-  const handleSize = 8;
-  ctx.fillStyle = '#4A90D9';
-  const corners = [
-    [px, py], [px + pw, py],
-    [px, py + ph], [px + pw, py + ph]
-  ];
-  corners.forEach(([hx, hy]) => {
-    ctx.fillRect(hx - handleSize / 2, hy - handleSize / 2, handleSize, handleSize);
-  });
 }
 
-// ─── Image resize via drag handles ─────────────────────────────────
+// ─── Image resize via drag handles (removed — using scale slider instead) ──
 
 let isResizing = false;
-let resizeCorner = null;       // which corner is being dragged
-let resizeStartPos = null;     // starting mouse position
-let resizeStartDims = null;    // starting element dimensions
+let resizeCorner = null;
+let resizeStartPos = null;
+let resizeStartDims = null;
 
 /**
- * Check if mouse is near a resize handle of the selected image.
- * Returns the corner name or null.
+ * Not used in single-image model (kept for compatibility with canvas.js).
  */
-function getResizeHandle(mouseX, mouseY, imgEl, cx, cy, scale) {
-  const px = cx + (imgEl.x - imgEl.width / 2) * scale;
-  const py = cy + (imgEl.y - imgEl.height / 2) * scale;
-  const pw = imgEl.width * scale;
-  const ph = imgEl.height * scale;
-
-  const handleSize = 12; // slightly larger hit area
-  const corners = {
-    'tl': [px, py],
-    'tr': [px + pw, py],
-    'bl': [px, py + ph],
-    'br': [px + pw, py + ph]
-  };
-
-  for (const [name, [hx, hy]] of Object.entries(corners)) {
-    if (Math.abs(mouseX - hx) < handleSize && Math.abs(mouseY - hy) < handleSize) {
-      return name;
-    }
-  }
+function getResizeHandle() {
   return null;
 }
 
@@ -291,7 +314,7 @@ function getResizeHandle(mouseX, mouseY, imgEl, cx, cy, scale) {
  * Called once from app.js.
  */
 function initImageTool() {
-  document.getElementById('image-upload').addEventListener('change', (e) => {
+  document.getElementById('image-upload').addEventListener('change', function(e) {
     if (e.target.files.length > 0) {
       handleImageUpload(e.target.files[0]);
       e.target.value = ''; // reset so same file can be uploaded again
@@ -299,12 +322,12 @@ function initImageTool() {
   });
 
   document.getElementById('btn-delete-image').addEventListener('click', deleteSelectedImage);
-  document.getElementById('btn-bring-front').addEventListener('click', bringImageToFront);
-  document.getElementById('btn-send-back').addEventListener('click', sendImageToBack);
 
-  document.getElementById('lock-aspect').addEventListener('change', (e) => {
-    if (selectedElement && selectedElement.type === 'image') {
-      currentDesign.imageElements[selectedElement.index].lockAspect = e.target.checked;
-    }
+  // Scale slider
+  document.getElementById('image-scale').addEventListener('input', function(e) {
+    var val = parseInt(e.target.value, 10);
+    var display = document.getElementById('image-scale-display');
+    if (display) display.textContent = val + '%';
+    applyImageScale(val);
   });
 }

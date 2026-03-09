@@ -180,7 +180,9 @@ function serializeDesign(design) {
       height: img.height,
       naturalWidth: img.naturalWidth,
       naturalHeight: img.naturalHeight,
-      lockAspect: img.lockAspect
+      baseWidth: img.baseWidth,
+      baseHeight: img.baseHeight,
+      imageScale: img.imageScale || 1.0
     })),
     libraryInfoText: design.libraryInfoText,
     libraryInfoColor: design.libraryInfoColor
@@ -207,7 +209,7 @@ function deserializeDesign(data) {
   // Restore text elements
   currentDesign.textElements = data.textElements || [];
 
-  // Restore image elements (reconstruct Image objects)
+  // Restore image elements (reconstruct Image objects and cover-fill fields)
   currentDesign.imageElements = [];
   (data.imageElements || []).forEach(imgData => {
     const img = new Image();
@@ -215,6 +217,18 @@ function deserializeDesign(data) {
       ...imgData,
       imgObj: img
     };
+    // Ensure cover-fill fields exist (for designs saved before this feature)
+    if (!element.baseWidth || !element.baseHeight) {
+      var cover = computeCoverFillSize(
+        element.naturalWidth || 1,
+        element.naturalHeight || 1
+      );
+      element.baseWidth = cover.width;
+      element.baseHeight = cover.height;
+    }
+    if (!element.imageScale) {
+      element.imageScale = 1.0;
+    }
     img.onload = function() {
       renderDesignCanvas(); // re-render once image loads
     };
@@ -284,6 +298,115 @@ function renderSavedDesignsList() {
   });
 }
 
+// ─── JSON Export/Import ──────────────────────────────────────────
+
+/**
+ * Export all saved designs as a JSON file download.
+ */
+function exportDesignsToJSON() {
+  const designs = getSavedDesigns();
+  if (designs.length === 0) {
+    showSaveStatus('No designs to export.', true);
+    return;
+  }
+  const payload = {
+    app: 'ButtonMaker',
+    version: '1.0',
+    exportedAt: new Date().toISOString(),
+    designs: designs
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'buttonmaker-designs.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showSaveStatus('Exported ' + designs.length + ' design(s).');
+}
+
+/**
+ * Import designs from a JSON file. Supports wrapped { designs: [...] }
+ * or raw array [...] formats. Merges by name (case-insensitive overwrite).
+ * @param {File} file - The JSON file to import
+ */
+function importDesignsFromJSON(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const raw = JSON.parse(e.target.result);
+      let incoming;
+      if (Array.isArray(raw)) {
+        incoming = raw;
+      } else if (raw && Array.isArray(raw.designs)) {
+        incoming = raw.designs;
+      } else {
+        showSaveStatus('Invalid file format.', true);
+        return;
+      }
+
+      // Sanitize each record
+      incoming = incoming.filter(function(d) {
+        return d && typeof d.name === 'string' && d.name.trim();
+      }).map(function(d) {
+        return {
+          name: d.name.trim(),
+          savedAt: d.savedAt || new Date().toISOString(),
+          buttonSize: d.buttonSize || '1.5',
+          layout: d.layout || '15',
+          master: d.master || {},
+          slots: Array.isArray(d.slots) ? d.slots : []
+        };
+      });
+
+      if (incoming.length === 0) {
+        showSaveStatus('No valid designs found in file.', true);
+        return;
+      }
+
+      // Merge by name (case-insensitive): imported overwrites existing
+      const existing = getSavedDesigns();
+      const nameMap = {};
+      existing.forEach(function(d, i) { nameMap[d.name.toLowerCase()] = i; });
+
+      incoming.forEach(function(d) {
+        const key = d.name.toLowerCase();
+        if (key in nameMap) {
+          existing[nameMap[key]] = d;
+        } else {
+          existing.push(d);
+          nameMap[key] = existing.length - 1;
+        }
+      });
+
+      saveDesignsToStorage(existing);
+      renderSavedDesignsList();
+      showSaveStatus('Imported ' + incoming.length + ' design(s).');
+    } catch (err) {
+      console.error('Import failed:', err);
+      showSaveStatus('Import failed: invalid JSON.', true);
+    }
+  };
+  reader.readAsText(file);
+}
+
+/**
+ * Show a temporary status message below the save controls.
+ * @param {string} message
+ * @param {boolean} [isError=false]
+ */
+function showSaveStatus(message, isError) {
+  const el = document.getElementById('save-status');
+  if (!el) return;
+  el.textContent = message;
+  el.style.color = isError ? '#E74C3C' : '#2ECC71';
+  clearTimeout(el._timeout);
+  el._timeout = setTimeout(function() { el.textContent = ''; }, 4000);
+}
+
 /**
  * Initialize storage: render saved designs list and wire save button.
  * Called once from app.js.
@@ -299,6 +422,18 @@ function initStorage() {
     if (e.key === 'Enter') {
       const name = e.target.value;
       saveCurrentDesign(name);
+    }
+  });
+
+  // Export/Import buttons
+  document.getElementById('btn-export-designs').addEventListener('click', exportDesignsToJSON);
+  document.getElementById('btn-import-designs').addEventListener('click', function() {
+    document.getElementById('import-designs-file').click();
+  });
+  document.getElementById('import-designs-file').addEventListener('change', function(e) {
+    if (e.target.files.length > 0) {
+      importDesignsFromJSON(e.target.files[0]);
+      e.target.value = '';
     }
   });
 

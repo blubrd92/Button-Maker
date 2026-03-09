@@ -259,6 +259,22 @@ function handleCanvasMouseDown(e) {
   var inchX = (mouseX - cx) / scale;
   var inchY = (mouseY - cy) / scale;
 
+  // Check resize handles on currently selected image first
+  if (selectedElement && selectedElement.type === 'image') {
+    var selImg = currentDesign.imageElements[selectedElement.index];
+    if (selImg) {
+      var handle = getResizeHandle(mouseX, mouseY, selImg, cx, cy, scale);
+      if (handle) {
+        isResizing = true;
+        resizeCorner = handle;
+        resizeStartPos = { x: mouseX, y: mouseY };
+        resizeStartDims = { width: selImg.width, height: selImg.height, x: selImg.x, y: selImg.y };
+        lastMouseDownHitElement = true;
+        return;
+      }
+    }
+  }
+
   // Check text elements (top to bottom in z-order, so iterate in reverse)
   for (var i = currentDesign.textElements.length - 1; i >= 0; i--) {
     var textEl = currentDesign.textElements[i];
@@ -302,8 +318,6 @@ function handleCanvasMouseDown(e) {
  * Handle mouse move: drag the selected element.
  */
 function handleCanvasMouseMove(e) {
-  if (!isDragging || !selectedElement) return;
-
   const canvas = e.target;
   const rect = canvas.getBoundingClientRect();
   const cssToCanvas = canvas.width / rect.width;
@@ -312,6 +326,54 @@ function handleCanvasMouseMove(e) {
   const scale = getCanvasScale();
   const cx = CONFIG.CANVAS_DISPLAY_DIAMETER / 2;
   const cy = CONFIG.CANVAS_DISPLAY_DIAMETER / 2;
+
+  // Handle resize dragging
+  if (isResizing && selectedElement && selectedElement.type === 'image') {
+    const imgEl = currentDesign.imageElements[selectedElement.index];
+    const dx = (mouseX - resizeStartPos.x) / scale;
+    const dy = (mouseY - resizeStartPos.y) / scale;
+
+    let newWidth = resizeStartDims.width;
+    let newHeight = resizeStartDims.height;
+
+    // Determine resize direction based on corner
+    if (resizeCorner === 'br') {
+      newWidth = resizeStartDims.width + dx;
+      newHeight = resizeStartDims.height + dy;
+    } else if (resizeCorner === 'bl') {
+      newWidth = resizeStartDims.width - dx;
+      newHeight = resizeStartDims.height + dy;
+    } else if (resizeCorner === 'tr') {
+      newWidth = resizeStartDims.width + dx;
+      newHeight = resizeStartDims.height - dy;
+    } else if (resizeCorner === 'tl') {
+      newWidth = resizeStartDims.width - dx;
+      newHeight = resizeStartDims.height - dy;
+    }
+
+    // Enforce minimum size
+    newWidth = Math.max(0.1, newWidth);
+    newHeight = Math.max(0.1, newHeight);
+
+    // Lock aspect ratio if enabled
+    if (imgEl.lockAspect) {
+      const aspect = resizeStartDims.width / resizeStartDims.height;
+      // Use the dominant axis
+      if (Math.abs(dx) > Math.abs(dy)) {
+        newHeight = newWidth / aspect;
+      } else {
+        newWidth = newHeight * aspect;
+      }
+    }
+
+    imgEl.width = newWidth;
+    imgEl.height = newHeight;
+
+    renderDesignCanvas();
+    return;
+  }
+
+  if (!isDragging || !selectedElement) return;
 
   const inchX = (mouseX - cx) / scale;
   const inchY = (mouseY - cy) / scale;
@@ -324,6 +386,7 @@ function handleCanvasMouseMove(e) {
     const imgEl = currentDesign.imageElements[selectedElement.index];
     imgEl.x = inchX - dragOffset.x;
     imgEl.y = inchY - dragOffset.y;
+    constrainImagePosition(imgEl);
   }
 
   renderDesignCanvas();
@@ -334,6 +397,10 @@ function handleCanvasMouseMove(e) {
  */
 function handleCanvasMouseUp(e) {
   isDragging = false;
+  isResizing = false;
+  resizeCorner = null;
+  resizeStartPos = null;
+  resizeStartDims = null;
 }
 
 // ─── Background color update ──────────────────────────────────────

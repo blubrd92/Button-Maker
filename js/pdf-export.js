@@ -36,9 +36,23 @@ function generatePDF(options) {
   var layoutKey = options.layout || CONFIG.currentLayout;
   var showCutGuides = options.showCutGuides !== undefined ? options.showCutGuides : CONFIG.PDF.showCutGuides;
 
-  // Check that jsPDF is loaded
-  if (!window.jspdf || !window.jspdf.jsPDF) {
+  // Resolve jsPDF constructor across possible global shapes
+  var jsPDFConstructor = null;
+  if (window.jspdf && window.jspdf.jsPDF) {
+    jsPDFConstructor = window.jspdf.jsPDF;
+  } else if (window.jspdf && window.jspdf.default) {
+    jsPDFConstructor = window.jspdf.default;
+  } else if (window.jsPDF) {
+    jsPDFConstructor = window.jsPDF;
+  }
+  if (!jsPDFConstructor) {
     alert('PDF library (jsPDF) is not loaded. Check your internet connection and reload the page.');
+    return;
+  }
+
+  // Validate selected layout
+  if (!CONFIG.SHEET_LAYOUTS[layoutKey]) {
+    alert('Invalid layout "' + layoutKey + '". Please select a valid layout and try again.');
     return;
   }
 
@@ -55,8 +69,7 @@ function generatePDF(options) {
   var printPixels = Math.ceil(btnSize.cutDiameter * CONFIG.DPI);
 
   try {
-    var jsPDF = window.jspdf.jsPDF;
-    var doc = new jsPDF({
+    var doc = new jsPDFConstructor({
       orientation: 'portrait',
       unit: 'in',
       format: 'letter'

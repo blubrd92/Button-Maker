@@ -58,6 +58,12 @@
           <input type="text" id="save-name-input" placeholder="Design name..." class="input">
           <button class="btn btn-small" id="btn-save">Save</button>
         </div>
+        <div class="save-controls" style="margin-top:6px;">
+          <button class="btn btn-small" id="btn-export-designs">Export Designs</button>
+          <button class="btn btn-small" id="btn-import-designs">Import Designs</button>
+          <input type="file" id="import-designs-file" accept=".json" hidden>
+        </div>
+        <div id="save-status" style="font-size:11px; color:#888; margin-top:4px; min-height:16px;"></div>
       </div>
     </aside>
 
@@ -152,23 +158,19 @@
 
       <!-- Image section -->
       <div class="sidebar-section" id="image-section">
-        <h2 class="sidebar-heading">Images</h2>
+        <h2 class="sidebar-heading">Image</h2>
         <label class="btn btn-small btn-full upload-label" for="image-upload">
           Upload Image
           <input type="file" id="image-upload" accept="image/png,image/jpeg,image/svg+xml" hidden>
         </label>
         <div id="image-controls" class="image-controls hidden">
-          <div class="control-row button-row">
-            <button class="btn btn-small" id="btn-bring-front">Bring to Front</button>
-            <button class="btn btn-small" id="btn-send-back">Send to Back</button>
-          </div>
           <div class="control-row">
-            <label class="toggle-label">
-              <input type="checkbox" id="lock-aspect" checked>
-              <span>Lock Aspect Ratio</span>
-            </label>
+            <label for="image-scale">Scale:</label>
+            <input type="range" id="image-scale" min="100" max="300" value="100">
+            <span id="image-scale-display">100%</span>
           </div>
-          <button class="btn btn-small btn-danger" id="btn-delete-image">Delete Image</button>
+          <p style="font-size:11px;color:#888;margin-bottom:8px;">Drag image on canvas to reposition</p>
+          <button class="btn btn-small btn-danger" id="btn-delete-image">Remove Image</button>
         </div>
       </div>
     </aside>
