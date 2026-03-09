@@ -237,8 +237,7 @@ function initPDFExport() {
 
   // Generate PDF
   confirmBtn.addEventListener('click', function() {
-    var showCutGuides = document.getElementById('export-cut-guides').checked;
-    generatePDF({ layout: CONFIG.currentLayout, showCutGuides: showCutGuides });
+    generatePDF({ layout: CONFIG.currentLayout, showCutGuides: true });
     modal.classList.add('hidden');
   });
 }

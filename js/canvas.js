@@ -18,11 +18,11 @@
  *
  * Gotchas:
  * - The editing canvas uses getCanvasScale() to convert inches to pixels.
- *   All positions/sizes in the design state are stored in INCHES, then
- *   converted to canvas pixels only at render time.
+ * All positions/sizes in the design state are stored in INCHES, then
+ * converted to canvas pixels only at render time.
  * - The canvas is square, sized to CANVAS_DISPLAY_DIAMETER.
  * - The wrap zone (between button face and cut circle) is dimmed to
- *   visually distinguish it from the button face.
+ * visually distinguish it from the button face.
  */
 
 // ─── Design state ──────────────────────────────────────────────────
@@ -234,15 +234,15 @@ function renderButtonDesign(ctx, cx, cy, scale, design, options = {}) {
     renderLibraryInfoTextWithDesign(ctx, cx, cy, safeRadius, scale, design, options.isPrint);
   }
 
-  // Cut guide for PDF
+  // Cut guide for PDF - Solid black line
   if (options.showCutGuide) {
     ctx.beginPath();
-    ctx.arc(cx, cy, cutRadius, 0, Math.PI * 2);
-    ctx.strokeStyle = CONFIG.GUIDES.cutLine.color;
-    ctx.lineWidth = 0.5;
-    ctx.setLineDash([4, 3]);
+    // Inset slightly to prevent clipping against the absolute edge of the canvas
+    ctx.arc(cx, cy, cutRadius - (options.isPrint ? 1 : 0.5), 0, Math.PI * 2);
+    ctx.strokeStyle = '#000000';
+    // 2 pixels at 300 DPI is a clean, highly visible line
+    ctx.lineWidth = options.isPrint ? 2 : 1;
     ctx.stroke();
-    ctx.setLineDash([]);
   }
 
   // Full guides for screen/sheet
