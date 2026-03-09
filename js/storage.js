@@ -151,6 +151,11 @@ function deserializeDesign(data) {
   if (grad) {
     document.getElementById('bg-gradient-color2').value = grad.color2 || '#4A90D9';
     document.getElementById('gradient-direction').value = grad.direction || 'top-bottom';
+    if (grad.preset) {
+      document.querySelectorAll('.gradient-preset-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.preset === grad.preset);
+      });
+    }
   }
 
   // Deselect any element
@@ -300,6 +305,9 @@ function importDesignsFromJSON(file) {
       var first = incoming[0];
       CONFIG.currentButtonSize = first.buttonSize || '1.5';
       CONFIG.currentLayout = first.layout || '15';
+      if (typeof sheetName !== 'undefined') {
+        sheetName = first.name || '';
+      }
       deserializeDesign(first.master);
       if (typeof setSheetSlots === 'function' && first.slots) {
         setSheetSlots(first.slots);

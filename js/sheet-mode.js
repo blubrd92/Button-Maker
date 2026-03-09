@@ -745,6 +745,30 @@ function finishSlotEdit() {
     overrides.gradient = currentDesign.gradient ? JSON.parse(currentGradJson) : null;
   }
 
+  // Template
+  if (currentDesign.templateId !== _mainDesignBackup.templateId) {
+    overrides.templateId = currentDesign.templateId;
+  }
+
+  // Text elements - compare by serialized content
+  var mainTextsJson = JSON.stringify(_mainDesignBackup.textElements.map(function(t) {
+    return { text: t.text, fontFamily: t.fontFamily, fontSize: t.fontSize, color: t.color,
+      bold: t.bold, italic: t.italic, align: t.align, x: t.x, y: t.y,
+      curved: t.curved, curveRadius: t.curveRadius };
+  }));
+  var currentTextsJson = JSON.stringify(currentDesign.textElements.map(function(t) {
+    return { text: t.text, fontFamily: t.fontFamily, fontSize: t.fontSize, color: t.color,
+      bold: t.bold, italic: t.italic, align: t.align, x: t.x, y: t.y,
+      curved: t.curved, curveRadius: t.curveRadius };
+  }));
+  if (mainTextsJson !== currentTextsJson) {
+    overrides.textElements = currentDesign.textElements.map(function(t) {
+      return { text: t.text, fontFamily: t.fontFamily, fontSize: t.fontSize, color: t.color,
+        bold: t.bold, italic: t.italic, align: t.align, x: t.x, y: t.y,
+        curved: t.curved, curveRadius: t.curveRadius };
+    });
+  }
+
   // Image elements - compare by dataUrl, position, scale
   var mainImgs = _mainDesignBackup.imageElements;
   var currentImgs = currentDesign.imageElements;
