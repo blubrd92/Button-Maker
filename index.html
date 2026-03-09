@@ -66,13 +66,20 @@
         </div>
       </div>
 
-      <div class="sidebar-section" id="layout-section">
-        <h2 class="sidebar-heading">View</h2>
-        <div class="control-row">
-          <label class="toggle-label">
-            <input type="checkbox" id="toggle-guides" checked>
-            <span>Show Guides</span>
-          </label>
+      <div class="sidebar-section" id="image-section">
+        <h2 class="sidebar-heading">Image</h2>
+        <label class="btn btn-small btn-full upload-label" for="image-upload">
+          Upload Image
+          <input type="file" id="image-upload" accept="image/png,image/jpeg,image/svg+xml" hidden>
+        </label>
+        <div id="image-controls" class="image-controls hidden">
+          <div class="control-row">
+            <label for="image-scale">Scale:</label>
+            <input type="range" id="image-scale" min="100" max="300" value="100">
+            <span id="image-scale-display">100%</span>
+          </div>
+          <p style="font-size:11px;color:#888;margin-bottom:8px;">Drag image on canvas to reposition</p>
+          <button class="btn btn-small btn-danger" id="btn-delete-image">Remove Image</button>
         </div>
       </div>
 
@@ -121,23 +128,6 @@
         <div class="control-row">
           <label for="library-info-color">Color:</label>
           <input type="color" id="library-info-color" value="#666666" class="color-input">
-        </div>
-      </div>
-
-      <div class="sidebar-section" id="image-section">
-        <h2 class="sidebar-heading">Image</h2>
-        <label class="btn btn-small btn-full upload-label" for="image-upload">
-          Upload Image
-          <input type="file" id="image-upload" accept="image/png,image/jpeg,image/svg+xml" hidden>
-        </label>
-        <div id="image-controls" class="image-controls hidden">
-          <div class="control-row">
-            <label for="image-scale">Scale:</label>
-            <input type="range" id="image-scale" min="100" max="300" value="100">
-            <span id="image-scale-display">100%</span>
-          </div>
-          <p style="font-size:11px;color:#888;margin-bottom:8px;">Drag image on canvas to reposition</p>
-          <button class="btn btn-small btn-danger" id="btn-delete-image">Remove Image</button>
         </div>
       </div>
     </aside>

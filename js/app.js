@@ -66,12 +66,6 @@ function initTopLevelControls() {
     });
   }
 
-  // -- Guides toggle --
-  document.getElementById('toggle-guides').addEventListener('change', function(e) {
-    CONFIG.guidesVisible = e.target.checked;
-    renderDesignCanvas();
-  });
-
   // -- Background color swatches --
   var swatchContainer = document.getElementById('bg-color-swatches');
   CONFIG.COLOR_PALETTE.forEach(function(color) {

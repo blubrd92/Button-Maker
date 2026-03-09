@@ -167,20 +167,20 @@ function renderSheetView() {
   var controlsDiv = document.createElement('div');
   controlsDiv.id = 'sheet-controls';
   controlsDiv.className = 'sheet-controls-bar';
-  // Adjust spacing so it looks natural above the grid
+  // Adjust spacing so it looks natural above the grid, allow content to fit its width naturally
   controlsDiv.style.marginTop = '0';
   controlsDiv.style.marginBottom = '20px';
-  controlsDiv.style.width = '100%';
-  controlsDiv.style.maxWidth = '800px'; 
+  controlsDiv.style.width = 'fit-content';
+  controlsDiv.style.margin = '0 auto 20px auto';
   
   // Use visibility: hidden so the buttons reserve space and prevent layout shifts
   controlsDiv.innerHTML =
-    '<div style="display:flex; gap:12px; min-width: 380px;">' +
+    '<div style="display:flex; gap:8px;">' +
       '<button class="btn btn-small" id="btn-sheet-reset" style="visibility:hidden;">Reset Selected to Main</button>' +
       '<button class="btn btn-small" id="btn-apply-col" style="visibility:hidden;">Apply to Col</button>' +
       '<button class="btn btn-small" id="btn-apply-row" style="visibility:hidden;">Apply to Row</button>' +
     '</div>' +
-    '<span id="sheet-selection-info" style="font-size:12px; color:#888; margin-left:auto;">Click to select \u00b7 Double-click to edit</span>';
+    '<span id="sheet-selection-info" style="font-size:12px; color:#888; display:flex; align-items:center;">Click to select \u00b7 Double-click to edit</span>';
   
   container.appendChild(controlsDiv);
 
@@ -395,7 +395,12 @@ function handleCellClick(slotIndex, event) {
       selectedSlots.push(slotIndex);
     }
   } else {
-    selectedSlots = [slotIndex];
+    // If clicking the only currently selected button, deselect it. Otherwise, select just it.
+    if (selectedSlots.length === 1 && selectedSlots[0] === slotIndex) {
+      selectedSlots = [];
+    } else {
+      selectedSlots = [slotIndex];
+    }
   }
   updateSheetSelectionUI();
   updateSheetOverridePanel();
