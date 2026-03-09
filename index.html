@@ -26,6 +26,11 @@
 
   <nav class="app-header" role="banner">
     <div class="header-left">
+      <div class="header-panel-toggles">
+        <button id="toggle-sidebar-btn" class="panel-toggle-btn active" title="Toggle Sidebar Panel" aria-label="Toggle sidebar panel">
+          <i class="fa-solid fa-bars" aria-hidden="true"></i>
+        </button>
+      </div>
       <div class="logo">
         <i class="fa-solid fa-circle-dot" aria-hidden="true"></i> Button Maker
       </div>
@@ -33,18 +38,18 @@
     </div>
 
     <div class="header-actions">
-      <button id="btn-load" class="btn btn-header" title="Load Saved Designs">
+      <button id="btn-load" class="btn btn-header" title="Load Saved Designs" aria-label="Load saved button designs">
         <i class="fa-solid fa-upload" aria-hidden="true"></i> Load
       </button>
-      <button id="btn-save" class="btn btn-header" title="Save Current Designs">
+      <button id="btn-save" class="btn btn-header" title="Save Current Designs" aria-label="Save current button designs">
         <i class="fa-solid fa-download" aria-hidden="true"></i> Save
       </button>
-      <input type="file" id="import-designs-file" accept=".buttons,.json" hidden>
-      <button id="btn-reset" class="btn btn-header" title="Reset to Blank">
+      <input type="file" id="import-designs-file" accept=".buttons,.json" hidden aria-hidden="true">
+      <button id="btn-reset" class="btn btn-header" title="Reset to Blank" aria-label="Reset to blank canvas">
         <i class="fa-solid fa-rotate-right" aria-hidden="true"></i> Reset
       </button>
-      <button id="btn-export" class="btn btn-header-primary" title="Generate PDF">
-        <i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Export PDF
+      <button id="btn-export" class="btn btn-header-primary" title="Generate PDF" aria-label="Generate PDF of buttons">
+        <i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Generate PDF
       </button>
     </div>
   </nav>

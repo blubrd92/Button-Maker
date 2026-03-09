@@ -14,7 +14,7 @@
  * - config.js (all configuration)
  * - canvas.js (initDesignCanvas, renderDesignCanvas)
  * - templates.js (applyTemplate, getTemplateById)
- * - text-tool.js (rendering functions — text tool UI removed)
+ * - text-tool.js (rendering functions - text tool UI removed)
  * - image-tool.js (initImageTool)
  * - storage.js (initStorage)
  * - pdf-export.js (initPDFExport)
@@ -31,7 +31,7 @@ function initApp() {
   // 1. Initialize the design canvas
   initDesignCanvas();
 
-  // 2. Initialize tools (image only — text UI removed)
+  // 2. Initialize tools (image only - text UI removed)
   initImageTool();
 
   // 3. Initialize storage (save/load wiring)
@@ -56,6 +56,16 @@ function initApp() {
  * Wire up controls that don't belong to a specific module.
  */
 function initTopLevelControls() {
+  // -- Sidebar toggle --
+  var toggleBtn = document.getElementById('toggle-sidebar-btn');
+  var sidebar = document.getElementById('left-sidebar');
+  if (toggleBtn && sidebar) {
+    toggleBtn.addEventListener('click', function() {
+      sidebar.classList.toggle('collapsed');
+      toggleBtn.classList.toggle('active');
+    });
+  }
+
   // -- Guides toggle --
   document.getElementById('toggle-guides').addEventListener('change', function(e) {
     CONFIG.guidesVisible = e.target.checked;
@@ -337,7 +347,7 @@ function renderGradientPresets() {
   });
 }
 
-// ─── Gradient Presets ─────────────────────────────────────────────
+// --- Gradient Presets ---------------------------------------------
 // All presets use evenly-spaced stops with smooth blending between colors.
 var GRADIENT_PRESETS = {
   rainbow: {
@@ -494,5 +504,5 @@ function handleBackgroundColorChange(color) {
   updateBackgroundSwatches(color);
 }
 
-// -- Start the app when DOM is ready --
+// --- Start the app when DOM is ready -------------------------------
 document.addEventListener('DOMContentLoaded', initApp);
