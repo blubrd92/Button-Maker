@@ -50,14 +50,21 @@ function handleImageUpload(file) {
     const dataUrl = e.target.result;
     const img = new Image();
     img.onload = function() {
-      // Default size: width always matches the safe zone diameter (1.35")
-      // so the image's side edges are flush with the circle's side points.
-      // Height scales proportionally to preserve aspect ratio. For portrait
-      // images, the extra height gets clipped by the circular mask.
+      // Default size: the smaller dimension matches the safe zone diameter
+      // (1.35") so the circle is completely filled. The larger dimension
+      // extends beyond and gets clipped by the circular mask.
+      // Square: both = diameter. Landscape: height = diameter, width wider.
+      // Portrait: width = diameter, height taller.
       const btnSize = getCurrentButtonSize();
-      const fitSize = btnSize.safeDiameter;
-      let width = fitSize;
-      let height = fitSize * (img.naturalHeight / img.naturalWidth);
+      const d = btnSize.safeDiameter;
+      let width, height;
+      if (img.naturalWidth <= img.naturalHeight) {
+        width = d;
+        height = d * (img.naturalHeight / img.naturalWidth);
+      } else {
+        height = d;
+        width = d * (img.naturalWidth / img.naturalHeight);
+      }
 
       const imageElement = {
         dataUrl: dataUrl,
