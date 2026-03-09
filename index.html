@@ -58,12 +58,17 @@
 
     <aside id="left-sidebar" class="sidebar">
       
-      <div class="sidebar-section" id="general-section" style="display: flex; justify-content: space-between; align-items: center;">
-        <span class="button-size-label" id="button-size-label">1.5" Button</span>
-        <div class="mode-toggle" id="mode-toggle">
-          <button class="mode-btn active" data-mode="design" id="btn-design-mode">Design</button>
-          <button class="mode-btn" data-mode="sheet" id="btn-sheet-mode">Sheet</button>
+      <div class="sidebar-section" id="general-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span class="button-size-label" id="button-size-label">1.5" Button</span>
+          <div class="mode-toggle" id="mode-toggle">
+            <button class="mode-btn active" data-mode="design" id="btn-design-mode">Design</button>
+            <button class="mode-btn" data-mode="sheet" id="btn-sheet-mode">Sheet</button>
+          </div>
         </div>
+        <p style="font-size: 11px; color: var(--text-light); line-height: 1.4; margin: 0;">
+          Use <strong>Design</strong> to edit the main button. Click <strong>Sheet</strong> to see the final PDF layout and to customize individual buttons.
+        </p>
       </div>
 
       <div class="sidebar-section" id="image-section">

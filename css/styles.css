@@ -608,7 +608,7 @@ input[type="checkbox"], input[type="radio"] {
   right: 0;
   width: 16px;
   height: 16px;
-  background: var(--warning-color);
+  background: var(--primary-color);
   border-radius: 50%;
   border: 2px solid white;
   box-shadow: var(--shadow-sm);
@@ -643,11 +643,9 @@ input[type="checkbox"], input[type="radio"] {
   display: flex;
   gap: 12px;
   align-items: center;
-  background: white;
+  background: transparent;
   padding: 12px 20px;
   border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border-color);
 }
 
 /* Modal */
