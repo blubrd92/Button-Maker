@@ -346,6 +346,7 @@ function renderGradientPresets() {
 }
 
 // ─── Gradient Presets ─────────────────────────────────────────────
+// All presets use evenly-spaced stops with smooth blending between colors.
 var GRADIENT_PRESETS = {
   rainbow: {
     label: 'Rainbow',
@@ -363,12 +364,12 @@ var GRADIENT_PRESETS = {
     label: 'Progress',
     stops: [
       { offset: 0,    color: '#000000' },
-      { offset: 0.12, color: '#784F17' },
-      { offset: 0.24, color: '#E40303' },
-      { offset: 0.40, color: '#FF8C00' },
-      { offset: 0.52, color: '#FFED00' },
-      { offset: 0.64, color: '#008026' },
-      { offset: 0.76, color: '#004DFF' },
+      { offset: 0.14, color: '#784F17' },
+      { offset: 0.28, color: '#E40303' },
+      { offset: 0.42, color: '#FF8C00' },
+      { offset: 0.57, color: '#FFED00' },
+      { offset: 0.71, color: '#008026' },
+      { offset: 0.85, color: '#004DFF' },
       { offset: 1,    color: '#750787' }
     ]
   },
@@ -396,9 +397,7 @@ var GRADIENT_PRESETS = {
     label: 'Pansexual',
     stops: [
       { offset: 0,    color: '#FF218C' },
-      { offset: 0.33, color: '#FF218C' },
-      { offset: 0.34, color: '#FFD800' },
-      { offset: 0.66, color: '#FFD800' },
+      { offset: 0.33, color: '#FFD800' },
       { offset: 0.67, color: '#21B1FF' },
       { offset: 1,    color: '#21B1FF' }
     ]
@@ -407,12 +406,8 @@ var GRADIENT_PRESETS = {
     label: 'Non-binary',
     stops: [
       { offset: 0,    color: '#FCF434' },
-      { offset: 0.25, color: '#FCF434' },
-      { offset: 0.26, color: '#FFFFFF' },
-      { offset: 0.50, color: '#FFFFFF' },
-      { offset: 0.51, color: '#9C59D1' },
-      { offset: 0.75, color: '#9C59D1' },
-      { offset: 0.76, color: '#2C2C2C' },
+      { offset: 0.33, color: '#FFFFFF' },
+      { offset: 0.67, color: '#9C59D1' },
       { offset: 1,    color: '#2C2C2C' }
     ]
   },
@@ -420,11 +415,11 @@ var GRADIENT_PRESETS = {
     label: 'Lesbian',
     stops: [
       { offset: 0,    color: '#D52D00' },
-      { offset: 0.20, color: '#EF7627' },
-      { offset: 0.40, color: '#FF9A56' },
+      { offset: 0.17, color: '#EF7627' },
+      { offset: 0.33, color: '#FF9A56' },
       { offset: 0.50, color: '#FFFFFF' },
-      { offset: 0.60, color: '#D162A4' },
-      { offset: 0.80, color: '#B55690' },
+      { offset: 0.67, color: '#D162A4' },
+      { offset: 0.83, color: '#B55690' },
       { offset: 1,    color: '#A30262' }
     ]
   },
@@ -432,13 +427,31 @@ var GRADIENT_PRESETS = {
     label: 'Asexual',
     stops: [
       { offset: 0,    color: '#000000' },
-      { offset: 0.25, color: '#000000' },
-      { offset: 0.26, color: '#A3A3A3' },
-      { offset: 0.50, color: '#A3A3A3' },
-      { offset: 0.51, color: '#FFFFFF' },
-      { offset: 0.75, color: '#FFFFFF' },
-      { offset: 0.76, color: '#800080' },
+      { offset: 0.33, color: '#A3A3A3' },
+      { offset: 0.67, color: '#FFFFFF' },
       { offset: 1,    color: '#800080' }
+    ]
+  },
+  'pride-gay': {
+    label: 'Gay Men',
+    stops: [
+      { offset: 0,    color: '#078D70' },
+      { offset: 0.17, color: '#26CEAA' },
+      { offset: 0.33, color: '#98E8C1' },
+      { offset: 0.50, color: '#FFFFFF' },
+      { offset: 0.67, color: '#7BADE2' },
+      { offset: 0.83, color: '#5049CC' },
+      { offset: 1,    color: '#3D1A78' }
+    ]
+  },
+  'pride-aroace': {
+    label: 'Aro/Ace',
+    stops: [
+      { offset: 0,    color: '#E28C00' },
+      { offset: 0.25, color: '#ECCD00' },
+      { offset: 0.50, color: '#FFFFFF' },
+      { offset: 0.75, color: '#62AEDC' },
+      { offset: 1,    color: '#203856' }
     ]
   },
   sunset: {
