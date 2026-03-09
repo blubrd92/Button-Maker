@@ -85,8 +85,12 @@ function initTopLevelControls() {
     }
 
     swatch.addEventListener('click', function() {
-      handleBackgroundColorChange(color);
+      // Clear preset highlights since we are picking a manual color
+      clearGradientPresetHighlight();
+      
+      // Update the picker value first so the gradient function reads the new color
       document.getElementById('bg-color-picker').value = color;
+      handleBackgroundColorChange(color);
     });
 
     swatchContainer.appendChild(swatch);
@@ -94,6 +98,8 @@ function initTopLevelControls() {
 
   // -- Background custom color picker --
   document.getElementById('bg-color-picker').addEventListener('input', function(e) {
+    // Clear preset highlights since we are picking a manual color
+    clearGradientPresetHighlight();
     handleBackgroundColorChange(e.target.value);
   });
 
@@ -156,9 +162,7 @@ function initTopLevelControls() {
       currentDesign.gradient = null;
       currentDesign.templateDraw = null;
       // Clear active preset highlight
-      document.querySelectorAll('.gradient-preset-btn').forEach(function(btn) {
-        btn.classList.remove('active');
-      });
+      clearGradientPresetHighlight();
       // Re-apply solid bg color
       handleBackgroundColorChange(currentDesign.backgroundColor);
     }
