@@ -32,6 +32,7 @@ let currentDesign = {
   templateId: "blank",
   backgroundColor: CONFIG.DEFAULTS.backgroundColor,
   templateDraw: null,          // reference to template's draw function
+  gradient: null,              // { color1, color2, direction } or null
   textElements: [],            // array of text element objects (see text-tool.js)
   imageElements: [],           // array of image element objects (see image-tool.js)
   libraryInfoText: CONFIG.DEFAULTS.libraryInfoText,

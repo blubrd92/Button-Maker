@@ -8,23 +8,17 @@
  * - Wiring up top-level UI controls (guides toggle, background pickers,
  *   layout toggle, sheet name)
  * - Managing application-level state (current mode, etc.)
+ * - Save/Load/Reset via top bar buttons
  *
  * Depends on:
  * - config.js (all configuration)
  * - canvas.js (initDesignCanvas, renderDesignCanvas)
- * - templates.js (renderTemplatePicker)
- * - text-tool.js (initTextTool)
+ * - templates.js (applyTemplate, getTemplateById)
+ * - text-tool.js (rendering functions — text tool UI removed)
  * - image-tool.js (initImageTool)
  * - storage.js (initStorage)
  * - pdf-export.js (initPDFExport)
  * - sheet-mode.js (initSheetMode)
- *
- * Gotchas:
- * - Module initialization order matters. config.js must be loaded first.
- *   canvas.js must be initialized before any rendering calls.
- * - The "current mode" (design vs sheet) affects how some controls behave.
- *   For example, background color changes in sheet mode apply as overrides
- *   to selected slots, not to the master design.
  */
 
 // Track the current editing mode
@@ -34,29 +28,25 @@ var currentMode = 'design'; // 'design' or 'sheet'
  * Main initialization function. Called when the DOM is ready.
  */
 function initApp() {
-  // 1. Render template picker
-  renderTemplatePicker();
-
-  // 2. Initialize the design canvas
+  // 1. Initialize the design canvas
   initDesignCanvas();
 
-  // 3. Initialize tools
-  initTextTool();
+  // 2. Initialize tools (image only — text UI removed)
   initImageTool();
 
-  // 4. Initialize save/load
+  // 3. Initialize storage (save/load wiring)
   initStorage();
 
-  // 5. Initialize PDF export
+  // 4. Initialize PDF export
   initPDFExport();
 
-  // 6. Initialize sheet mode
+  // 5. Initialize sheet mode
   initSheetMode();
 
-  // 7. Wire up top-level controls
+  // 6. Wire up top-level controls
   initTopLevelControls();
 
-  // 8. Apply default template
+  // 7. Apply default template (blank white)
   applyTemplate('blank');
 
   console.log('Button Maker initialized.');
@@ -105,7 +95,7 @@ function initTopLevelControls() {
     handleBackgroundColorChange(e.target.value);
   });
 
-  // -- Library info text --
+  // -- Brand text (formerly library info) --
   document.getElementById('library-info-input').addEventListener('input', function(e) {
     if (currentMode === 'sheet' && selectedSlots.length > 0) {
       applyOverrideToSelectedSlots('libraryInfoText', e.target.value);
@@ -133,10 +123,7 @@ function initTopLevelControls() {
   });
 
   // -- Make canvas safe-zone clickable for image upload --
-  // Only triggers when clicking empty space (no element hit) inside the safe zone.
-  // Uses lastMouseDownHitElement flag set by handleCanvasMouseDown in canvas.js.
   document.getElementById('design-canvas').addEventListener('click', function(e) {
-    // If mousedown hit an existing element, don't trigger upload
     if (lastMouseDownHitElement) return;
 
     var canvas = e.target;
@@ -155,6 +142,125 @@ function initTopLevelControls() {
       document.getElementById('image-upload').click();
     }
   });
+
+  // -- Gradient toggle --
+  document.getElementById('toggle-gradient').addEventListener('change', function(e) {
+    var gradientControls = document.getElementById('gradient-controls');
+    gradientControls.classList.toggle('hidden', !e.target.checked);
+    if (e.target.checked) {
+      applyGradientFromUI();
+    } else {
+      currentDesign.gradient = null;
+      currentDesign.templateDraw = null;
+      // Re-apply solid bg color
+      handleBackgroundColorChange(currentDesign.backgroundColor);
+    }
+  });
+
+  document.getElementById('bg-gradient-color2').addEventListener('input', function() {
+    if (document.getElementById('toggle-gradient').checked) {
+      applyGradientFromUI();
+    }
+  });
+
+  document.getElementById('gradient-direction').addEventListener('change', function() {
+    if (document.getElementById('toggle-gradient').checked) {
+      applyGradientFromUI();
+    }
+  });
+
+  // -- Reset button --
+  document.getElementById('btn-reset').addEventListener('click', function() {
+    if (!confirm('Reset to defaults? This will clear the current design and all saved designs from browser storage.')) return;
+    localStorage.removeItem(STORAGE_KEY);
+    resetDesignToDefaults();
+    sheetSlots = [];
+    selectedSlots = [];
+    sheetName = '';
+    if (currentMode === 'sheet') {
+      renderSheetView();
+    }
+  });
+}
+
+/**
+ * Read gradient settings from the UI and apply to the current design.
+ */
+function applyGradientFromUI() {
+  var color1 = document.getElementById('bg-color-picker').value;
+  var color2 = document.getElementById('bg-gradient-color2').value;
+  var direction = document.getElementById('gradient-direction').value;
+
+  currentDesign.gradient = {
+    color1: color1,
+    color2: color2,
+    direction: direction
+  };
+
+  currentDesign.templateDraw = buildGradientDrawFunction(currentDesign.gradient);
+  currentDesign.templateId = null;
+  renderDesignCanvas();
+  if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
+    refreshSheetThumbnails();
+  }
+}
+
+/**
+ * Build a draw function for a gradient specification.
+ * @param {{ color1: string, color2: string, direction: string }} grad
+ * @returns {Function} draw(ctx, cx, cy, radius)
+ */
+function buildGradientDrawFunction(grad) {
+  return function(ctx, cx, cy, radius) {
+    var gradient;
+    if (grad.direction === 'radial') {
+      gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+    } else if (grad.direction === 'left-right') {
+      gradient = ctx.createLinearGradient(cx - radius, cy, cx + radius, cy);
+    } else if (grad.direction === 'right-left') {
+      gradient = ctx.createLinearGradient(cx + radius, cy, cx - radius, cy);
+    } else if (grad.direction === 'bottom-top') {
+      gradient = ctx.createLinearGradient(cx, cy + radius, cx, cy - radius);
+    } else {
+      // top-bottom (default)
+      gradient = ctx.createLinearGradient(cx, cy - radius, cx, cy + radius);
+    }
+    gradient.addColorStop(0, grad.color1);
+    gradient.addColorStop(1, grad.color2);
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+  };
+}
+
+/**
+ * Reset the current design to factory defaults.
+ */
+function resetDesignToDefaults() {
+  currentDesign.templateId = 'blank';
+  currentDesign.backgroundColor = CONFIG.DEFAULTS.backgroundColor;
+  currentDesign.templateDraw = null;
+  currentDesign.gradient = null;
+  currentDesign.textElements = [];
+  currentDesign.imageElements = [];
+  currentDesign.libraryInfoText = CONFIG.DEFAULTS.libraryInfoText;
+  currentDesign.libraryInfoColor = CONFIG.DEFAULTS.libraryInfoColor;
+
+  // Reset UI controls
+  document.getElementById('bg-color-picker').value = CONFIG.DEFAULTS.backgroundColor;
+  document.getElementById('library-info-input').value = '';
+  document.getElementById('library-info-color').value = CONFIG.DEFAULTS.libraryInfoColor;
+  document.getElementById('toggle-gradient').checked = false;
+  document.getElementById('gradient-controls').classList.add('hidden');
+  document.getElementById('bg-gradient-color2').value = '#4A90D9';
+  document.getElementById('gradient-direction').value = 'top-bottom';
+  updateBackgroundSwatches(CONFIG.DEFAULTS.backgroundColor);
+  selectedElement = null;
+  hideImageControls();
+
+  // Apply blank template and re-render
+  applyTemplate('blank');
 }
 
 /**
@@ -189,6 +295,10 @@ function handleBackgroundColorChange(color) {
     applyOverrideToSelectedSlots('backgroundColor', color);
   } else {
     setBackgroundColor(color);
+    // If gradient is enabled, update color1 and re-apply
+    if (document.getElementById('toggle-gradient').checked) {
+      applyGradientFromUI();
+    }
   }
   updateBackgroundSwatches(color);
 }

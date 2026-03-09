@@ -10,15 +10,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,700;1,400;1,700&family=Merriweather:ital,wght@0,400;0,700;1,400;1,700&family=Open+Sans:ital,wght@0,400;0,700;1,400;1,700&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Pacifico&family=Oswald:wght@400;700&family=Lobster&family=Lora:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
 
-  <!-- jsPDF for PDF export (local copy, CDN fallback) -->
-  <script src="lib/jspdf.umd.min.js"></script>
-  <script>
-    if (!window.jspdf && !window.jsPDF) {
-      var s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js';
-      document.head.appendChild(s);
-    }
-  </script>
+  <!-- jsPDF for PDF export (CDN) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
 
   <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -35,56 +28,24 @@
         <button class="mode-btn active" data-mode="design" id="btn-design-mode">Design Mode</button>
         <button class="mode-btn" data-mode="sheet" id="btn-sheet-mode">Sheet Mode</button>
       </div>
-      <div class="layout-toggle" id="layout-toggle">
-        <button class="layout-btn active" data-layout="15" id="btn-layout-15">15 per sheet</button>
-        <button class="layout-btn" data-layout="20" id="btn-layout-20">20 per sheet</button>
-      </div>
     </div>
     <div class="top-bar-right">
+      <button class="btn" id="btn-save">Save</button>
+      <button class="btn" id="btn-load">Load</button>
+      <input type="file" id="import-designs-file" accept=".buttons,.json" hidden>
       <button class="btn btn-primary" id="btn-export">Export PDF</button>
+      <button class="btn btn-danger-outline" id="btn-reset">Reset</button>
     </div>
   </header>
 
   <!-- ─── Main Content ────────────────────────────────────────────── -->
   <main id="main-content">
 
-    <!-- Left Sidebar: Templates & Saved Designs -->
-    <aside id="left-sidebar" class="sidebar">
-      <div class="sidebar-section" id="template-section">
-        <h2 class="sidebar-heading">Templates</h2>
-        <div id="template-list" class="template-grid">
-          <!-- Populated by templates.js -->
-        </div>
-      </div>
-      <div class="sidebar-section" id="saved-section">
-        <h2 class="sidebar-heading">Saved Designs</h2>
-        <div id="saved-list" class="saved-list">
-          <!-- Populated by storage.js -->
-        </div>
-        <div class="save-controls">
-          <input type="text" id="save-name-input" placeholder="Design name..." class="input">
-          <button class="btn btn-small" id="btn-save">Save</button>
-        </div>
-        <div class="save-controls" style="margin-top:6px;">
-          <button class="btn btn-small" id="btn-export-designs">Export Designs</button>
-          <button class="btn btn-small" id="btn-import-designs">Import Designs</button>
-          <input type="file" id="import-designs-file" accept=".buttons,.json" hidden>
-        </div>
-        <div id="save-status" style="font-size:11px; color:#888; margin-top:4px; min-height:16px;"></div>
-      </div>
-    </aside>
-
     <!-- Center: Canvas Area -->
     <section id="canvas-area">
       <!-- Design Mode canvas wrapper -->
       <div id="design-canvas-wrapper" class="canvas-wrapper">
         <canvas id="design-canvas"></canvas>
-        <div class="canvas-controls">
-          <label class="toggle-label">
-            <input type="checkbox" id="toggle-guides" checked>
-            <span>Show Guides</span>
-          </label>
-        </div>
       </div>
       <!-- Sheet Mode grid (hidden by default) -->
       <div id="sheet-view" class="sheet-view hidden">
@@ -94,6 +55,21 @@
 
     <!-- Right Sidebar: Properties Panel -->
     <aside id="right-sidebar" class="sidebar">
+      <!-- Layout section -->
+      <div class="sidebar-section" id="layout-section">
+        <h2 class="sidebar-heading">Layout</h2>
+        <div class="layout-toggle-sidebar" id="layout-toggle">
+          <button class="layout-btn active" data-layout="15" id="btn-layout-15">15 per sheet</button>
+          <button class="layout-btn" data-layout="20" id="btn-layout-20">20 per sheet</button>
+        </div>
+        <div class="control-row" style="margin-top:10px;">
+          <label class="toggle-label">
+            <input type="checkbox" id="toggle-guides" checked>
+            <span>Show Guides</span>
+          </label>
+        </div>
+      </div>
+
       <!-- Background section -->
       <div class="sidebar-section" id="background-section">
         <h2 class="sidebar-heading">Background</h2>
@@ -104,56 +80,33 @@
           <label for="bg-color-picker">Custom:</label>
           <input type="color" id="bg-color-picker" value="#FFFFFF" class="color-input">
         </div>
-      </div>
-
-      <!-- Text section -->
-      <div class="sidebar-section" id="text-section">
-        <h2 class="sidebar-heading">Text</h2>
-        <button class="btn btn-small btn-full" id="btn-add-text">+ Add Text</button>
-        <div id="text-controls" class="text-controls hidden">
-          <div class="control-row">
-            <label for="text-input">Text:</label>
-            <input type="text" id="text-input" class="input" placeholder="Enter text...">
+        <div class="control-row" style="margin-top:10px;">
+          <label class="toggle-label">
+            <input type="checkbox" id="toggle-gradient">
+            <span>Gradient</span>
+          </label>
+        </div>
+        <div id="gradient-controls" class="hidden">
+          <div class="color-picker-row" style="margin-top:6px;">
+            <label for="bg-gradient-color2">To:</label>
+            <input type="color" id="bg-gradient-color2" value="#4A90D9" class="color-input">
           </div>
-          <div class="control-row">
-            <label for="font-select">Font:</label>
-            <select id="font-select" class="input">
-              <!-- Populated from CONFIG.FONTS -->
+          <div class="control-row" style="margin-top:6px;">
+            <label for="gradient-direction">Direction:</label>
+            <select id="gradient-direction" class="input">
+              <option value="top-bottom">Top to Bottom</option>
+              <option value="bottom-top">Bottom to Top</option>
+              <option value="left-right">Left to Right</option>
+              <option value="right-left">Right to Left</option>
+              <option value="radial">Radial (center out)</option>
             </select>
           </div>
-          <div class="control-row">
-            <label for="font-size">Size:</label>
-            <input type="range" id="font-size" min="8" max="72" value="24">
-            <span id="font-size-display">24</span>
-          </div>
-          <div class="control-row">
-            <label for="text-color-picker">Color:</label>
-            <input type="color" id="text-color-picker" value="#222222" class="color-input">
-          </div>
-          <div class="control-row button-row">
-            <button class="btn btn-small btn-icon" id="btn-bold" title="Bold"><b>B</b></button>
-            <button class="btn btn-small btn-icon" id="btn-italic" title="Italic"><i>I</i></button>
-            <button class="btn btn-small btn-icon" id="btn-align-left" title="Align Left">&#9776;</button>
-            <button class="btn btn-small btn-icon" id="btn-align-center" title="Align Center">&#9776;</button>
-            <button class="btn btn-small btn-icon" id="btn-align-right" title="Align Right">&#9776;</button>
-          </div>
-          <div class="control-row">
-            <label class="toggle-label">
-              <input type="checkbox" id="text-curved">
-              <span>Curved Text</span>
-            </label>
-          </div>
-          <div class="control-row" id="curve-radius-row" style="display:none;">
-            <label for="curve-radius">Curve:</label>
-            <input type="range" id="curve-radius" min="-200" max="200" value="100">
-          </div>
-          <button class="btn btn-small btn-danger" id="btn-delete-text">Delete Text</button>
         </div>
       </div>
 
-      <!-- Library Info Text section -->
-      <div class="sidebar-section" id="library-info-section">
-        <h2 class="sidebar-heading">Library Info Text</h2>
+      <!-- Brand Text section -->
+      <div class="sidebar-section" id="brand-text-section">
+        <h2 class="sidebar-heading">Brand Text</h2>
         <div class="control-row">
           <input type="text" id="library-info-input" class="input" placeholder="e.g. San Rafael Public Library">
         </div>

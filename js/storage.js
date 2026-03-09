@@ -1,56 +1,22 @@
 /**
  * storage.js
  *
- * Manages saving and loading button designs to/from localStorage.
+ * Manages saving and loading button designs to/from localStorage and files.
  *
  * Responsibilities:
  * - Serializing design state (master + per-button overrides) to JSON
- * - Saving designs with user-provided names
- * - Loading saved designs and restoring all state
- * - Listing and deleting saved designs
- * - Rendering the saved designs list in the left sidebar
+ * - Saving/loading designs via .buttons files (export/import)
+ * - Quick save to localStorage with auto-generated name
+ * - Quick load from localStorage (most recent) or file picker
  *
  * Depends on:
  * - config.js (for default values)
  * - canvas.js (currentDesign, renderDesignCanvas)
  * - templates.js (getTemplateById to restore template draw functions)
  * - image-tool.js (reconstructing Image objects from dataUrls)
- *
- * Gotchas:
- * - Image objects (DOM Image elements) cannot be serialized to JSON.
- *   We store the dataUrl and reconstruct the Image on load.
- * - Template draw functions cannot be serialized. We store the templateId
- *   and look up the function on load.
- * - localStorage has a ~5MB limit in most browsers. Large images (stored
- *   as base64 data URLs) can hit this. No graceful handling yet.
  */
 
 const STORAGE_KEY = 'buttonmaker_designs';
-
-// ─── Save/Load data structure ──────────────────────────────────────
-// Stored in localStorage as JSON under STORAGE_KEY:
-// {
-//   designs: [
-//     {
-//       name: "My Design",
-//       savedAt: "2024-01-15T10:30:00Z",
-//       buttonSize: "1.5",
-//       layout: "15",
-//       master: {
-//         templateId: "blank",
-//         backgroundColor: "#FFFFFF",
-//         textElements: [ ... ],
-//         imageElements: [ ... ],   // dataUrl only, no imgObj
-//         libraryInfoText: "",
-//         libraryInfoColor: "#666666"
-//       },
-//       slots: [
-//         { slotIndex: 0, row: 0, col: 0, overrides: {} },
-//         ...
-//       ]
-//     }
-//   ]
-// }
 
 /**
  * Get all saved designs from localStorage.
@@ -58,7 +24,7 @@ const STORAGE_KEY = 'buttonmaker_designs';
  */
 function getSavedDesigns() {
   try {
-    const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    var data = JSON.parse(localStorage.getItem(STORAGE_KEY));
     return (data && data.designs) ? data.designs : [];
   } catch (e) {
     console.warn('Failed to parse saved designs:', e);
@@ -71,83 +37,7 @@ function getSavedDesigns() {
  * @param {Array} designs - Array of design objects
  */
 function saveDesignsToStorage(designs) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ designs }));
-}
-
-/**
- * Save the current design with a given name.
- * @param {string} name - User-provided name for the design
- */
-function saveCurrentDesign(name) {
-  if (!name || !name.trim()) {
-    alert('Please enter a name for your design.');
-    return;
-  }
-
-  const designs = getSavedDesigns();
-
-  // Serialize the master design (strip non-serializable properties)
-  const masterData = serializeDesign(currentDesign);
-
-  // Serialize slot overrides from sheet mode
-  const slotsData = (typeof getSheetSlots === 'function') ? getSheetSlots() : [];
-
-  const savedDesign = {
-    name: name.trim(),
-    savedAt: new Date().toISOString(),
-    buttonSize: CONFIG.currentButtonSize,
-    layout: CONFIG.currentLayout,
-    master: masterData,
-    slots: slotsData
-  };
-
-  designs.push(savedDesign);
-  saveDesignsToStorage(designs);
-  renderSavedDesignsList();
-
-  // Clear the name input
-  document.getElementById('save-name-input').value = '';
-}
-
-/**
- * Load a saved design by index.
- * @param {number} index - Index in the saved designs array
- */
-function loadSavedDesign(index) {
-  const designs = getSavedDesigns();
-  if (index < 0 || index >= designs.length) return;
-
-  const saved = designs[index];
-
-  // Restore config settings
-  CONFIG.currentButtonSize = saved.buttonSize || "1.5";
-  CONFIG.currentLayout = saved.layout || "15";
-
-  // Restore master design
-  deserializeDesign(saved.master);
-
-  // Restore sheet slots if sheet mode is available
-  if (typeof setSheetSlots === 'function' && saved.slots) {
-    setSheetSlots(saved.slots);
-  }
-
-  renderDesignCanvas();
-  renderSavedDesignsList();
-}
-
-/**
- * Delete a saved design by index.
- * @param {number} index - Index in the saved designs array
- */
-function deleteSavedDesign(index) {
-  const designs = getSavedDesigns();
-  if (index < 0 || index >= designs.length) return;
-
-  if (!confirm(`Delete "${designs[index].name}"?`)) return;
-
-  designs.splice(index, 1);
-  saveDesignsToStorage(designs);
-  renderSavedDesignsList();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ designs: designs }));
 }
 
 /**
@@ -159,31 +49,36 @@ function serializeDesign(design) {
   return {
     templateId: design.templateId,
     backgroundColor: design.backgroundColor,
-    textElements: design.textElements.map(t => ({
-      text: t.text,
-      fontFamily: t.fontFamily,
-      fontSize: t.fontSize,
-      color: t.color,
-      bold: t.bold,
-      italic: t.italic,
-      align: t.align,
-      x: t.x,
-      y: t.y,
-      curved: t.curved,
-      curveRadius: t.curveRadius
-    })),
-    imageElements: design.imageElements.map(img => ({
-      dataUrl: img.dataUrl,
-      x: img.x,
-      y: img.y,
-      width: img.width,
-      height: img.height,
-      naturalWidth: img.naturalWidth,
-      naturalHeight: img.naturalHeight,
-      baseWidth: img.baseWidth,
-      baseHeight: img.baseHeight,
-      imageScale: img.imageScale || 1.0
-    })),
+    gradient: design.gradient || null,
+    textElements: design.textElements.map(function(t) {
+      return {
+        text: t.text,
+        fontFamily: t.fontFamily,
+        fontSize: t.fontSize,
+        color: t.color,
+        bold: t.bold,
+        italic: t.italic,
+        align: t.align,
+        x: t.x,
+        y: t.y,
+        curved: t.curved,
+        curveRadius: t.curveRadius
+      };
+    }),
+    imageElements: design.imageElements.map(function(img) {
+      return {
+        dataUrl: img.dataUrl,
+        x: img.x,
+        y: img.y,
+        width: img.width,
+        height: img.height,
+        naturalWidth: img.naturalWidth,
+        naturalHeight: img.naturalHeight,
+        baseWidth: img.baseWidth,
+        baseHeight: img.baseHeight,
+        imageScale: img.imageScale || 1.0
+      };
+    }),
     libraryInfoText: design.libraryInfoText,
     libraryInfoColor: design.libraryInfoColor
   };
@@ -197,13 +92,19 @@ function serializeDesign(design) {
 function deserializeDesign(data) {
   currentDesign.templateId = data.templateId;
   currentDesign.backgroundColor = data.backgroundColor;
+  currentDesign.gradient = data.gradient || null;
 
   // Restore template draw function
   if (data.templateId) {
-    const template = getTemplateById(data.templateId);
+    var template = getTemplateById(data.templateId);
     currentDesign.templateDraw = template ? template.draw : null;
   } else {
     currentDesign.templateDraw = null;
+  }
+
+  // If gradient is set, override templateDraw with gradient
+  if (currentDesign.gradient) {
+    currentDesign.templateDraw = buildGradientDrawFunction(currentDesign.gradient);
   }
 
   // Restore text elements
@@ -211,12 +112,9 @@ function deserializeDesign(data) {
 
   // Restore image elements (reconstruct Image objects and cover-fill fields)
   currentDesign.imageElements = [];
-  (data.imageElements || []).forEach(imgData => {
-    const img = new Image();
-    const element = {
-      ...imgData,
-      imgObj: img
-    };
+  (data.imageElements || []).forEach(function(imgData) {
+    var img = new Image();
+    var element = Object.assign({}, imgData, { imgObj: img });
     // Ensure cover-fill fields exist (for designs saved before this feature)
     if (!element.baseWidth || !element.baseHeight) {
       var cover = computeCoverFillSize(
@@ -230,13 +128,13 @@ function deserializeDesign(data) {
       element.imageScale = 1.0;
     }
     img.onload = function() {
-      renderDesignCanvas(); // re-render once image loads
+      renderDesignCanvas();
     };
     img.src = imgData.dataUrl;
     currentDesign.imageElements.push(element);
   });
 
-  // Restore library info
+  // Restore library info (brand text)
   currentDesign.libraryInfoText = data.libraryInfoText || '';
   currentDesign.libraryInfoColor = data.libraryInfoColor || CONFIG.DEFAULTS.libraryInfoColor;
 
@@ -246,56 +144,67 @@ function deserializeDesign(data) {
   document.getElementById('library-info-color').value = currentDesign.libraryInfoColor;
   updateBackgroundSwatches(currentDesign.backgroundColor);
 
-  // Update template selection
-  document.querySelectorAll('.template-card').forEach(card => {
-    card.classList.toggle('selected', card.dataset.templateId === currentDesign.templateId);
-  });
+  // Update gradient UI
+  var grad = currentDesign.gradient;
+  document.getElementById('toggle-gradient').checked = !!grad;
+  document.getElementById('gradient-controls').classList.toggle('hidden', !grad);
+  if (grad) {
+    document.getElementById('bg-gradient-color2').value = grad.color2 || '#4A90D9';
+    document.getElementById('gradient-direction').value = grad.direction || 'top-bottom';
+  }
 
   // Deselect any element
   selectedElement = null;
-  hideTextControls();
+  if (typeof hideTextControls === 'function') hideTextControls();
   hideImageControls();
 }
 
 /**
- * Render the saved designs list in the left sidebar.
+ * Quick-save: saves current design to localStorage with a timestamp name,
+ * then exports as .buttons file download.
  */
-function renderSavedDesignsList() {
-  const container = document.getElementById('saved-list');
-  const designs = getSavedDesigns();
+function quickSave() {
+  var masterData = serializeDesign(currentDesign);
+  var slotsData = (typeof getSheetSlots === 'function') ? getSheetSlots() : [];
+  var name = (typeof sheetName === 'string' && sheetName.trim())
+    ? sheetName.trim()
+    : 'Untitled';
 
-  container.innerHTML = '';
+  var savedDesign = {
+    name: name,
+    savedAt: new Date().toISOString(),
+    buttonSize: CONFIG.currentButtonSize,
+    layout: CONFIG.currentLayout,
+    master: masterData,
+    slots: slotsData
+  };
 
-  if (designs.length === 0) {
-    container.innerHTML = '<div style="color:#aaa; font-size:12px; padding:8px;">No saved designs</div>';
-    return;
+  // Save to localStorage
+  var designs = getSavedDesigns();
+  // Overwrite if same name exists
+  var existingIdx = -1;
+  for (var i = 0; i < designs.length; i++) {
+    if (designs[i].name.toLowerCase() === name.toLowerCase()) {
+      existingIdx = i;
+      break;
+    }
   }
+  if (existingIdx >= 0) {
+    designs[existingIdx] = savedDesign;
+  } else {
+    designs.push(savedDesign);
+  }
+  saveDesignsToStorage(designs);
 
-  designs.forEach((design, index) => {
-    const item = document.createElement('div');
-    item.className = 'saved-item';
+  // Also export as .buttons file download
+  exportDesignsToJSON();
+}
 
-    const nameSpan = document.createElement('span');
-    nameSpan.className = 'saved-name';
-    nameSpan.textContent = design.name;
-    nameSpan.title = `Saved: ${new Date(design.savedAt).toLocaleString()}`;
-
-    const deleteBtn = document.createElement('span');
-    deleteBtn.className = 'saved-delete';
-    deleteBtn.textContent = '\u00D7'; // × symbol
-    deleteBtn.title = 'Delete';
-    deleteBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      deleteSavedDesign(index);
-    });
-
-    item.appendChild(nameSpan);
-    item.appendChild(deleteBtn);
-
-    item.addEventListener('click', () => loadSavedDesign(index));
-
-    container.appendChild(item);
-  });
+/**
+ * Quick-load: opens file picker for .buttons file import.
+ */
+function quickLoad() {
+  document.getElementById('import-designs-file').click();
 }
 
 // ─── JSON Export/Import ──────────────────────────────────────────
@@ -304,20 +213,20 @@ function renderSavedDesignsList() {
  * Export all saved designs as a JSON file download.
  */
 function exportDesignsToJSON() {
-  const designs = getSavedDesigns();
+  var designs = getSavedDesigns();
   if (designs.length === 0) {
-    showSaveStatus('No designs to export.', true);
+    alert('No designs to export. Save a design first.');
     return;
   }
-  const payload = {
+  var payload = {
     app: 'ButtonMaker',
     version: '1.0',
     exportedAt: new Date().toISOString(),
     designs: designs
   };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
   a.href = url;
   var name = (typeof sheetName === 'string' && sheetName.trim())
     ? sheetName.trim()
@@ -327,27 +236,27 @@ function exportDesignsToJSON() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  showSaveStatus('Exported ' + designs.length + ' design(s).');
 }
 
 /**
  * Import designs from a JSON file. Supports wrapped { designs: [...] }
  * or raw array [...] formats. Merges by name (case-insensitive overwrite).
+ * After import, loads the first design.
  * @param {File} file - The JSON file to import
  */
 function importDesignsFromJSON(file) {
   if (!file) return;
-  const reader = new FileReader();
+  var reader = new FileReader();
   reader.onload = function(e) {
     try {
-      const raw = JSON.parse(e.target.result);
-      let incoming;
+      var raw = JSON.parse(e.target.result);
+      var incoming;
       if (Array.isArray(raw)) {
         incoming = raw;
       } else if (raw && Array.isArray(raw.designs)) {
         incoming = raw.designs;
       } else {
-        showSaveStatus('Invalid file format.', true);
+        alert('Invalid file format.');
         return;
       }
 
@@ -366,17 +275,17 @@ function importDesignsFromJSON(file) {
       });
 
       if (incoming.length === 0) {
-        showSaveStatus('No valid designs found in file.', true);
+        alert('No valid designs found in file.');
         return;
       }
 
       // Merge by name (case-insensitive): imported overwrites existing
-      const existing = getSavedDesigns();
-      const nameMap = {};
+      var existing = getSavedDesigns();
+      var nameMap = {};
       existing.forEach(function(d, i) { nameMap[d.name.toLowerCase()] = i; });
 
       incoming.forEach(function(d) {
-        const key = d.name.toLowerCase();
+        var key = d.name.toLowerCase();
         if (key in nameMap) {
           existing[nameMap[key]] = d;
         } else {
@@ -386,59 +295,42 @@ function importDesignsFromJSON(file) {
       });
 
       saveDesignsToStorage(existing);
-      renderSavedDesignsList();
-      showSaveStatus('Imported ' + incoming.length + ' design(s).');
+
+      // Load the first imported design
+      var first = incoming[0];
+      CONFIG.currentButtonSize = first.buttonSize || '1.5';
+      CONFIG.currentLayout = first.layout || '15';
+      deserializeDesign(first.master);
+      if (typeof setSheetSlots === 'function' && first.slots) {
+        setSheetSlots(first.slots);
+      }
+      renderDesignCanvas();
+
+      alert('Imported ' + incoming.length + ' design(s).');
     } catch (err) {
       console.error('Import failed:', err);
-      showSaveStatus('Import failed: invalid JSON.', true);
+      alert('Import failed: invalid JSON.');
     }
   };
   reader.readAsText(file);
 }
 
 /**
- * Show a temporary status message below the save controls.
- * @param {string} message
- * @param {boolean} [isError=false]
- */
-function showSaveStatus(message, isError) {
-  const el = document.getElementById('save-status');
-  if (!el) return;
-  el.textContent = message;
-  el.style.color = isError ? '#E74C3C' : '#2ECC71';
-  clearTimeout(el._timeout);
-  el._timeout = setTimeout(function() { el.textContent = ''; }, 4000);
-}
-
-/**
- * Initialize storage: render saved designs list and wire save button.
+ * Initialize storage: wire up top bar Save/Load buttons and file input.
  * Called once from app.js.
  */
 function initStorage() {
-  document.getElementById('btn-save').addEventListener('click', () => {
-    const name = document.getElementById('save-name-input').value;
-    saveCurrentDesign(name);
-  });
+  // Save button — quick save to localStorage + file download
+  document.getElementById('btn-save').addEventListener('click', quickSave);
 
-  // Allow Enter key to save
-  document.getElementById('save-name-input').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      const name = e.target.value;
-      saveCurrentDesign(name);
-    }
-  });
+  // Load button — opens file picker
+  document.getElementById('btn-load').addEventListener('click', quickLoad);
 
-  // Export/Import buttons
-  document.getElementById('btn-export-designs').addEventListener('click', exportDesignsToJSON);
-  document.getElementById('btn-import-designs').addEventListener('click', function() {
-    document.getElementById('import-designs-file').click();
-  });
+  // File input for .buttons import
   document.getElementById('import-designs-file').addEventListener('change', function(e) {
     if (e.target.files.length > 0) {
       importDesignsFromJSON(e.target.files[0]);
       e.target.value = '';
     }
   });
-
-  renderSavedDesignsList();
 }

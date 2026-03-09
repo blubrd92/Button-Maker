@@ -154,6 +154,7 @@ function cloneDesignForRender(design) {
     templateId: design.templateId,
     backgroundColor: design.backgroundColor,
     templateDraw: design.templateDraw,
+    gradient: design.gradient || null,
     textElements: design.textElements.map(t => ({ ...t })),
     imageElements: design.imageElements.map(img => ({ ...img })),
     libraryInfoText: design.libraryInfoText,
@@ -172,7 +173,16 @@ function applyOverridesToDesign(design, overrides) {
   if (overrides.backgroundColor !== undefined) {
     design.backgroundColor = overrides.backgroundColor;
     // If background color is overridden, clear template draw
-    design.templateDraw = null;
+    // (but preserve gradient if present on master)
+    if (!design.gradient) {
+      design.templateDraw = null;
+    }
+  }
+  if (overrides.gradient !== undefined) {
+    design.gradient = overrides.gradient;
+    if (overrides.gradient && typeof buildGradientDrawFunction === 'function') {
+      design.templateDraw = buildGradientDrawFunction(overrides.gradient);
+    }
   }
   if (overrides.templateId !== undefined) {
     design.templateId = overrides.templateId;

@@ -88,6 +88,7 @@ function showTextControls(index) {
   if (!textEl) return;
 
   const controls = document.getElementById('text-controls');
+  if (!controls) return;
   controls.classList.remove('hidden');
 
   document.getElementById('text-input').value = textEl.text;
@@ -118,7 +119,8 @@ function showTextControls(index) {
  * Hide the text controls panel.
  */
 function hideTextControls() {
-  document.getElementById('text-controls').classList.add('hidden');
+  var el = document.getElementById('text-controls');
+  if (el) el.classList.add('hidden');
 }
 
 /**
@@ -445,8 +447,14 @@ function drawTextSelectionBox(ctx, textEl, cx, cy, scale) {
  * Called once from app.js.
  */
 function initTextTool() {
-  document.getElementById('btn-add-text').addEventListener('click', addTextElement);
-  document.getElementById('btn-delete-text').addEventListener('click', deleteSelectedText);
+  // Text UI elements may not exist if the Text section was removed.
+  // Guard all DOM lookups.
+  var btnAdd = document.getElementById('btn-add-text');
+  var btnDelete = document.getElementById('btn-delete-text');
+  if (!btnAdd) return; // Text UI not present, skip wiring
+
+  btnAdd.addEventListener('click', addTextElement);
+  btnDelete.addEventListener('click', deleteSelectedText);
 
   // Text input
   document.getElementById('text-input').addEventListener('input', (e) => {
