@@ -167,6 +167,7 @@ function renderSheetView() {
   var colGutterPx = Math.round(gutters.columnGutter * pageScale);
   var rowGutterPx = Math.round(gutters.rowGutter * pageScale);
   var marginPx = Math.round(CONFIG.PAGE.margin * pageScale);
+  var colInsetPx = Math.round((gutters.columnInset || 0) * pageScale);
 
   // -- Outer wrapper with headers --
   var outerWrapper = document.createElement('div');
@@ -176,7 +177,7 @@ function renderSheetView() {
   var colHeaderRow = document.createElement('div');
   colHeaderRow.className = 'sheet-col-headers';
   // Offset for row-header width + page margin
-  colHeaderRow.style.paddingLeft = (36 + marginPx) + 'px';
+  colHeaderRow.style.paddingLeft = (36 + marginPx + colInsetPx) + 'px';
   for (var col = 0; col < layout.cols; col++) {
     var header = document.createElement('div');
     header.className = 'sheet-header';
@@ -186,6 +187,12 @@ function renderSheetView() {
     header.dataset.col = col;
     header.addEventListener('click', (function(c) {
       return function(e) { handleColumnHeaderClick(c, e); };
+    })(col));
+    header.addEventListener('dblclick', (function(c) {
+      return function(e) {
+        e.stopPropagation();
+        editGroupInDesignMode('col', c);
+      };
     })(col));
     colHeaderRow.appendChild(header);
   }
@@ -209,6 +216,12 @@ function renderSheetView() {
     rowHeader.addEventListener('click', (function(r) {
       return function(e) { handleRowHeaderClick(r, e); };
     })(row));
+    rowHeader.addEventListener('dblclick', (function(r) {
+      return function(e) {
+        e.stopPropagation();
+        editGroupInDesignMode('row', r);
+      };
+    })(row));
     rowHeaderCol.appendChild(rowHeader);
   }
 
@@ -223,7 +236,7 @@ function renderSheetView() {
   grid.className = 'sheet-grid';
   grid.style.position = 'absolute';
   grid.style.top = marginPx + 'px';
-  grid.style.left = marginPx + 'px';
+  grid.style.left = (marginPx + colInsetPx) + 'px';
   grid.style.gridTemplateColumns = 'repeat(' + layout.cols + ', ' + thumbSize + 'px)';
   grid.style.gridTemplateRows = 'repeat(' + layout.rows + ', ' + thumbSize + 'px)';
   grid.style.columnGap = colGutterPx + 'px';
@@ -563,6 +576,30 @@ function editSlotInDesignMode(slotIndex) {
   renderDesignCanvas();
 }
 
+// Track group editing (row or column)
+var _editingGroup = null; // { type: 'row'|'col', index: number, slots: number[] }
+
+/**
+ * Edit all buttons in a row or column. Opens design view for the first
+ * button in the group; when done, applies the changes to all slots in the group.
+ */
+function editGroupInDesignMode(groupType, groupIndex) {
+  var layout = getCurrentLayout();
+  var slots = [];
+  if (groupType === 'row') {
+    for (var c = 0; c < layout.cols; c++) {
+      slots.push(groupIndex * layout.cols + c);
+    }
+  } else {
+    for (var r = 0; r < layout.rows; r++) {
+      slots.push(r * layout.cols + groupIndex);
+    }
+  }
+  _editingGroup = { type: groupType, index: groupIndex, slots: slots };
+  // Open the first slot for editing — finishSlotEdit will apply to all
+  editSlotInDesignMode(slots[0]);
+}
+
 /**
  * Show a banner indicating which button is being edited,
  * with a "Done — Back to Sheet" button.
@@ -572,12 +609,21 @@ function showSlotEditBanner(slotIndex) {
   var layout = getCurrentLayout();
   var row = Math.floor(slotIndex / layout.cols);
   var col = slotIndex % layout.cols;
-  var label = String.fromCharCode(65 + col) + (row + 1);
+  var label;
+  if (_editingGroup) {
+    if (_editingGroup.type === 'row') {
+      label = 'Row ' + (_editingGroup.index + 1) + ' (' + _editingGroup.slots.length + ' buttons)';
+    } else {
+      label = 'Column ' + String.fromCharCode(65 + _editingGroup.index) + ' (' + _editingGroup.slots.length + ' buttons)';
+    }
+  } else {
+    label = 'button ' + String.fromCharCode(65 + col) + (row + 1);
+  }
 
   var banner = document.createElement('div');
   banner.id = 'slot-edit-banner';
   banner.innerHTML =
-    '<span>Editing button <strong>' + label + '</strong></span>' +
+    '<span>Editing <strong>' + label + '</strong></span>' +
     '<button class="btn btn-small btn-primary" id="btn-done-slot-edit">Done — Back to Sheet</button>';
 
   var canvasWrapper = document.getElementById('design-canvas-wrapper');
@@ -654,8 +700,23 @@ function finishSlotEdit() {
     });
   }
 
-  // Save overrides for this slot
-  setSlotOverrides(slotIndex, overrides);
+  // Save overrides — if editing a group, apply to all slots in the group
+  if (_editingGroup) {
+    _editingGroup.slots.forEach(function(idx) {
+      // Merge new overrides with any existing per-slot overrides
+      var existing = getSlotOverrides(idx);
+      var merged = Object.assign({}, existing, overrides);
+      // If no actual differences remain, clear overrides
+      if (Object.keys(merged).length === 0) {
+        setSlotOverrides(idx, {});
+      } else {
+        setSlotOverrides(idx, merged);
+      }
+    });
+    _editingGroup = null;
+  } else {
+    setSlotOverrides(slotIndex, overrides);
+  }
 
   // Restore the master design
   currentDesign.templateId = _masterDesignBackup.templateId;

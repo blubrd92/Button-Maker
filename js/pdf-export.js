@@ -61,6 +61,7 @@ function generatePDF(options) {
   var gutters = computeSheetGutters(layoutKey);
   var columnGutter = gutters.columnGutter;
   var rowGutter = gutters.rowGutter;
+  var columnInset = gutters.columnInset || 0;
 
   var totalButtons = layout.cols * layout.rows;
   var buttonDesigns = getButtonDesignsForExport(totalButtons);
@@ -94,7 +95,7 @@ function generatePDF(options) {
           isPrint: true
         });
 
-        var cellX = CONFIG.PAGE.margin + col * (btnSize.cutDiameter + columnGutter);
+        var cellX = CONFIG.PAGE.margin + columnInset + col * (btnSize.cutDiameter + columnGutter);
         var cellY = CONFIG.PAGE.margin + row * (btnSize.cutDiameter + rowGutter);
 
         var imgData = offCanvas.toDataURL('image/png');

@@ -227,16 +227,34 @@ function inchesToCanvasPixels(inches) {
 
 /**
  * Compute sheet layout gutters for the current button size and layout.
- * Returns an object with columnGutter and rowGutter in inches.
+ * Returns an object with columnGutter, rowGutter, and columnInset in inches.
+ *
+ * For 3-column layouts, whitespace is distributed evenly between gaps and
+ * side margins (columnInset), so side columns sit centered between the
+ * center column and the page edges. For 4-column layouts, columns start
+ * flush at the margin with equal internal gaps only.
+ *
  * @param {string} [layoutKey] - optional layout key, defaults to current
- * @returns {{ columnGutter: number, rowGutter: number, usableWidth: number, usableHeight: number }}
+ * @returns {{ columnGutter: number, rowGutter: number, columnInset: number, usableWidth: number, usableHeight: number }}
  */
 function computeSheetGutters(layoutKey) {
   const layout = CONFIG.SHEET_LAYOUTS[layoutKey || CONFIG.currentLayout];
   const size = getCurrentButtonSize();
   const usableWidth = CONFIG.PAGE.width - 2 * CONFIG.PAGE.margin;
   const usableHeight = CONFIG.PAGE.height - 2 * CONFIG.PAGE.margin;
-  const columnGutter = (usableWidth - layout.cols * size.cutDiameter) / (layout.cols - 1);
   const rowGutter = (usableHeight - layout.rows * size.cutDiameter) / (layout.rows - 1);
-  return { columnGutter, rowGutter, usableWidth, usableHeight };
+
+  var columnGutter, columnInset;
+  if (layout.cols === 3) {
+    // Distribute whitespace evenly: 2 gaps + 2 side margins = 4 equal spaces
+    var totalWhitespace = usableWidth - layout.cols * size.cutDiameter;
+    columnGutter = totalWhitespace / 4;
+    columnInset = columnGutter;
+  } else {
+    // 4+ columns: flush at margins, equal internal gaps
+    columnGutter = (usableWidth - layout.cols * size.cutDiameter) / (layout.cols - 1);
+    columnInset = 0;
+  }
+
+  return { columnGutter, rowGutter, columnInset, usableWidth, usableHeight };
 }
