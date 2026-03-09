@@ -20,11 +20,11 @@
  *
  * Gotchas:
  * - Overrides use sparse objects: only properties that differ from master
- *   are stored. An empty overrides object means the slot matches master.
+ * are stored. An empty overrides object means the slot matches master.
  * - When the master design changes in Design Mode, all non-overridden
- *   slots automatically pick up the change (they inherit from master).
+ * slots automatically pick up the change (they inherit from master).
  * - The sheet grid uses small canvases for each button thumbnail.
- *   These are re-rendered when the master or overrides change.
+ * These are re-rendered when the master or overrides change.
  */
 
 // --- Sheet state ---
@@ -130,7 +130,7 @@ function setSheetSlots(slots) {
 
 /**
  * Render the full sheet grid view.
- * The sheet visually represents a US Letter page (8.5 × 11 aspect ratio)
+ * The sheet visually represents a US Letter page (8.5 x 11 aspect ratio)
  * with the button grid centered within the printable area using page margins
  * and computed gutters. Row/column headers sit outside the page for UI only.
  */
@@ -146,13 +146,20 @@ function renderSheetView() {
   // -- Sheet name input (centered above the page) --
   var nameRow = document.createElement('div');
   nameRow.className = 'sheet-name-row';
+
+  var nameLabel = document.createElement('label');
+  nameLabel.htmlFor = 'sheet-name-input';
+  nameLabel.textContent = 'Sheet Name:';
+  nameRow.appendChild(nameLabel);
+
   var nameInput = document.createElement('input');
   nameInput.type = 'text';
   nameInput.id = 'sheet-name-input';
-  nameInput.className = 'sheet-name-input';
-  nameInput.placeholder = 'Sheet name (used as PDF filename)...';
+  nameInput.className = 'list-name-input';
+  nameInput.placeholder = 'Untitled Sheet';
   nameInput.value = sheetName;
   nameInput.addEventListener('input', function(e) { sheetName = e.target.value; });
+  
   nameRow.appendChild(nameInput);
   container.appendChild(nameRow);
 
@@ -596,13 +603,13 @@ function editGroupInDesignMode(groupType, groupIndex) {
     }
   }
   _editingGroup = { type: groupType, index: groupIndex, slots: slots };
-  // Open the first slot for editing — finishSlotEdit will apply to all
+  // Open the first slot for editing - finishSlotEdit will apply to all
   editSlotInDesignMode(slots[0]);
 }
 
 /**
  * Show a banner indicating which button is being edited,
- * with a "Done — Back to Sheet" button.
+ * with a "Done - Back to Sheet" button.
  */
 function showSlotEditBanner(slotIndex) {
   removeSlotEditBanner();
@@ -624,7 +631,7 @@ function showSlotEditBanner(slotIndex) {
   banner.id = 'slot-edit-banner';
   banner.innerHTML =
     '<span>Editing <strong>' + label + '</strong></span>' +
-    '<button class="btn btn-small btn-primary" id="btn-done-slot-edit">Done — Back to Sheet</button>';
+    '<button class="btn btn-small btn-primary" id="btn-done-slot-edit">Done - Back to Sheet</button>';
 
   var canvasWrapper = document.getElementById('design-canvas-wrapper');
   canvasWrapper.insertBefore(banner, canvasWrapper.firstChild);
@@ -668,7 +675,7 @@ function finishSlotEdit() {
     overrides.gradient = currentDesign.gradient ? JSON.parse(currentGradJson) : null;
   }
 
-  // Image elements — compare by dataUrl, position, scale
+  // Image elements - compare by dataUrl, position, scale
   var masterImgs = _masterDesignBackup.imageElements;
   var currentImgs = currentDesign.imageElements;
   var imagesChanged = (masterImgs.length !== currentImgs.length);
@@ -700,7 +707,7 @@ function finishSlotEdit() {
     });
   }
 
-  // Save overrides — if editing a group, apply to all slots in the group
+  // Save overrides - if editing a group, apply to all slots in the group
   if (_editingGroup) {
     _editingGroup.slots.forEach(function(idx) {
       // Merge new overrides with any existing per-slot overrides

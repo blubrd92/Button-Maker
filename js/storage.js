@@ -304,7 +304,13 @@ function importDesignsFromJSON(file) {
       if (typeof setSheetSlots === 'function' && first.slots) {
         setSheetSlots(first.slots);
       }
-      renderDesignCanvas();
+      
+      // Update the active view based on current mode
+      if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof renderSheetView === 'function') {
+        renderSheetView();
+      } else {
+        renderDesignCanvas();
+      }
 
       alert('Imported ' + incoming.length + ' design(s).');
     } catch (err) {

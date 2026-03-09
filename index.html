@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Button Maker</title>
 
-  <!-- Google Fonts — families listed in config.js -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,700;1,400;1,700&family=Merriweather:ital,wght@0,400;0,700;1,400;1,700&family=Open+Sans:ital,wght@0,400;0,700;1,400;1,700&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Pacifico&family=Oswald:wght@400;700&family=Lobster&family=Lora:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,700;1,400;1,700&family=Roboto:ital,wght@0,400;0,700;1,400;1,700&family=Merriweather:ital,wght@0,400;0,700;1,400;1,700&family=Open+Sans:ital,wght@0,400;0,700;1,400;1,700&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Pacifico&family=Oswald:wght@400;700&family=Lobster&family=Lora:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
 
-  <!-- jsPDF for PDF export (local bundle, CDN fallback for GitHub Pages) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
   <script src="lib/jspdf.umd.min.js"></script>
   <script>
     if (!window.jspdf && !window.jsPDF) {
@@ -24,10 +24,12 @@
 </head>
 <body>
 
-  <!-- ─── Top Bar ─────────────────────────────────────────────────── -->
   <header id="top-bar">
     <div class="top-bar-left">
-      <h1 class="app-title">Button Maker</h1>
+      <div class="logo">
+        <i class="fa-solid fa-circle-dot" aria-hidden="true"></i> Button Maker
+      </div>
+      <span class="header-credit">Designed by Javier Morales</span>
       <span class="button-size-label" id="button-size-label">1.5" Button</span>
     </div>
     <div class="top-bar-center">
@@ -37,32 +39,17 @@
       </div>
     </div>
     <div class="top-bar-right">
-      <button class="btn" id="btn-save">Save</button>
-      <button class="btn" id="btn-load">Load</button>
+      <button class="btn" id="btn-load"><i class="fa-solid fa-upload" aria-hidden="true"></i> Load</button>
+      <button class="btn" id="btn-save"><i class="fa-solid fa-download" aria-hidden="true"></i> Save</button>
       <input type="file" id="import-designs-file" accept=".buttons,.json" hidden>
-      <button class="btn btn-primary" id="btn-export">Export PDF</button>
-      <button class="btn btn-danger-outline" id="btn-reset">Reset</button>
+      <button class="btn btn-danger-outline" id="btn-reset"><i class="fa-solid fa-rotate-right" aria-hidden="true"></i> Reset</button>
+      <button class="btn btn-primary" id="btn-export"><i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Export PDF</button>
     </div>
   </header>
 
-  <!-- ─── Main Content ────────────────────────────────────────────── -->
   <main id="main-content">
 
-    <!-- Center: Canvas Area -->
-    <section id="canvas-area">
-      <!-- Design Mode canvas wrapper -->
-      <div id="design-canvas-wrapper" class="canvas-wrapper">
-        <canvas id="design-canvas"></canvas>
-      </div>
-      <!-- Sheet Mode grid (hidden by default) -->
-      <div id="sheet-view" class="sheet-view hidden">
-        <!-- Populated by sheet-mode.js -->
-      </div>
-    </section>
-
-    <!-- Right Sidebar: Properties Panel -->
-    <aside id="right-sidebar" class="sidebar">
-      <!-- Layout section -->
+    <aside id="left-sidebar" class="sidebar">
       <div class="sidebar-section" id="layout-section">
         <h2 class="sidebar-heading">Layout</h2>
         <div class="layout-toggle-sidebar" id="layout-toggle">
@@ -77,12 +64,10 @@
         </div>
       </div>
 
-      <!-- Background section -->
       <div class="sidebar-section" id="background-section">
         <h2 class="sidebar-heading">Background</h2>
         <div class="color-swatches" id="bg-color-swatches">
-          <!-- Populated from CONFIG.COLOR_PALETTE -->
-        </div>
+          </div>
         <div class="color-picker-row">
           <label for="bg-color-picker">Custom:</label>
           <input type="color" id="bg-color-picker" value="#FFFFFF" class="color-input">
@@ -97,8 +82,7 @@
           <div class="control-row" style="margin-top:6px;">
             <label>Presets:</label>
             <div class="gradient-presets" id="gradient-presets">
-              <!-- Populated by JS from GRADIENT_PRESETS -->
-            </div>
+              </div>
           </div>
           <div class="color-picker-row" style="margin-top:8px;">
             <label for="bg-gradient-color2">To:</label>
@@ -117,7 +101,6 @@
         </div>
       </div>
 
-      <!-- Brand Text section -->
       <div class="sidebar-section" id="brand-text-section">
         <h2 class="sidebar-heading">Brand Text</h2>
         <div class="control-row">
@@ -129,7 +112,6 @@
         </div>
       </div>
 
-      <!-- Image section -->
       <div class="sidebar-section" id="image-section">
         <h2 class="sidebar-heading">Image</h2>
         <label class="btn btn-small btn-full upload-label" for="image-upload">
@@ -147,9 +129,17 @@
         </div>
       </div>
     </aside>
+
+    <section id="canvas-area">
+      <div id="design-canvas-wrapper" class="canvas-wrapper">
+        <canvas id="design-canvas"></canvas>
+      </div>
+      <div id="sheet-view" class="sheet-view hidden">
+        </div>
+    </section>
+
   </main>
 
-  <!-- ─── Export Modal ────────────────────────────────────────────── -->
   <div id="export-modal" class="modal hidden">
     <div class="modal-backdrop"></div>
     <div class="modal-content">
@@ -160,11 +150,11 @@
           <div class="layout-options">
             <label class="radio-label">
               <input type="radio" name="layout" value="15" checked>
-              Standard (15 per sheet) — 3×5
+              Standard (15 per sheet) - 3x5
             </label>
             <label class="radio-label">
               <input type="radio" name="layout" value="20">
-              Max (20 per sheet) — 4×5
+              Max (20 per sheet) - 4x5
             </label>
           </div>
         </div>
@@ -182,7 +172,6 @@
     </div>
   </div>
 
-  <!-- ─── Scripts (order matters: config first, then modules, then app) ── -->
   <script src="js/config.js"></script>
   <script src="js/templates.js"></script>
   <script src="js/canvas.js"></script>
