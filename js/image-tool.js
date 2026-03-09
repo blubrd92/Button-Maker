@@ -50,17 +50,20 @@ function handleImageUpload(file) {
     const dataUrl = e.target.result;
     const img = new Image();
     img.onload = function() {
-      // Default size: fill the safe zone (1.35" for 1.5" buttons).
-      // The image's largest dimension matches the safe zone diameter.
+      // Default size: cover the safe zone circle (1.35" for 1.5" buttons).
+      // The image's SMALLEST dimension matches the safe zone diameter so the
+      // circle is completely filled, cropping any excess.
       const btnSize = getCurrentButtonSize();
-      const maxSizeInches = btnSize.safeDiameter;
+      const coverSize = btnSize.safeDiameter;
       let width, height;
       if (img.naturalWidth >= img.naturalHeight) {
-        width = maxSizeInches;
-        height = maxSizeInches * (img.naturalHeight / img.naturalWidth);
+        // Landscape: height = safe diameter, width scales up
+        height = coverSize;
+        width = coverSize * (img.naturalWidth / img.naturalHeight);
       } else {
-        height = maxSizeInches;
-        width = maxSizeInches * (img.naturalWidth / img.naturalHeight);
+        // Portrait: width = safe diameter, height scales up
+        width = coverSize;
+        height = coverSize * (img.naturalHeight / img.naturalWidth);
       }
 
       const imageElement = {
@@ -158,32 +161,51 @@ function hideImageControls() {
 
 /**
  * Render all image elements onto the editing canvas.
+ * Images are clipped to the safe zone circle.
  */
 function renderImageElements(ctx, cx, cy, scale) {
-  currentDesign.imageElements.forEach(imgEl => {
+  if (currentDesign.imageElements.length === 0) return;
+  var btnSize = getCurrentButtonSize();
+  var safeRadius = (btnSize.safeDiameter / 2) * scale;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, safeRadius, 0, Math.PI * 2);
+  ctx.clip();
+  currentDesign.imageElements.forEach(function(imgEl) {
     renderSingleImageElement(ctx, cx, cy, scale, imgEl);
   });
+  ctx.restore();
 }
 
 /**
  * Render image elements from a design object (for PDF/sheet mode).
+ * Images are clipped to the safe zone circle.
  */
 function renderImageElementsWithDesign(ctx, cx, cy, scale, design) {
-  (design.imageElements || []).forEach(imgEl => {
+  var imgs = design.imageElements || [];
+  if (imgs.length === 0) return;
+  var btnSize = getCurrentButtonSize();
+  var safeRadius = (btnSize.safeDiameter / 2) * scale;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, safeRadius, 0, Math.PI * 2);
+  ctx.clip();
+  imgs.forEach(function(imgEl) {
     renderSingleImageElement(ctx, cx, cy, scale, imgEl);
   });
+  ctx.restore();
 }
 
 /**
- * Render a single image element.
+ * Render a single image element (no clipping — caller handles that).
  */
 function renderSingleImageElement(ctx, cx, cy, scale, imgEl) {
   if (!imgEl.imgObj || !imgEl.imgObj.complete) return;
 
-  const px = cx + (imgEl.x - imgEl.width / 2) * scale;
-  const py = cy + (imgEl.y - imgEl.height / 2) * scale;
-  const pw = imgEl.width * scale;
-  const ph = imgEl.height * scale;
+  var px = cx + (imgEl.x - imgEl.width / 2) * scale;
+  var py = cy + (imgEl.y - imgEl.height / 2) * scale;
+  var pw = imgEl.width * scale;
+  var ph = imgEl.height * scale;
 
   ctx.drawImage(imgEl.imgObj, px, py, pw, ph);
 }
