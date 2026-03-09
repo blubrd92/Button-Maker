@@ -10,7 +10,7 @@
  * - Multi-select with Ctrl/Cmd-click and Shift-click
  * - Applying property overrides to selected buttons
  * - Showing override badges on customized buttons
- * - Reset-to-master for individual buttons
+ * - Reset-to-main for individual buttons
  * - Providing slot data for save/load and PDF export
  *
  * Depends on:
@@ -19,12 +19,12 @@
  * - templates.js (getTemplateById for override template restoration)
  *
  * Gotchas:
- * - Overrides use sparse objects: only properties that differ from master
- * are stored. An empty overrides object means the slot matches master.
- * - When the master design changes in Design Mode, all non-overridden
- * slots automatically pick up the change (they inherit from master).
+ * - Overrides use sparse objects: only properties that differ from main
+ * are stored. An empty overrides object means the slot matches main.
+ * - When the main design changes in Design Mode, all non-overridden
+ * slots automatically pick up the change (they inherit from main).
  * - The sheet grid uses small canvases for each button thumbnail.
- * These are re-rendered when the master or overrides change.
+ * These are re-rendered when the main or overrides change.
  */
 
 // --- Sheet state ---
@@ -94,9 +94,9 @@ function slotHasOverrides(slotIndex) {
 }
 
 /**
- * Reset a slot to match the master (clear all overrides).
+ * Reset a slot to match the main design (clear all overrides).
  */
-function resetSlotToMaster(slotIndex) {
+function resetSlotToMain(slotIndex) {
   if (sheetSlots[slotIndex]) {
     sheetSlots[slotIndex].overrides = {};
   }
@@ -162,6 +162,67 @@ function renderSheetView() {
   
   nameRow.appendChild(nameInput);
   container.appendChild(nameRow);
+
+  // -- Controls (Moved below sheet name, above the grid) --
+  var controlsDiv = document.createElement('div');
+  controlsDiv.id = 'sheet-controls';
+  controlsDiv.className = 'sheet-controls-bar';
+  // Adjust spacing so it looks natural above the grid
+  controlsDiv.style.marginTop = '0';
+  controlsDiv.style.marginBottom = '20px';
+  controlsDiv.style.width = '100%';
+  controlsDiv.style.maxWidth = '800px'; 
+  
+  // Use visibility: hidden so the buttons reserve space and prevent layout shifts
+  controlsDiv.innerHTML =
+    '<div style="display:flex; gap:12px; min-width: 380px;">' +
+      '<button class="btn btn-small" id="btn-sheet-reset" style="visibility:hidden;">Reset Selected to Main</button>' +
+      '<button class="btn btn-small" id="btn-apply-col" style="visibility:hidden;">Apply to Col</button>' +
+      '<button class="btn btn-small" id="btn-apply-row" style="visibility:hidden;">Apply to Row</button>' +
+    '</div>' +
+    '<span id="sheet-selection-info" style="font-size:12px; color:#888; margin-left:auto;">Click to select \u00b7 Double-click to edit</span>';
+  
+  container.appendChild(controlsDiv);
+
+  // Wire up the new controls
+  document.getElementById('btn-sheet-reset').addEventListener('click', function() {
+    selectedSlots.forEach(function(idx) { resetSlotToMain(idx); });
+    renderSheetView();
+    updateSheetSelectionUI();
+  });
+
+  document.getElementById('btn-apply-col').addEventListener('click', function() {
+    if (selectedSlots.length !== 1) return;
+    var sourceIdx = selectedSlots[0];
+    var sourceSlot = sheetSlots[sourceIdx];
+    var layout = getCurrentLayout();
+    var overrides = getSlotOverrides(sourceIdx);
+
+    for (var r = 0; r < layout.rows; r++) {
+      var targetIdx = r * layout.cols + sourceSlot.col;
+      // Deep copy to prevent reference issues
+      setSlotOverrides(targetIdx, JSON.parse(JSON.stringify(overrides))); 
+    }
+    refreshSheetThumbnails();
+    updateSheetSelectionUI();
+  });
+
+  document.getElementById('btn-apply-row').addEventListener('click', function() {
+    if (selectedSlots.length !== 1) return;
+    var sourceIdx = selectedSlots[0];
+    var sourceSlot = sheetSlots[sourceIdx];
+    var layout = getCurrentLayout();
+    var overrides = getSlotOverrides(sourceIdx);
+
+    for (var c = 0; c < layout.cols; c++) {
+      var targetIdx = sourceSlot.row * layout.cols + c;
+      // Deep copy to prevent reference issues
+      setSlotOverrides(targetIdx, JSON.parse(JSON.stringify(overrides))); 
+    }
+    refreshSheetThumbnails();
+    updateSheetSelectionUI();
+  });
+
 
   // -- Compute pixel scaling for the page representation --
   // Target page height in CSS pixels (fit nicely in viewport)
@@ -289,21 +350,7 @@ function renderSheetView() {
   outerWrapper.appendChild(mainArea);
   container.appendChild(outerWrapper);
 
-  // -- Controls below the page --
-  var controlsDiv = document.createElement('div');
-  controlsDiv.id = 'sheet-controls';
-  controlsDiv.className = 'sheet-controls-bar';
-  controlsDiv.innerHTML =
-    '<button class="btn btn-small" id="btn-sheet-reset" style="display:none;">Reset Selected to Master</button>' +
-    '<span id="sheet-selection-info" style="font-size:12px; color:#888;">Click to select \u00b7 Double-click to edit</span>';
-  container.appendChild(controlsDiv);
-
-  document.getElementById('btn-sheet-reset').addEventListener('click', function() {
-    selectedSlots.forEach(function(idx) { resetSlotToMaster(idx); });
-    renderSheetView();
-    updateSheetSelectionUI();
-  });
-
+  // Initial UI sync
   updateSheetSelectionUI();
 }
 
@@ -415,14 +462,31 @@ function updateSheetSelectionUI() {
 
   var info = document.getElementById('sheet-selection-info');
   var resetBtn = document.getElementById('btn-sheet-reset');
+  var applyColBtn = document.getElementById('btn-apply-col');
+  var applyRowBtn = document.getElementById('btn-apply-row');
+  
   if (info) {
     info.textContent = selectedSlots.length > 0
       ? selectedSlots.length + ' button(s) selected \u00b7 Double-click to edit'
       : 'Click to select \u00b7 Double-click to edit';
   }
+  
+  var hasOverrides = selectedSlots.some(function(idx) { return slotHasOverrides(idx); });
+  
+  // Use visibility to prevent layout shifts
   if (resetBtn) {
-    var hasOverrides = selectedSlots.some(function(idx) { return slotHasOverrides(idx); });
-    resetBtn.style.display = hasOverrides ? '' : 'none';
+    resetBtn.style.visibility = hasOverrides ? 'visible' : 'hidden';
+  }
+
+  // Only show Apply buttons if EXACTLY ONE button is selected AND it has custom overrides
+  if (applyColBtn && applyRowBtn) {
+    if (selectedSlots.length === 1 && hasOverrides) {
+      applyColBtn.style.visibility = 'visible';
+      applyRowBtn.style.visibility = 'visible';
+    } else {
+      applyColBtn.style.visibility = 'hidden';
+      applyRowBtn.style.visibility = 'hidden';
+    }
   }
 }
 
@@ -490,21 +554,21 @@ function exitSheetMode() {
 
 // --- Per-button editing in design view ---
 
-// When editing a specific slot, store the original master design so we can
+// When editing a specific slot, store the original main design so we can
 // compute what changed when returning to sheet mode.
 var _editingSlotIndex = null;
-var _masterDesignBackup = null;
+var _mainDesignBackup = null;
 
 /**
  * Switch to design mode to edit a specific button slot.
- * Loads the slot's merged design (master + overrides) into the design canvas.
+ * Loads the slot's merged design (main + overrides) into the design canvas.
  * A "Back to Sheet" banner appears so the user can return and save changes.
  */
 function editSlotInDesignMode(slotIndex) {
   _editingSlotIndex = slotIndex;
 
-  // Back up the master design
-  _masterDesignBackup = {
+  // Back up the main design
+  _mainDesignBackup = {
     templateId: currentDesign.templateId,
     backgroundColor: currentDesign.backgroundColor,
     templateDraw: currentDesign.templateDraw,
@@ -515,7 +579,7 @@ function editSlotInDesignMode(slotIndex) {
     libraryInfoColor: currentDesign.libraryInfoColor
   };
 
-  // Merge master + overrides into currentDesign
+  // Merge main + overrides into currentDesign
   var overrides = getSlotOverrides(slotIndex);
   if (overrides.backgroundColor !== undefined) {
     currentDesign.backgroundColor = overrides.backgroundColor;
@@ -645,11 +709,11 @@ function removeSlotEditBanner() {
 }
 
 /**
- * Finish editing a slot: compute what changed vs the master backup,
- * store as overrides, restore master, and return to sheet mode.
+ * Finish editing a slot: compute what changed vs the main backup,
+ * store as overrides, restore main, and return to sheet mode.
  */
 function finishSlotEdit() {
-  if (_editingSlotIndex === null || !_masterDesignBackup) {
+  if (_editingSlotIndex === null || !_mainDesignBackup) {
     removeSlotEditBanner();
     return;
   }
@@ -657,34 +721,34 @@ function finishSlotEdit() {
   var slotIndex = _editingSlotIndex;
   var overrides = {};
 
-  // Compare current state to the backed-up master
-  if (currentDesign.backgroundColor !== _masterDesignBackup.backgroundColor) {
+  // Compare current state to the backed-up main
+  if (currentDesign.backgroundColor !== _mainDesignBackup.backgroundColor) {
     overrides.backgroundColor = currentDesign.backgroundColor;
   }
-  if (currentDesign.libraryInfoText !== _masterDesignBackup.libraryInfoText) {
+  if (currentDesign.libraryInfoText !== _mainDesignBackup.libraryInfoText) {
     overrides.libraryInfoText = currentDesign.libraryInfoText;
   }
-  if (currentDesign.libraryInfoColor !== _masterDesignBackup.libraryInfoColor) {
+  if (currentDesign.libraryInfoColor !== _mainDesignBackup.libraryInfoColor) {
     overrides.libraryInfoColor = currentDesign.libraryInfoColor;
   }
 
   // Gradient
-  var masterGradJson = _masterDesignBackup.gradient ? JSON.stringify(_masterDesignBackup.gradient) : null;
+  var mainGradJson = _mainDesignBackup.gradient ? JSON.stringify(_mainDesignBackup.gradient) : null;
   var currentGradJson = currentDesign.gradient ? JSON.stringify(currentDesign.gradient) : null;
-  if (masterGradJson !== currentGradJson) {
+  if (mainGradJson !== currentGradJson) {
     overrides.gradient = currentDesign.gradient ? JSON.parse(currentGradJson) : null;
   }
 
   // Image elements - compare by dataUrl, position, scale
-  var masterImgs = _masterDesignBackup.imageElements;
+  var mainImgs = _mainDesignBackup.imageElements;
   var currentImgs = currentDesign.imageElements;
-  var imagesChanged = (masterImgs.length !== currentImgs.length);
+  var imagesChanged = (mainImgs.length !== currentImgs.length);
   if (!imagesChanged) {
     for (var i = 0; i < currentImgs.length; i++) {
-      if (currentImgs[i].dataUrl !== masterImgs[i].dataUrl ||
-          currentImgs[i].x !== masterImgs[i].x ||
-          currentImgs[i].y !== masterImgs[i].y ||
-          currentImgs[i].imageScale !== masterImgs[i].imageScale) {
+      if (currentImgs[i].dataUrl !== mainImgs[i].dataUrl ||
+          currentImgs[i].x !== mainImgs[i].x ||
+          currentImgs[i].y !== mainImgs[i].y ||
+          currentImgs[i].imageScale !== mainImgs[i].imageScale) {
         imagesChanged = true;
         break;
       }
@@ -725,17 +789,17 @@ function finishSlotEdit() {
     setSlotOverrides(slotIndex, overrides);
   }
 
-  // Restore the master design
-  currentDesign.templateId = _masterDesignBackup.templateId;
-  currentDesign.backgroundColor = _masterDesignBackup.backgroundColor;
-  currentDesign.templateDraw = _masterDesignBackup.templateDraw;
-  currentDesign.gradient = _masterDesignBackup.gradient;
-  currentDesign.textElements = _masterDesignBackup.textElements;
-  currentDesign.imageElements = _masterDesignBackup.imageElements;
-  currentDesign.libraryInfoText = _masterDesignBackup.libraryInfoText;
-  currentDesign.libraryInfoColor = _masterDesignBackup.libraryInfoColor;
+  // Restore the main design
+  currentDesign.templateId = _mainDesignBackup.templateId;
+  currentDesign.backgroundColor = _mainDesignBackup.backgroundColor;
+  currentDesign.templateDraw = _mainDesignBackup.templateDraw;
+  currentDesign.gradient = _mainDesignBackup.gradient;
+  currentDesign.textElements = _mainDesignBackup.textElements;
+  currentDesign.imageElements = _mainDesignBackup.imageElements;
+  currentDesign.libraryInfoText = _mainDesignBackup.libraryInfoText;
+  currentDesign.libraryInfoColor = _mainDesignBackup.libraryInfoColor;
 
-  // Reset sidebar to master values
+  // Reset sidebar to main values
   document.getElementById('bg-color-picker').value = currentDesign.backgroundColor;
   updateBackgroundSwatches(currentDesign.backgroundColor);
   document.getElementById('library-info-input').value = currentDesign.libraryInfoText;
@@ -746,7 +810,7 @@ function finishSlotEdit() {
 
   // Clean up
   _editingSlotIndex = null;
-  _masterDesignBackup = null;
+  _mainDesignBackup = null;
   selectedElement = null;
   hideImageControls();
   removeSlotEditBanner();
