@@ -183,7 +183,14 @@ function applyOverridesToDesign(design, overrides) {
     design.textElements = overrides.textElements.map(t => ({ ...t }));
   }
   if (overrides.imageElements !== undefined) {
-    design.imageElements = overrides.imageElements.map(img => ({ ...img }));
+    design.imageElements = overrides.imageElements.map(function(img) {
+      var el = { ...img };
+      // Reconstruct imgObj if missing (overrides store data only)
+      if (!el.imgObj && el.dataUrl) {
+        el.imgObj = getOrCreateCachedImage(el.dataUrl);
+      }
+      return el;
+    });
   }
   if (overrides.libraryInfoText !== undefined) {
     design.libraryInfoText = overrides.libraryInfoText;

@@ -26,6 +26,31 @@
  * - `imageScale` is a multiplier >= 1.0 over the cover-fill size.
  */
 
+// ─── Image cache (data URL → Image object) ────────────────────────
+// Avoids recreating Image objects for the same data URL repeatedly,
+// e.g. when sheet mode thumbnails re-render per-slot image overrides.
+var _imageCache = {};
+
+/**
+ * Get or create a cached Image object for a data URL.
+ * Returns the Image immediately; it may still be loading.
+ * @param {string} dataUrl
+ * @returns {Image}
+ */
+function getOrCreateCachedImage(dataUrl) {
+  if (_imageCache[dataUrl]) return _imageCache[dataUrl];
+  var img = new Image();
+  img.onload = function() {
+    // Trigger a re-render once loaded so thumbnails update
+    if (typeof refreshSheetThumbnails === 'function') {
+      refreshSheetThumbnails();
+    }
+  };
+  img.src = dataUrl;
+  _imageCache[dataUrl] = img;
+  return img;
+}
+
 // ─── Image element data structure ──────────────────────────────────
 // currentDesign.imageElements contains at most ONE element:
 // {
@@ -61,8 +86,37 @@ function computeCoverFillSize(naturalWidth, naturalHeight) {
 }
 
 /**
+ * Build an image element object from a loaded Image.
+ * @param {string} dataUrl - base64 data URL
+ * @param {Image} img - loaded DOM Image object
+ * @returns {Object} image element with cover-fill sizing
+ */
+function buildImageElement(dataUrl, img) {
+  // Cache the Image object so overrides can reuse it
+  _imageCache[dataUrl] = img;
+  var cover = computeCoverFillSize(img.naturalWidth, img.naturalHeight);
+  return {
+    dataUrl: dataUrl,
+    imgObj: img,
+    x: 0,
+    y: 0,
+    width: cover.width,
+    height: cover.height,
+    naturalWidth: img.naturalWidth,
+    naturalHeight: img.naturalHeight,
+    baseWidth: cover.width,
+    baseHeight: cover.height,
+    imageScale: 1.0
+  };
+}
+
+/**
  * Handle image file upload. Reads the file, creates an Image object,
  * and replaces any existing image (single-image model).
+ *
+ * In sheet mode with selected slots, the image is applied as a per-slot
+ * override instead of changing the master design.
+ *
  * @param {File} file - The uploaded file
  */
 function handleImageUpload(file) {
@@ -73,23 +127,29 @@ function handleImageUpload(file) {
     var dataUrl = e.target.result;
     var img = new Image();
     img.onload = function() {
-      var cover = computeCoverFillSize(img.naturalWidth, img.naturalHeight);
+      var imageElement = buildImageElement(dataUrl, img);
 
-      var imageElement = {
-        dataUrl: dataUrl,
-        imgObj: img,
-        x: 0,
-        y: 0,
-        width: cover.width,
-        height: cover.height,
-        naturalWidth: img.naturalWidth,
-        naturalHeight: img.naturalHeight,
-        baseWidth: cover.width,
-        baseHeight: cover.height,
-        imageScale: 1.0
-      };
+      // Sheet mode with selected slots → apply as per-slot override
+      if (typeof currentMode !== 'undefined' && currentMode === 'sheet' &&
+          typeof selectedSlots !== 'undefined' && selectedSlots.length > 0) {
+        // Serialize for override storage (no imgObj)
+        var serialized = [{
+          dataUrl: imageElement.dataUrl,
+          x: imageElement.x,
+          y: imageElement.y,
+          width: imageElement.width,
+          height: imageElement.height,
+          naturalWidth: imageElement.naturalWidth,
+          naturalHeight: imageElement.naturalHeight,
+          baseWidth: imageElement.baseWidth,
+          baseHeight: imageElement.baseHeight,
+          imageScale: imageElement.imageScale
+        }];
+        applyOverrideToSelectedSlots('imageElements', serialized);
+        return;
+      }
 
-      // Replace any existing image (single-image model)
+      // Design mode → replace master image
       currentDesign.imageElements = [imageElement];
       selectedElement = { type: 'image', index: 0 };
       showImageControls(0);
