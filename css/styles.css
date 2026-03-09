@@ -792,21 +792,22 @@ input[type="checkbox"], input[type="radio"] {
 /* Gradient Presets */
 
 .gradient-presets {
+  flex: 1; /* Forces the grid to fill the remaining space in the row */
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 6px;
-  margin-top: 8px;
+  width: 100%;
 }
 
 .gradient-preset-btn {
   aspect-ratio: 2/1;
   width: 100%;
-  height: auto;
   border: 2px solid var(--border-color);
   border-radius: var(--radius-sm);
   cursor: pointer;
   padding: 0;
   transition: transform var(--transition-fast), border-color var(--transition-fast);
+  display: block; /* Ensures aspect-ratio calculates correctly on empty buttons */
 }
 
 .gradient-preset-btn:hover {
