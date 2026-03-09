@@ -144,52 +144,6 @@ body {
   gap: 6px;
 }
 
-.btn-header {
-  background-color: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.15);
-  color: white;
-  padding: 8px 14px;
-  border-radius: var(--radius);
-  font-size: 0.85rem;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: all var(--transition-fast);
-  min-width: 75px;
-  justify-content: center;
-}
-
-.btn-header:hover {
-  background-color: rgba(255,255,255,0.2);
-  transform: translateY(-1px);
-}
-
-.btn-header-primary {
-  background-color: var(--success-color);
-  border: none;
-  color: white;
-  padding: 8px 16px;
-  border-radius: var(--radius);
-  font-size: 0.85rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: all var(--transition-fast);
-  min-width: 120px;
-  justify-content: center;
-  font-weight: 600;
-  box-shadow: 0 2px 4px rgba(67, 160, 71, 0.3);
-}
-
-.btn-header-primary:hover {
-  background-color: var(--success-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(67, 160, 71, 0.4);
-}
-
 /* Panel Toggle Buttons in Header */
 .header-panel-toggles {
   display: flex;
@@ -335,6 +289,53 @@ body {
   background: var(--primary-color);
   color: white;
   border-color: var(--primary-color);
+}
+
+/* Header Action Buttons (after .btn so they win in cascade) */
+.btn-header {
+  background-color: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: white;
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all var(--transition-fast);
+  min-width: 75px;
+  justify-content: center;
+}
+
+.btn-header:hover {
+  background-color: rgba(255,255,255,0.2);
+  transform: translateY(-1px);
+}
+
+.btn-header-primary {
+  background-color: var(--success-color);
+  border: none;
+  color: white;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all var(--transition-fast);
+  min-width: 120px;
+  justify-content: center;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(67, 160, 71, 0.3);
+}
+
+.btn-header-primary:hover {
+  background-color: var(--success-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(67, 160, 71, 0.4);
 }
 
 /* Sidebar Specific Scaling */
