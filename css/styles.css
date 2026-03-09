@@ -720,6 +720,24 @@ html, body {
   color: #fff;
 }
 
+/* ─── Slot Edit Banner ─────────────────────────────────────────────── */
+
+#slot-edit-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: #FFF3CD;
+  border: 1px solid #FFECB5;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #664D03;
+}
+
+#slot-edit-banner strong {
+  font-weight: 700;
+}
+
 /* ─── Gradient Presets ─────────────────────────────────────────────── */
 
 .gradient-presets {

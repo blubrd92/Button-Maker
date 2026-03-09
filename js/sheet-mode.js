@@ -252,6 +252,10 @@ function renderSheetView() {
 
       (function(idx) {
         cell.addEventListener('click', function(e) { handleCellClick(idx, e); });
+        cell.addEventListener('dblclick', function(e) {
+          e.stopPropagation();
+          editSlotInDesignMode(idx);
+        });
       })(slotIndex);
 
       grid.appendChild(cell);
@@ -271,7 +275,7 @@ function renderSheetView() {
   controlsDiv.className = 'sheet-controls-bar';
   controlsDiv.innerHTML =
     '<button class="btn btn-small" id="btn-sheet-reset" style="display:none;">Reset Selected to Master</button>' +
-    '<span id="sheet-selection-info" style="font-size:12px; color:#888;">Click a button to select it</span>';
+    '<span id="sheet-selection-info" style="font-size:12px; color:#888;">Click to select \u00b7 Double-click to edit</span>';
   container.appendChild(controlsDiv);
 
   document.getElementById('btn-sheet-reset').addEventListener('click', function() {
@@ -393,8 +397,8 @@ function updateSheetSelectionUI() {
   var resetBtn = document.getElementById('btn-sheet-reset');
   if (info) {
     info.textContent = selectedSlots.length > 0
-      ? selectedSlots.length + ' button(s) selected'
-      : 'Click a button to select it';
+      ? selectedSlots.length + ' button(s) selected \u00b7 Double-click to edit'
+      : 'Click to select \u00b7 Double-click to edit';
   }
   if (resetBtn) {
     var hasOverrides = selectedSlots.some(function(idx) { return slotHasOverrides(idx); });
@@ -464,13 +468,255 @@ function exitSheetMode() {
   renderDesignCanvas();
 }
 
+// --- Per-button editing in design view ---
+
+// When editing a specific slot, store the original master design so we can
+// compute what changed when returning to sheet mode.
+var _editingSlotIndex = null;
+var _masterDesignBackup = null;
+
+/**
+ * Switch to design mode to edit a specific button slot.
+ * Loads the slot's merged design (master + overrides) into the design canvas.
+ * A "Back to Sheet" banner appears so the user can return and save changes.
+ */
+function editSlotInDesignMode(slotIndex) {
+  _editingSlotIndex = slotIndex;
+
+  // Back up the master design
+  _masterDesignBackup = {
+    templateId: currentDesign.templateId,
+    backgroundColor: currentDesign.backgroundColor,
+    templateDraw: currentDesign.templateDraw,
+    gradient: currentDesign.gradient ? JSON.parse(JSON.stringify(currentDesign.gradient)) : null,
+    textElements: currentDesign.textElements.map(function(t) { return Object.assign({}, t); }),
+    imageElements: currentDesign.imageElements.map(function(img) { return Object.assign({}, img); }),
+    libraryInfoText: currentDesign.libraryInfoText,
+    libraryInfoColor: currentDesign.libraryInfoColor
+  };
+
+  // Merge master + overrides into currentDesign
+  var overrides = getSlotOverrides(slotIndex);
+  if (overrides.backgroundColor !== undefined) {
+    currentDesign.backgroundColor = overrides.backgroundColor;
+    currentDesign.templateDraw = null;
+    currentDesign.templateId = null;
+  }
+  if (overrides.gradient !== undefined) {
+    currentDesign.gradient = overrides.gradient;
+    if (overrides.gradient && typeof buildGradientDrawFunction === 'function') {
+      currentDesign.templateDraw = buildGradientDrawFunction(overrides.gradient);
+    }
+  }
+  if (overrides.libraryInfoText !== undefined) {
+    currentDesign.libraryInfoText = overrides.libraryInfoText;
+  }
+  if (overrides.libraryInfoColor !== undefined) {
+    currentDesign.libraryInfoColor = overrides.libraryInfoColor;
+  }
+  if (overrides.imageElements !== undefined) {
+    currentDesign.imageElements = overrides.imageElements.map(function(img) {
+      var el = Object.assign({}, img);
+      if (!el.imgObj && el.dataUrl) {
+        el.imgObj = getOrCreateCachedImage(el.dataUrl);
+      }
+      return el;
+    });
+  }
+
+  // Switch to design mode visually
+  currentMode = 'design';
+  document.getElementById('btn-design-mode').classList.add('active');
+  document.getElementById('btn-sheet-mode').classList.remove('active');
+  document.getElementById('design-canvas-wrapper').classList.remove('hidden');
+  document.getElementById('sheet-view').classList.add('hidden');
+
+  // Sync sidebar controls
+  document.getElementById('bg-color-picker').value = currentDesign.backgroundColor;
+  updateBackgroundSwatches(currentDesign.backgroundColor);
+  document.getElementById('library-info-input').value = currentDesign.libraryInfoText;
+  document.getElementById('library-info-color').value = currentDesign.libraryInfoColor;
+
+  // Sync gradient UI
+  var grad = currentDesign.gradient;
+  document.getElementById('toggle-gradient').checked = !!grad;
+  document.getElementById('gradient-controls').classList.toggle('hidden', !grad);
+  if (grad) {
+    document.getElementById('bg-gradient-color2').value = grad.color2 || '#4A90D9';
+    document.getElementById('gradient-direction').value = grad.direction || 'top-bottom';
+    if (grad.preset) {
+      document.querySelectorAll('.gradient-preset-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.preset === grad.preset);
+      });
+    }
+  }
+
+  // Show image controls if there's an image
+  if (currentDesign.imageElements.length > 0) {
+    selectedElement = { type: 'image', index: 0 };
+    showImageControls(0);
+  }
+
+  // Show the "editing slot" banner
+  showSlotEditBanner(slotIndex);
+
+  renderDesignCanvas();
+}
+
+/**
+ * Show a banner indicating which button is being edited,
+ * with a "Done — Back to Sheet" button.
+ */
+function showSlotEditBanner(slotIndex) {
+  removeSlotEditBanner();
+  var layout = getCurrentLayout();
+  var row = Math.floor(slotIndex / layout.cols);
+  var col = slotIndex % layout.cols;
+  var label = String.fromCharCode(65 + col) + (row + 1);
+
+  var banner = document.createElement('div');
+  banner.id = 'slot-edit-banner';
+  banner.innerHTML =
+    '<span>Editing button <strong>' + label + '</strong></span>' +
+    '<button class="btn btn-small btn-primary" id="btn-done-slot-edit">Done — Back to Sheet</button>';
+
+  var canvasWrapper = document.getElementById('design-canvas-wrapper');
+  canvasWrapper.insertBefore(banner, canvasWrapper.firstChild);
+
+  document.getElementById('btn-done-slot-edit').addEventListener('click', finishSlotEdit);
+}
+
+function removeSlotEditBanner() {
+  var existing = document.getElementById('slot-edit-banner');
+  if (existing) existing.remove();
+}
+
+/**
+ * Finish editing a slot: compute what changed vs the master backup,
+ * store as overrides, restore master, and return to sheet mode.
+ */
+function finishSlotEdit() {
+  if (_editingSlotIndex === null || !_masterDesignBackup) {
+    removeSlotEditBanner();
+    return;
+  }
+
+  var slotIndex = _editingSlotIndex;
+  var overrides = {};
+
+  // Compare current state to the backed-up master
+  if (currentDesign.backgroundColor !== _masterDesignBackup.backgroundColor) {
+    overrides.backgroundColor = currentDesign.backgroundColor;
+  }
+  if (currentDesign.libraryInfoText !== _masterDesignBackup.libraryInfoText) {
+    overrides.libraryInfoText = currentDesign.libraryInfoText;
+  }
+  if (currentDesign.libraryInfoColor !== _masterDesignBackup.libraryInfoColor) {
+    overrides.libraryInfoColor = currentDesign.libraryInfoColor;
+  }
+
+  // Gradient
+  var masterGradJson = _masterDesignBackup.gradient ? JSON.stringify(_masterDesignBackup.gradient) : null;
+  var currentGradJson = currentDesign.gradient ? JSON.stringify(currentDesign.gradient) : null;
+  if (masterGradJson !== currentGradJson) {
+    overrides.gradient = currentDesign.gradient ? JSON.parse(currentGradJson) : null;
+  }
+
+  // Image elements — compare by dataUrl, position, scale
+  var masterImgs = _masterDesignBackup.imageElements;
+  var currentImgs = currentDesign.imageElements;
+  var imagesChanged = (masterImgs.length !== currentImgs.length);
+  if (!imagesChanged) {
+    for (var i = 0; i < currentImgs.length; i++) {
+      if (currentImgs[i].dataUrl !== masterImgs[i].dataUrl ||
+          currentImgs[i].x !== masterImgs[i].x ||
+          currentImgs[i].y !== masterImgs[i].y ||
+          currentImgs[i].imageScale !== masterImgs[i].imageScale) {
+        imagesChanged = true;
+        break;
+      }
+    }
+  }
+  if (imagesChanged) {
+    overrides.imageElements = currentImgs.map(function(img) {
+      return {
+        dataUrl: img.dataUrl,
+        x: img.x,
+        y: img.y,
+        width: img.width,
+        height: img.height,
+        naturalWidth: img.naturalWidth,
+        naturalHeight: img.naturalHeight,
+        baseWidth: img.baseWidth,
+        baseHeight: img.baseHeight,
+        imageScale: img.imageScale || 1.0
+      };
+    });
+  }
+
+  // Save overrides for this slot
+  setSlotOverrides(slotIndex, overrides);
+
+  // Restore the master design
+  currentDesign.templateId = _masterDesignBackup.templateId;
+  currentDesign.backgroundColor = _masterDesignBackup.backgroundColor;
+  currentDesign.templateDraw = _masterDesignBackup.templateDraw;
+  currentDesign.gradient = _masterDesignBackup.gradient;
+  currentDesign.textElements = _masterDesignBackup.textElements;
+  currentDesign.imageElements = _masterDesignBackup.imageElements;
+  currentDesign.libraryInfoText = _masterDesignBackup.libraryInfoText;
+  currentDesign.libraryInfoColor = _masterDesignBackup.libraryInfoColor;
+
+  // Reset sidebar to master values
+  document.getElementById('bg-color-picker').value = currentDesign.backgroundColor;
+  updateBackgroundSwatches(currentDesign.backgroundColor);
+  document.getElementById('library-info-input').value = currentDesign.libraryInfoText;
+  document.getElementById('library-info-color').value = currentDesign.libraryInfoColor;
+  var grad = currentDesign.gradient;
+  document.getElementById('toggle-gradient').checked = !!grad;
+  document.getElementById('gradient-controls').classList.toggle('hidden', !grad);
+
+  // Clean up
+  _editingSlotIndex = null;
+  _masterDesignBackup = null;
+  selectedElement = null;
+  hideImageControls();
+  removeSlotEditBanner();
+
+  // Switch back to sheet mode
+  selectedSlots = [slotIndex];
+  currentMode = 'sheet';
+  document.getElementById('btn-sheet-mode').classList.add('active');
+  document.getElementById('btn-design-mode').classList.remove('active');
+  document.getElementById('design-canvas-wrapper').classList.add('hidden');
+  document.getElementById('sheet-view').classList.remove('hidden');
+  renderSheetView();
+}
+
 function initSheetMode() {
   document.getElementById('btn-design-mode').addEventListener('click', function() {
+    // If editing a slot, finish and save overrides first
+    if (_editingSlotIndex !== null) {
+      finishSlotEdit();
+      // finishSlotEdit switches to sheet mode, but user wants design mode
+      currentMode = 'design';
+      document.getElementById('btn-design-mode').classList.add('active');
+      document.getElementById('btn-sheet-mode').classList.remove('active');
+      document.getElementById('design-canvas-wrapper').classList.remove('hidden');
+      document.getElementById('sheet-view').classList.add('hidden');
+      renderDesignCanvas();
+      return;
+    }
     document.getElementById('btn-design-mode').classList.add('active');
     document.getElementById('btn-sheet-mode').classList.remove('active');
     exitSheetMode();
   });
   document.getElementById('btn-sheet-mode').addEventListener('click', function() {
+    // If editing a slot, finish and save overrides first
+    if (_editingSlotIndex !== null) {
+      finishSlotEdit();
+      return; // finishSlotEdit already switches to sheet mode
+    }
     document.getElementById('btn-sheet-mode').classList.add('active');
     document.getElementById('btn-design-mode').classList.remove('active');
     enterSheetMode();
