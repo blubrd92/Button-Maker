@@ -24,6 +24,12 @@
 // Track the current editing mode
 var currentMode = 'design'; // 'design' or 'sheet'
 
+// Zoom state
+var zoomLevel = 1.0;
+var ZOOM_MIN = 0.25;
+var ZOOM_MAX = 3.0;
+var ZOOM_STEP = 0.25;
+
 /**
  * Main initialization function. Called when the DOM is ready.
  */
@@ -193,6 +199,9 @@ function initTopLevelControls() {
       }
     }
   });
+
+  // -- Zoom controls --
+  initZoomControls();
 
   // -- Reset button --
   document.getElementById('btn-reset').addEventListener('click', function() {
@@ -461,6 +470,60 @@ var GRADIENT_PRESETS = {
     ]
   }
 };
+
+/**
+ * Initialize zoom controls for the preview area.
+ */
+function initZoomControls() {
+  var btnIn = document.getElementById('btn-zoom-in');
+  var btnOut = document.getElementById('btn-zoom-out');
+  var btnReset = document.getElementById('btn-zoom-reset');
+
+  btnIn.addEventListener('click', function() {
+    zoomLevel = Math.min(ZOOM_MAX, zoomLevel + ZOOM_STEP);
+    applyZoom();
+  });
+
+  btnOut.addEventListener('click', function() {
+    zoomLevel = Math.max(ZOOM_MIN, zoomLevel - ZOOM_STEP);
+    applyZoom();
+  });
+
+  btnReset.addEventListener('click', function() {
+    zoomLevel = 1.0;
+    applyZoom();
+  });
+
+  // Ctrl+scroll wheel zoom
+  var canvasArea = document.getElementById('canvas-area');
+  canvasArea.addEventListener('wheel', function(e) {
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    if (e.deltaY < 0) {
+      zoomLevel = Math.min(ZOOM_MAX, zoomLevel + ZOOM_STEP);
+    } else {
+      zoomLevel = Math.max(ZOOM_MIN, zoomLevel - ZOOM_STEP);
+    }
+    applyZoom();
+  }, { passive: false });
+}
+
+/**
+ * Apply the current zoom level to the active view.
+ */
+function applyZoom() {
+  var wrapper = document.getElementById('design-canvas-wrapper');
+  var sheetView = document.getElementById('sheet-view');
+  var label = document.getElementById('btn-zoom-reset');
+
+  wrapper.style.transform = 'scale(' + zoomLevel + ')';
+  wrapper.style.transformOrigin = 'center center';
+
+  sheetView.style.transform = 'scale(' + zoomLevel + ')';
+  sheetView.style.transformOrigin = 'top center';
+
+  label.textContent = Math.round(zoomLevel * 100) + '%';
+}
 
 /**
  * Reset the current design to factory defaults.
