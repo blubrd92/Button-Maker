@@ -71,7 +71,7 @@ body {
   flex-shrink: 0;
   box-shadow: 2px 0 12px rgba(0,0,0,0.06);
   position: relative;
-  transition: width var(--transition-normal), margin var(--transition-normal);
+  transition: width var(--transition-normal), margin var(--transition-normal), padding var(--transition-normal);
   z-index: 5;
   overflow-y: auto;
   padding: 16px;
@@ -79,8 +79,12 @@ body {
 
 .sidebar.collapsed {
   width: 0;
+  padding-left: 0;
+  padding-right: 0;
   margin-left: -1px;
   overflow: hidden;
+  border-right: none;
+  box-shadow: none;
 }
 
 #canvas-area {

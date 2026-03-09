@@ -217,17 +217,17 @@ function generateSolidTemplates() {
  */
 function colorName(hex) {
   const names = {
-    "#222222": "Black",
-    "#4A90D9": "Blue",
-    "#2ECC71": "Green",
-    "#E74C3C": "Red",
-    "#F39C12": "Amber",
-    "#9B59B6": "Purple",
-    "#1ABC9C": "Teal",
-    "#E91E63": "Pink",
-    "#34495E": "Slate"
+    "#1A202C": "Black",
+    "#2B6CB0": "Blue",
+    "#C53030": "Red",
+    "#2F855A": "Green",
+    "#D69E2E": "Amber",
+    "#6B46C1": "Purple",
+    "#D53F8C": "Pink",
+    "#2C7A7B": "Teal",
+    "#718096": "Slate"
   };
-  return names[hex] || hex;
+  return names[hex.toUpperCase()] || hex;
 }
 
 // ─── Template manager functions ────────────────────────────────────
