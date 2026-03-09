@@ -212,32 +212,13 @@ function applyOverridesToDesign(design, overrides) {
 }
 
 /**
- * Initialize PDF export: wire up the export button and modal controls.
+ * Initialize PDF export: wire up the export button.
  * Called once from app.js.
  */
 function initPDFExport() {
   const exportBtn = document.getElementById('btn-export');
-  const modal = document.getElementById('export-modal');
-  const cancelBtn = document.getElementById('btn-export-cancel');
-  const confirmBtn = document.getElementById('btn-export-confirm');
-  const backdrop = modal.querySelector('.modal-backdrop');
-
-  // Open modal
+  
   exportBtn.addEventListener('click', function() {
-    modal.classList.remove('hidden');
-  });
-
-  // Close modal
-  cancelBtn.addEventListener('click', function() {
-    modal.classList.add('hidden');
-  });
-  backdrop.addEventListener('click', function() {
-    modal.classList.add('hidden');
-  });
-
-  // Generate PDF
-  confirmBtn.addEventListener('click', function() {
     generatePDF({ layout: CONFIG.currentLayout, showCutGuides: true });
-    modal.classList.add('hidden');
   });
 }

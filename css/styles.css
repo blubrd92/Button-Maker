@@ -657,65 +657,6 @@ input[type="checkbox"], input[type="radio"] {
   border-radius: var(--radius);
 }
 
-/* Modal */
-
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 2000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-backdrop {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(45, 55, 72, 0.6);
-  backdrop-filter: blur(4px);
-}
-
-.modal-content {
-  position: relative;
-  background: white;
-  border-radius: var(--radius-lg);
-  width: 90%;
-  max-width: 480px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.modal-content h2 {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--secondary-color);
-  padding: 16px 20px;
-  margin: 0;
-  border-bottom: 1px solid var(--border-color);
-  background: linear-gradient(to bottom, #fafbfc, #f5f6f8);
-}
-
-.modal-body {
-  padding: 24px 20px;
-}
-
-.modal-footer {
-  padding: 16px 20px;
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  background: #fff;
-}
-
 /* Upload Label */
 
 .upload-label {
