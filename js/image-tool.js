@@ -247,27 +247,14 @@ function constrainImagePosition(imgEl) {
  */
 function renderImagePlaceholder(ctx, cx, cy, scale) {
   if (currentDesign.imageElements.length > 0) return;
-  var btnSize = getCurrentButtonSize();
-  var safeRadius = (btnSize.safeDiameter / 2) * scale;
 
   ctx.save();
-  // Light dashed circle
-  ctx.beginPath();
-  ctx.arc(cx, cy, safeRadius * 0.75, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-  ctx.lineWidth = 1.5;
-  ctx.setLineDash([6, 4]);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  // Hint text
+  // Hint text only — no extra circle
   ctx.fillStyle = 'rgba(0,0,0,0.25)';
   ctx.font = '14px Roboto, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('Click to add image', cx, cy - 10);
-  ctx.font = '11px Roboto, sans-serif';
-  ctx.fillText('Safe image area', cx, cy + 10);
+  ctx.fillText('Click to add image', cx, cy);
   ctx.restore();
 }
 

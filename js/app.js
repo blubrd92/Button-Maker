@@ -453,22 +453,6 @@ var GRADIENT_PRESETS = {
       { offset: 0.75, color: '#62AEDC' },
       { offset: 1,    color: '#203856' }
     ]
-  },
-  sunset: {
-    label: 'Sunset',
-    stops: [
-      { offset: 0,    color: '#FF512F' },
-      { offset: 0.5,  color: '#F09819' },
-      { offset: 1,    color: '#FFED00' }
-    ]
-  },
-  ocean: {
-    label: 'Ocean',
-    stops: [
-      { offset: 0,    color: '#2E3192' },
-      { offset: 0.5,  color: '#1BFFFF' },
-      { offset: 1,    color: '#2E3192' }
-    ]
   }
 };
 

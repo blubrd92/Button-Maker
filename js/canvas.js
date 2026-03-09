@@ -59,6 +59,22 @@ function initDesignCanvas() {
   canvas.addEventListener('mousemove', handleCanvasMouseMove);
   canvas.addEventListener('mouseup', handleCanvasMouseUp);
 
+  // Pointer cursor when hovering the safe zone (image upload target)
+  canvas.addEventListener('mousemove', function(e) {
+    if (isDragging || isResizing) return;
+    var rect = canvas.getBoundingClientRect();
+    var cssToCanvas = canvas.width / rect.width;
+    var mouseX = (e.clientX - rect.left) * cssToCanvas;
+    var mouseY = (e.clientY - rect.top) * cssToCanvas;
+    var cx = CONFIG.CANVAS_DISPLAY_DIAMETER / 2;
+    var cy = CONFIG.CANVAS_DISPLAY_DIAMETER / 2;
+    var scale = getCanvasScale();
+    var btnSize = getCurrentButtonSize();
+    var safeRadius = (btnSize.safeDiameter / 2) * scale;
+    var dist = Math.sqrt(Math.pow(mouseX - cx, 2) + Math.pow(mouseY - cy, 2));
+    canvas.style.cursor = dist <= safeRadius ? 'pointer' : 'default';
+  });
+
   // Initial render
   renderDesignCanvas();
 }
