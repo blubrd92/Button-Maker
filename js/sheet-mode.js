@@ -483,9 +483,9 @@ function updateSheetSelectionUI() {
     resetBtn.style.visibility = hasOverrides ? 'visible' : 'hidden';
   }
 
-  // Only show Apply buttons if EXACTLY ONE button is selected AND it has custom overrides
+  // Show Apply buttons if EXACTLY ONE button is selected, regardless of overrides
   if (applyColBtn && applyRowBtn) {
-    if (selectedSlots.length === 1 && hasOverrides) {
+    if (selectedSlots.length === 1) {
       applyColBtn.style.visibility = 'visible';
       applyRowBtn.style.visibility = 'visible';
     } else {
@@ -519,6 +519,7 @@ function applyOverrideToSelectedSlots(property, value) {
     }
   });
   refreshSheetThumbnails();
+  updateSheetSelectionUI();
 }
 
 function refreshSheetThumbnails() {

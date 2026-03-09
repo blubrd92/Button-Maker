@@ -104,6 +104,9 @@ function initTopLevelControls() {
     } else {
       currentDesign.libraryInfoText = e.target.value;
       renderDesignCanvas();
+      if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
+        refreshSheetThumbnails();
+      }
     }
   });
 
@@ -113,6 +116,9 @@ function initTopLevelControls() {
     } else {
       currentDesign.libraryInfoColor = e.target.value;
       renderDesignCanvas();
+      if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
+        refreshSheetThumbnails();
+      }
     }
   });
 
