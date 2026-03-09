@@ -16,12 +16,12 @@
  *
  * Gotchas:
  * - All measurements are in inches internally. jsPDF uses points (72 per inch).
- *   Convert with inchesToPoints(). Do NOT use pixel values here.
+ * Convert with inchesToPoints(). Do NOT use pixel values here.
  * - The curved library info text must be re-rendered at print DPI,
- *   not copied from the screen canvas, or it will be blurry.
+ * not copied from the screen canvas, or it will be blurry.
  * - Each button is rendered to an offscreen canvas at 300 DPI, then
- *   placed as an image in the PDF. This ensures text and curves
- *   are crisp at print resolution.
+ * placed as an image in the PDF. This ensures text and curves
+ * are crisp at print resolution.
  */
 
 /**
@@ -222,11 +222,8 @@ function initPDFExport() {
   const confirmBtn = document.getElementById('btn-export-confirm');
   const backdrop = modal.querySelector('.modal-backdrop');
 
-  // Open modal — sync radio with current layout
+  // Open modal
   exportBtn.addEventListener('click', function() {
-    var radio = document.querySelector('input[name="layout"][value="' + CONFIG.currentLayout + '"]');
-    if (radio) radio.checked = true;
-    // Pre-fill filename display if sheet name exists
     modal.classList.remove('hidden');
   });
 
@@ -240,18 +237,8 @@ function initPDFExport() {
 
   // Generate PDF
   confirmBtn.addEventListener('click', function() {
-    var layoutRadio = document.querySelector('input[name="layout"]:checked');
-    var layout = layoutRadio ? layoutRadio.value : CONFIG.currentLayout;
     var showCutGuides = document.getElementById('export-cut-guides').checked;
-
-    // Sync layout choice back to the top bar toggle
-    if (typeof setLayout === 'function') {
-      setLayout(layout);
-    } else {
-      CONFIG.currentLayout = layout;
-    }
-
-    generatePDF({ layout: layout, showCutGuides: showCutGuides });
+    generatePDF({ layout: CONFIG.currentLayout, showCutGuides: showCutGuides });
     modal.classList.add('hidden');
   });
 }

@@ -24,39 +24,46 @@
 </head>
 <body>
 
-  <header id="top-bar">
-    <div class="top-bar-left">
+  <nav class="app-header" role="banner">
+    <div class="header-left">
       <div class="logo">
         <i class="fa-solid fa-circle-dot" aria-hidden="true"></i> Button Maker
       </div>
       <span class="header-credit">Designed by Javier Morales</span>
-      <span class="button-size-label" id="button-size-label">1.5" Button</span>
     </div>
-    <div class="top-bar-center">
-      <div class="mode-toggle" id="mode-toggle">
-        <button class="mode-btn active" data-mode="design" id="btn-design-mode">Design Mode</button>
-        <button class="mode-btn" data-mode="sheet" id="btn-sheet-mode">Sheet Mode</button>
-      </div>
-    </div>
-    <div class="top-bar-right">
-      <button class="btn" id="btn-load"><i class="fa-solid fa-upload" aria-hidden="true"></i> Load</button>
-      <button class="btn" id="btn-save"><i class="fa-solid fa-download" aria-hidden="true"></i> Save</button>
+
+    <div class="header-actions">
+      <button id="btn-load" class="btn btn-header" title="Load Saved Designs">
+        <i class="fa-solid fa-upload" aria-hidden="true"></i> Load
+      </button>
+      <button id="btn-save" class="btn btn-header" title="Save Current Designs">
+        <i class="fa-solid fa-download" aria-hidden="true"></i> Save
+      </button>
       <input type="file" id="import-designs-file" accept=".buttons,.json" hidden>
-      <button class="btn btn-danger-outline" id="btn-reset"><i class="fa-solid fa-rotate-right" aria-hidden="true"></i> Reset</button>
-      <button class="btn btn-primary" id="btn-export"><i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Export PDF</button>
+      <button id="btn-reset" class="btn btn-header" title="Reset to Blank">
+        <i class="fa-solid fa-rotate-right" aria-hidden="true"></i> Reset
+      </button>
+      <button id="btn-export" class="btn btn-header-primary" title="Generate PDF">
+        <i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Export PDF
+      </button>
     </div>
-  </header>
+  </nav>
 
   <main id="main-content">
 
     <aside id="left-sidebar" class="sidebar">
-      <div class="sidebar-section" id="layout-section">
-        <h2 class="sidebar-heading">Layout</h2>
-        <div class="layout-toggle-sidebar" id="layout-toggle">
-          <button class="layout-btn active" data-layout="15" id="btn-layout-15">15 per sheet</button>
-          <button class="layout-btn" data-layout="20" id="btn-layout-20">20 per sheet</button>
+      
+      <div class="sidebar-section" id="general-section" style="display: flex; justify-content: space-between; align-items: center;">
+        <span class="button-size-label" id="button-size-label">1.5" Button</span>
+        <div class="mode-toggle" id="mode-toggle">
+          <button class="mode-btn active" data-mode="design" id="btn-design-mode">Design</button>
+          <button class="mode-btn" data-mode="sheet" id="btn-sheet-mode">Sheet</button>
         </div>
-        <div class="control-row" style="margin-top:10px;">
+      </div>
+
+      <div class="sidebar-section" id="layout-section">
+        <h2 class="sidebar-heading">View</h2>
+        <div class="control-row">
           <label class="toggle-label">
             <input type="checkbox" id="toggle-guides" checked>
             <span>Show Guides</span>
@@ -67,7 +74,7 @@
       <div class="sidebar-section" id="background-section">
         <h2 class="sidebar-heading">Background</h2>
         <div class="color-swatches" id="bg-color-swatches">
-          </div>
+        </div>
         <div class="color-picker-row">
           <label for="bg-color-picker">Custom:</label>
           <input type="color" id="bg-color-picker" value="#FFFFFF" class="color-input">
@@ -82,7 +89,7 @@
           <div class="control-row" style="margin-top:6px;">
             <label>Presets:</label>
             <div class="gradient-presets" id="gradient-presets">
-              </div>
+            </div>
           </div>
           <div class="color-picker-row" style="margin-top:8px;">
             <label for="bg-gradient-color2">To:</label>
@@ -135,7 +142,7 @@
         <canvas id="design-canvas"></canvas>
       </div>
       <div id="sheet-view" class="sheet-view hidden">
-        </div>
+      </div>
     </section>
 
   </main>
@@ -145,19 +152,9 @@
     <div class="modal-content">
       <h2>Export PDF</h2>
       <div class="modal-body">
-        <div class="control-row">
-          <label>Layout:</label>
-          <div class="layout-options">
-            <label class="radio-label">
-              <input type="radio" name="layout" value="15" checked>
-              Standard (15 per sheet) - 3x5
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="layout" value="20">
-              Max (20 per sheet) - 4x5
-            </label>
-          </div>
-        </div>
+        <p style="font-size: 0.95rem; color: var(--text-light); margin-bottom: 16px;">
+          This will generate a ready-to-print US Letter sized PDF with 20 buttons.
+        </p>
         <div class="control-row">
           <label class="toggle-label">
             <input type="checkbox" id="export-cut-guides" checked>

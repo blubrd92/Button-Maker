@@ -6,7 +6,7 @@
  * Responsibilities:
  * - Initializing all modules in the correct order
  * - Wiring up top-level UI controls (guides toggle, background pickers,
- *   layout toggle, sheet name)
+ * layout toggle, sheet name)
  * - Managing application-level state (current mode, etc.)
  * - Save/Load/Reset via top bar buttons
  *
@@ -60,14 +60,6 @@ function initTopLevelControls() {
   document.getElementById('toggle-guides').addEventListener('change', function(e) {
     CONFIG.guidesVisible = e.target.checked;
     renderDesignCanvas();
-  });
-
-  // -- Layout toggle (15 / 20 per sheet) --
-  document.getElementById('btn-layout-15').addEventListener('click', function() {
-    setLayout('15');
-  });
-  document.getElementById('btn-layout-20').addEventListener('click', function() {
-    setLayout('20');
   });
 
   // -- Background color swatches --
@@ -483,29 +475,6 @@ function resetDesignToDefaults() {
 
   // Apply blank template and re-render
   applyTemplate('blank');
-}
-
-/**
- * Switch between 15 and 20 per-sheet layout.
- */
-function setLayout(layoutKey) {
-  CONFIG.currentLayout = layoutKey;
-
-  // Update toggle button states
-  document.getElementById('btn-layout-15').classList.toggle('active', layoutKey === '15');
-  document.getElementById('btn-layout-20').classList.toggle('active', layoutKey === '20');
-
-  // Also sync the export modal radio
-  var radio = document.querySelector('input[name="layout"][value="' + layoutKey + '"]');
-  if (radio) radio.checked = true;
-
-  // Reset sheet slots so they match the new layout
-  sheetSlots = [];
-
-  // If in sheet mode, re-render
-  if (currentMode === 'sheet') {
-    renderSheetView();
-  }
 }
 
 /**
