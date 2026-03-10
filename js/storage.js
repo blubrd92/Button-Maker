@@ -17,6 +17,7 @@
  */
 
 const STORAGE_KEY = 'buttonmaker_designs';
+const AUTOSAVE_KEY = 'buttonmaker_autosave';
 
 /**
  * Get all saved designs from localStorage.
@@ -127,11 +128,18 @@ function deserializeDesign(data) {
     if (!element.imageScale) {
       element.imageScale = 1.0;
     }
+    // Push element BEFORE setting src — base64 data URLs can fire onload
+    // synchronously, so the element must already be in the array when
+    // renderDesignCanvas runs.
+    currentDesign.imageElements.push(element);
     img.onload = function() {
       renderDesignCanvas();
+      
+      if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
+        refreshSheetThumbnails();
+      }
     };
     img.src = imgData.dataUrl;
-    currentDesign.imageElements.push(element);
   });
 
   // Restore library info (brand text)
@@ -142,21 +150,32 @@ function deserializeDesign(data) {
   document.getElementById('bg-color-picker').value = currentDesign.backgroundColor;
   document.getElementById('library-info-input').value = currentDesign.libraryInfoText;
   document.getElementById('library-info-color').value = currentDesign.libraryInfoColor;
-  updateBackgroundSwatches(currentDesign.backgroundColor);
+  if (typeof updateBackgroundSwatches === 'function') {
+    updateBackgroundSwatches(currentDesign.backgroundColor);
+  }
 
   // Update gradient UI
   var grad = currentDesign.gradient;
-  document.getElementById('toggle-gradient').checked = !!grad;
-  document.getElementById('gradient-controls').classList.toggle('hidden', !grad);
+  var toggleGradient = document.getElementById('toggle-gradient');
+  var gradientControls = document.getElementById('gradient-controls');
+  if (toggleGradient) toggleGradient.checked = !!grad;
+  if (gradientControls) gradientControls.classList.toggle('hidden', !grad);
   if (grad) {
-    document.getElementById('bg-gradient-color2').value = grad.color2 || '#4A90D9';
-    document.getElementById('gradient-direction').value = grad.direction || 'top-bottom';
+    var color2 = document.getElementById('bg-gradient-color2');
+    var dir = document.getElementById('gradient-direction');
+    if (color2) color2.value = grad.color2 || '#4A90D9';
+    if (dir) dir.value = grad.direction || 'top-bottom';
+    if (grad.preset) {
+      document.querySelectorAll('.gradient-preset-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.preset === grad.preset);
+      });
+    }
   }
 
   // Deselect any element
   selectedElement = null;
   if (typeof hideTextControls === 'function') hideTextControls();
-  hideImageControls();
+  if (typeof hideImageControls === 'function') hideImageControls();
 }
 
 /**
@@ -179,7 +198,7 @@ function quickSave() {
     slots: slotsData
   };
 
-  // Save to localStorage
+  // Save to localStorage (best-effort; may fail if quota exceeded)
   var designs = getSavedDesigns();
   // Overwrite if same name exists
   var existingIdx = -1;
@@ -194,10 +213,14 @@ function quickSave() {
   } else {
     designs.push(savedDesign);
   }
-  saveDesignsToStorage(designs);
+  try {
+    saveDesignsToStorage(designs);
+  } catch (e) {
+    console.warn('localStorage save failed (quota?):', e);
+  }
 
-  // Also export as .buttons file download
-  exportDesignsToJSON();
+  // Always export as .buttons file download, even if localStorage failed
+  exportDesignsFromArray(designs);
 }
 
 /**
@@ -215,7 +238,19 @@ function quickLoad() {
 function exportDesignsToJSON() {
   var designs = getSavedDesigns();
   if (designs.length === 0) {
-    alert('No designs to export. Save a design first.');
+    showNotification('No designs to export. Save a design first.');
+    return;
+  }
+  exportDesignsFromArray(designs);
+}
+
+/**
+ * Export a given array of designs as a .buttons file download.
+ * @param {Array} designs - Array of design objects to export
+ */
+function exportDesignsFromArray(designs) {
+  if (!designs || designs.length === 0) {
+    showNotification('No designs to export. Save a design first.');
     return;
   }
   var payload = {
@@ -256,7 +291,7 @@ function importDesignsFromJSON(file) {
       } else if (raw && Array.isArray(raw.designs)) {
         incoming = raw.designs;
       } else {
-        alert('Invalid file format.');
+        showNotification('Invalid file format.');
         return;
       }
 
@@ -275,7 +310,7 @@ function importDesignsFromJSON(file) {
       });
 
       if (incoming.length === 0) {
-        alert('No valid designs found in file.');
+        showNotification('No valid designs found in file.');
         return;
       }
 
@@ -300,25 +335,123 @@ function importDesignsFromJSON(file) {
       var first = incoming[0];
       CONFIG.currentButtonSize = first.buttonSize || '1.5';
       CONFIG.currentLayout = first.layout || '15';
+      if (typeof sheetName !== 'undefined') {
+        sheetName = first.name || '';
+      }
       deserializeDesign(first.master);
       if (typeof setSheetSlots === 'function' && first.slots) {
         setSheetSlots(first.slots);
       }
       
-      // Update the active view based on current mode
-      if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof renderSheetView === 'function') {
+      // Force the active view over to sheet mode
+      currentMode = 'sheet';
+      var btnDesign = document.getElementById('btn-design-mode');
+      var btnSheet = document.getElementById('btn-sheet-mode');
+      if (btnDesign) btnDesign.classList.remove('active');
+      if (btnSheet) btnSheet.classList.add('active');
+
+      if (typeof enterSheetMode === 'function') {
+        enterSheetMode();
+      } else if (typeof renderSheetView === 'function') {
+        var wrapper = document.getElementById('design-canvas-wrapper');
+        var sheetView = document.getElementById('sheet-view');
+        if (wrapper) wrapper.classList.add('hidden');
+        if (sheetView) sheetView.classList.remove('hidden');
         renderSheetView();
-      } else {
-        renderDesignCanvas();
       }
 
-      alert('Imported ' + incoming.length + ' design(s).');
+      // Automatically apply "Fit to Page" math since we are loading a new sheet
+      if (typeof computeFitToScreenZoom === 'function' && typeof setCurrentZoom === 'function' && typeof applyZoom === 'function') {
+        setCurrentZoom(computeFitToScreenZoom());
+        applyZoom();
+      }
+
+      showNotification('Buttons loaded.', 'success');
+      
+      // Force an auto-save right now so it survives an immediate window close
+      autoSaveState();
     } catch (err) {
       console.error('Import failed:', err);
-      alert('Import failed: invalid JSON.');
+      showNotification('Could not load this file. Is it a valid .buttons file?');
     }
   };
   reader.readAsText(file);
+}
+
+// ─── Auto-save (session recovery) ────────────────────────────────
+
+/**
+ * Auto-save current working state to localStorage.
+ * Called on beforeunload and periodically.
+ */
+function autoSaveState() {
+  try {
+    var state = {
+      savedAt: new Date().toISOString(),
+      master: serializeDesign(currentDesign),
+      buttonSize: CONFIG.currentButtonSize,
+      layout: CONFIG.currentLayout,
+      sheetName: (typeof sheetName === 'string') ? sheetName : '',
+      slots: (typeof getSheetSlots === 'function') ? getSheetSlots() : [],
+      mode: currentMode
+    };
+    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(state));
+  } catch (e) {
+    // Storage full or unavailable — silently ignore
+  }
+}
+
+/**
+ * Restore auto-saved state if present. Returns true if restored.
+ */
+function autoRestoreState() {
+  try {
+    var raw = localStorage.getItem(AUTOSAVE_KEY);
+    if (!raw) return false;
+    var state = JSON.parse(raw);
+    if (!state || !state.master) return false;
+
+    CONFIG.currentButtonSize = state.buttonSize || '1.5';
+    CONFIG.currentLayout = state.layout || '15';
+    if (typeof sheetName !== 'undefined') {
+      sheetName = state.sheetName || '';
+      var nameInput = document.getElementById('sheet-name-input');
+      if (nameInput) nameInput.value = sheetName;
+    }
+
+    deserializeDesign(state.master);
+
+    if (typeof setSheetSlots === 'function' && state.slots) {
+      setSheetSlots(state.slots);
+    }
+
+    // Force mode switch if they left off in Sheet view
+    if (state.mode === 'sheet') {
+      currentMode = 'sheet';
+      var btnDesign = document.getElementById('btn-design-mode');
+      var btnSheet = document.getElementById('btn-sheet-mode');
+      if (btnDesign) btnDesign.classList.remove('active');
+      if (btnSheet) btnSheet.classList.add('active');
+      
+      if (typeof renderSheetView === 'function') {
+        var wrapper = document.getElementById('design-canvas-wrapper');
+        var sheetView = document.getElementById('sheet-view');
+        if (wrapper) wrapper.classList.add('hidden');
+        if (sheetView) sheetView.classList.remove('hidden');
+        renderSheetView();
+        
+        if (typeof computeFitToScreenZoom === 'function' && typeof setCurrentZoom === 'function' && typeof applyZoom === 'function') {
+          setCurrentZoom(computeFitToScreenZoom());
+          applyZoom();
+        }
+      }
+    }
+
+    return true;
+  } catch (e) {
+    console.warn('Auto-restore failed:', e);
+    return false;
+  }
 }
 
 /**
@@ -339,4 +472,7 @@ function initStorage() {
       e.target.value = '';
     }
   });
+
+  // Auto-save on window close / navigate away
+  window.addEventListener('beforeunload', autoSaveState);
 }

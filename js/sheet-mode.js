@@ -167,11 +167,8 @@ function renderSheetView() {
   var controlsDiv = document.createElement('div');
   controlsDiv.id = 'sheet-controls';
   controlsDiv.className = 'sheet-controls-bar';
-  // Adjust spacing so it looks natural above the grid, allow content to fit its width naturally
-  controlsDiv.style.marginTop = '0';
-  controlsDiv.style.marginBottom = '20px';
   controlsDiv.style.width = 'fit-content';
-  controlsDiv.style.margin = '0 auto 20px auto';
+  controlsDiv.style.margin = '0 auto 8px auto';
   
   // Use visibility: hidden so the buttons reserve space and prevent layout shifts
   controlsDiv.innerHTML =
@@ -179,8 +176,9 @@ function renderSheetView() {
       '<button class="btn btn-small" id="btn-sheet-reset" style="visibility:hidden;">Reset Selected to Main</button>' +
       '<button class="btn btn-small" id="btn-apply-col" style="visibility:hidden;">Apply to Col</button>' +
       '<button class="btn btn-small" id="btn-apply-row" style="visibility:hidden;">Apply to Row</button>' +
+      '<button class="btn btn-small" id="btn-make-main" style="visibility:hidden;">Make Main Design</button>' +
     '</div>' +
-    '<span id="sheet-selection-info" style="font-size:12px; color:#888; display:flex; align-items:center;">Click to select \u00b7 Double-click to edit</span>';
+    '<span id="sheet-selection-info" style="font-size:12px; font-weight:bold; color:#888; display:flex; align-items:center;">Click to select \u00b7 Ctrl/Cmd-click for multiple \u00b7 Double-click to edit</span>';
   
   container.appendChild(controlsDiv);
 
@@ -223,11 +221,92 @@ function renderSheetView() {
     updateSheetSelectionUI();
   });
 
+  document.getElementById('btn-make-main').addEventListener('click', function() {
+    if (selectedSlots.length !== 1) return;
+    var sourceIdx = selectedSlots[0];
+    var overrides = getSlotOverrides(sourceIdx);
+
+    if (Object.keys(overrides).length === 0) return;
+
+    if (overrides.backgroundColor !== undefined) {
+      currentDesign.backgroundColor = overrides.backgroundColor;
+      currentDesign.templateDraw = null;
+      currentDesign.templateId = null;
+    }
+    
+    if (overrides.gradient !== undefined) {
+      currentDesign.gradient = overrides.gradient;
+      if (overrides.gradient && typeof buildGradientDrawFunction === 'function') {
+        currentDesign.templateDraw = buildGradientDrawFunction(overrides.gradient);
+      } else {
+        currentDesign.templateDraw = null;
+      }
+    }
+    
+    if (overrides.templateId !== undefined) {
+      currentDesign.templateId = overrides.templateId;
+      if (typeof getTemplateById === 'function') {
+        var t = getTemplateById(overrides.templateId);
+        currentDesign.templateDraw = t ? t.draw : null;
+      }
+    }
+    
+    if (overrides.libraryInfoText !== undefined) {
+      currentDesign.libraryInfoText = overrides.libraryInfoText;
+    }
+    
+    if (overrides.libraryInfoColor !== undefined) {
+      currentDesign.libraryInfoColor = overrides.libraryInfoColor;
+    }
+    
+    if (overrides.textElements !== undefined) {
+      currentDesign.textElements = JSON.parse(JSON.stringify(overrides.textElements));
+    }
+    
+    if (overrides.imageElements !== undefined) {
+      currentDesign.imageElements = [];
+      overrides.imageElements.forEach(function(imgData) {
+        var img = new Image();
+        var element = Object.assign({}, imgData, { imgObj: img });
+        currentDesign.imageElements.push(element);
+        img.onload = function() {
+          refreshSheetThumbnails();
+        };
+        img.src = imgData.dataUrl;
+      });
+    }
+
+    setSlotOverrides(sourceIdx, {});
+    refreshSheetThumbnails();
+    updateSheetSelectionUI();
+    updateSheetOverridePanel();
+
+    document.getElementById('bg-color-picker').value = currentDesign.backgroundColor;
+    if (typeof updateBackgroundSwatches === 'function') updateBackgroundSwatches(currentDesign.backgroundColor);
+    document.getElementById('library-info-input').value = currentDesign.libraryInfoText;
+    document.getElementById('library-info-color').value = currentDesign.libraryInfoColor;
+    
+    var grad = currentDesign.gradient;
+    var gradToggle = document.getElementById('toggle-gradient');
+    if (gradToggle) gradToggle.checked = !!grad;
+    
+    var gradControls = document.getElementById('gradient-controls');
+    if (gradControls) gradControls.classList.toggle('hidden', !grad);
+    
+    if (grad) {
+      var color2Input = document.getElementById('bg-gradient-color2');
+      if (color2Input) color2Input.value = grad.color2 || '#4A90D9';
+      
+      var dirInput = document.getElementById('gradient-direction');
+      if (dirInput) dirInput.value = grad.direction || 'top-bottom';
+    }
+  });
+
 
   // -- Compute pixel scaling for the page representation --
-  // Target page height in CSS pixels (fit nicely in viewport)
-  var pageDisplayHeight = 680;
-  var pageScale = pageDisplayHeight / CONFIG.PAGE.height; // px per inch
+  // Use 96 CSS px per inch so the preview matches actual US Letter paper size
+  var pageScale = 96; // 1 CSS inch = 96px (standard)
+  var pageDisplayHeight = CONFIG.PAGE.height * pageScale;
   var pageDisplayWidth = CONFIG.PAGE.width * pageScale;
 
   // Button thumbnail size in CSS px (based on cutDiameter scaled to page)
@@ -283,12 +362,6 @@ function renderSheetView() {
     rowHeader.dataset.row = row;
     rowHeader.addEventListener('click', (function(r) {
       return function(e) { handleRowHeaderClick(r, e); };
-    })(row));
-    rowHeader.addEventListener('dblclick', (function(r) {
-      return function(e) {
-        e.stopPropagation();
-        editGroupInDesignMode('row', r);
-      };
     })(row));
     rowHeaderCol.appendChild(rowHeader);
   }
@@ -469,11 +542,12 @@ function updateSheetSelectionUI() {
   var resetBtn = document.getElementById('btn-sheet-reset');
   var applyColBtn = document.getElementById('btn-apply-col');
   var applyRowBtn = document.getElementById('btn-apply-row');
+  var makeMainBtn = document.getElementById('btn-make-main');
   
   if (info) {
     info.textContent = selectedSlots.length > 0
-      ? selectedSlots.length + ' button(s) selected \u00b7 Double-click to edit'
-      : 'Click to select \u00b7 Double-click to edit';
+      ? selectedSlots.length + ' button(s) selected \u00b7 Ctrl/Cmd-click for multiple \u00b7 Double-click to edit'
+      : 'Click to select \u00b7 Ctrl/Cmd-click for multiple \u00b7 Double-click to edit';
   }
   
   var hasOverrides = selectedSlots.some(function(idx) { return slotHasOverrides(idx); });
@@ -483,14 +557,16 @@ function updateSheetSelectionUI() {
     resetBtn.style.visibility = hasOverrides ? 'visible' : 'hidden';
   }
 
-  // Show Apply buttons if EXACTLY ONE button is selected, regardless of overrides
-  if (applyColBtn && applyRowBtn) {
+  // Show Apply/Make Main buttons if EXACTLY ONE button is selected
+  if (applyColBtn && applyRowBtn && makeMainBtn) {
     if (selectedSlots.length === 1) {
       applyColBtn.style.visibility = 'visible';
       applyRowBtn.style.visibility = 'visible';
+      makeMainBtn.style.visibility = slotHasOverrides(selectedSlots[0]) ? 'visible' : 'hidden';
     } else {
       applyColBtn.style.visibility = 'hidden';
       applyRowBtn.style.visibility = 'hidden';
+      makeMainBtn.style.visibility = 'hidden';
     }
   }
 }
@@ -743,6 +819,30 @@ function finishSlotEdit() {
   var currentGradJson = currentDesign.gradient ? JSON.stringify(currentDesign.gradient) : null;
   if (mainGradJson !== currentGradJson) {
     overrides.gradient = currentDesign.gradient ? JSON.parse(currentGradJson) : null;
+  }
+
+  // Template
+  if (currentDesign.templateId !== _mainDesignBackup.templateId) {
+    overrides.templateId = currentDesign.templateId;
+  }
+
+  // Text elements - compare by serialized content
+  var mainTextsJson = JSON.stringify(_mainDesignBackup.textElements.map(function(t) {
+    return { text: t.text, fontFamily: t.fontFamily, fontSize: t.fontSize, color: t.color,
+      bold: t.bold, italic: t.italic, align: t.align, x: t.x, y: t.y,
+      curved: t.curved, curveRadius: t.curveRadius };
+  }));
+  var currentTextsJson = JSON.stringify(currentDesign.textElements.map(function(t) {
+    return { text: t.text, fontFamily: t.fontFamily, fontSize: t.fontSize, color: t.color,
+      bold: t.bold, italic: t.italic, align: t.align, x: t.x, y: t.y,
+      curved: t.curved, curveRadius: t.curveRadius };
+  }));
+  if (mainTextsJson !== currentTextsJson) {
+    overrides.textElements = currentDesign.textElements.map(function(t) {
+      return { text: t.text, fontFamily: t.fontFamily, fontSize: t.fontSize, color: t.color,
+        bold: t.bold, italic: t.italic, align: t.align, x: t.x, y: t.y,
+        curved: t.curved, curveRadius: t.curveRadius };
+    });
   }
 
   // Image elements - compare by dataUrl, position, scale

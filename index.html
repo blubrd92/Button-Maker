@@ -24,6 +24,8 @@
 </head>
 <body>
 
+  <div id="notification-area" role="alert" aria-live="polite"></div>
+
   <nav class="app-header" role="banner">
     <div class="header-left">
       <div class="header-panel-toggles">
@@ -67,7 +69,7 @@
           </div>
         </div>
         <p style="font-size: 14px; color: var(--text-light); line-height: 1.4; margin: 0;">
-          Use <strong>Design</strong> to edit the main button. Click <strong>Sheet</strong> to see the final PDF layout and to customize individual buttons. For best results, print PDF at Default or Fit to Paper scale.
+          Use <strong>Design</strong> to edit the main button. Click <strong>Sheet</strong> to see the final PDF layout and to customize individual buttons. For best results, print PDF at <strong>Default</strong> or <strong>Fit</strong> to Paper scale.
         </p>
       </div>
 
@@ -138,10 +140,30 @@
     </aside>
 
     <section id="canvas-area">
-      <div id="design-canvas-wrapper" class="canvas-wrapper">
-        <canvas id="design-canvas"></canvas>
+      <div id="canvas-area-scroll">
+        <div id="design-canvas-wrapper" class="canvas-wrapper">
+          <div style="text-align: center; font-size: 14px; color: #888; margin-bottom: 12px; line-height: 1.4;">
+            <strong>Dashed Blue:</strong> Main Image Area &middot; <strong>Solid Black:</strong> Visible Edge (Background color & brand text) &middot; <strong>Dashed Red:</strong> Cut Line<br>
+            <em>The dimmed area shows the paper wrap. These lines and the dimming will not print on the final sheet.</em>
+          </div>
+          <canvas id="design-canvas"></canvas>
+        </div>
+        <div id="sheet-view" class="sheet-view hidden">
+        </div>
       </div>
-      <div id="sheet-view" class="sheet-view hidden">
+      <div class="zoom-controls" id="zoom-controls">
+        <button id="btn-zoom-fit" class="zoom-btn" title="Fit to Page" aria-label="Fit to page">
+          <i class="fa-solid fa-expand" aria-hidden="true"></i>
+        </button>
+        <button id="btn-zoom-out" class="zoom-btn" title="Zoom Out" aria-label="Zoom out">
+          <i class="fa-solid fa-minus" aria-hidden="true"></i>
+        </button>
+        <button id="btn-zoom-reset" class="zoom-label" title="Reset Zoom" aria-label="Reset zoom">
+          100%
+        </button>
+        <button id="btn-zoom-in" class="zoom-btn" title="Zoom In" aria-label="Zoom in">
+          <i class="fa-solid fa-plus" aria-hidden="true"></i>
+        </button>
       </div>
     </section>
 
