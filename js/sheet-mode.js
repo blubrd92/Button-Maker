@@ -178,7 +178,7 @@ function renderSheetView() {
       '<button class="btn btn-small" id="btn-apply-row" style="visibility:hidden;">Apply to Row</button>' +
       '<button class="btn btn-small" id="btn-make-main" style="visibility:hidden;">Make Main Design</button>' +
     '</div>' +
-    '<span id="sheet-selection-info" style="font-size:12px; color:#888; display:flex; align-items:center;">Click to select \u00b7 Double-click to edit</span>';
+    '<span id="sheet-selection-info" style="font-size:12px; font-weight:bold; color:#888; display:flex; align-items:center;">Click to select \u00b7 Ctrl/Cmd-click for multiple \u00b7 Double-click to edit</span>';
   
   container.appendChild(controlsDiv);
 
@@ -363,12 +363,6 @@ function renderSheetView() {
     rowHeader.addEventListener('click', (function(r) {
       return function(e) { handleRowHeaderClick(r, e); };
     })(row));
-    rowHeader.addEventListener('dblclick', (function(r) {
-      return function(e) {
-        e.stopPropagation();
-        editGroupInDesignMode('row', r);
-      };
-    })(row));
     rowHeaderCol.appendChild(rowHeader);
   }
 
@@ -552,8 +546,8 @@ function updateSheetSelectionUI() {
   
   if (info) {
     info.textContent = selectedSlots.length > 0
-      ? selectedSlots.length + ' button(s) selected \u00b7 Double-click to edit'
-      : 'Click to select \u00b7 Double-click to edit';
+      ? selectedSlots.length + ' button(s) selected \u00b7 Ctrl/Cmd-click for multiple \u00b7 Double-click to edit'
+      : 'Click to select \u00b7 Ctrl/Cmd-click for multiple \u00b7 Double-click to edit';
   }
   
   var hasOverrides = selectedSlots.some(function(idx) { return slotHasOverrides(idx); });
