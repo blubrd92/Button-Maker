@@ -17,6 +17,7 @@
  */
 
 const STORAGE_KEY = 'buttonmaker_designs';
+const AUTOSAVE_KEY = 'buttonmaker_autosave';
 
 /**
  * Get all saved designs from localStorage.
@@ -149,15 +150,21 @@ function deserializeDesign(data) {
   document.getElementById('bg-color-picker').value = currentDesign.backgroundColor;
   document.getElementById('library-info-input').value = currentDesign.libraryInfoText;
   document.getElementById('library-info-color').value = currentDesign.libraryInfoColor;
-  updateBackgroundSwatches(currentDesign.backgroundColor);
+  if (typeof updateBackgroundSwatches === 'function') {
+    updateBackgroundSwatches(currentDesign.backgroundColor);
+  }
 
   // Update gradient UI
   var grad = currentDesign.gradient;
-  document.getElementById('toggle-gradient').checked = !!grad;
-  document.getElementById('gradient-controls').classList.toggle('hidden', !grad);
+  var toggleGradient = document.getElementById('toggle-gradient');
+  var gradientControls = document.getElementById('gradient-controls');
+  if (toggleGradient) toggleGradient.checked = !!grad;
+  if (gradientControls) gradientControls.classList.toggle('hidden', !grad);
   if (grad) {
-    document.getElementById('bg-gradient-color2').value = grad.color2 || '#4A90D9';
-    document.getElementById('gradient-direction').value = grad.direction || 'top-bottom';
+    var color2 = document.getElementById('bg-gradient-color2');
+    var dir = document.getElementById('gradient-direction');
+    if (color2) color2.value = grad.color2 || '#4A90D9';
+    if (dir) dir.value = grad.direction || 'top-bottom';
     if (grad.preset) {
       document.querySelectorAll('.gradient-preset-btn').forEach(function(btn) {
         btn.classList.toggle('active', btn.dataset.preset === grad.preset);
@@ -168,7 +175,7 @@ function deserializeDesign(data) {
   // Deselect any element
   selectedElement = null;
   if (typeof hideTextControls === 'function') hideTextControls();
-  hideImageControls();
+  if (typeof hideImageControls === 'function') hideImageControls();
 }
 
 /**
@@ -346,8 +353,10 @@ function importDesignsFromJSON(file) {
       if (typeof enterSheetMode === 'function') {
         enterSheetMode();
       } else if (typeof renderSheetView === 'function') {
-        document.getElementById('design-canvas-wrapper').classList.add('hidden');
-        document.getElementById('sheet-view').classList.remove('hidden');
+        var wrapper = document.getElementById('design-canvas-wrapper');
+        var sheetView = document.getElementById('sheet-view');
+        if (wrapper) wrapper.classList.add('hidden');
+        if (sheetView) sheetView.classList.remove('hidden');
         renderSheetView();
       }
 
@@ -358,6 +367,9 @@ function importDesignsFromJSON(file) {
       }
 
       showNotification('Buttons loaded.', 'success');
+      
+      // Force an auto-save right now so it survives an immediate window close
+      autoSaveState();
     } catch (err) {
       console.error('Import failed:', err);
       showNotification('Could not load this file. Is it a valid .buttons file?');
@@ -367,8 +379,6 @@ function importDesignsFromJSON(file) {
 }
 
 // ─── Auto-save (session recovery) ────────────────────────────────
-
-var AUTOSAVE_KEY = 'buttonmaker_autosave';
 
 /**
  * Auto-save current working state to localStorage.
@@ -413,6 +423,28 @@ function autoRestoreState() {
 
     if (typeof setSheetSlots === 'function' && state.slots) {
       setSheetSlots(state.slots);
+    }
+
+    // Force mode switch if they left off in Sheet view
+    if (state.mode === 'sheet') {
+      currentMode = 'sheet';
+      var btnDesign = document.getElementById('btn-design-mode');
+      var btnSheet = document.getElementById('btn-sheet-mode');
+      if (btnDesign) btnDesign.classList.remove('active');
+      if (btnSheet) btnSheet.classList.add('active');
+      
+      if (typeof renderSheetView === 'function') {
+        var wrapper = document.getElementById('design-canvas-wrapper');
+        var sheetView = document.getElementById('sheet-view');
+        if (wrapper) wrapper.classList.add('hidden');
+        if (sheetView) sheetView.classList.remove('hidden');
+        renderSheetView();
+        
+        if (typeof computeFitToScreenZoom === 'function' && typeof setCurrentZoom === 'function' && typeof applyZoom === 'function') {
+          setCurrentZoom(computeFitToScreenZoom());
+          applyZoom();
+        }
+      }
     }
 
     return true;
