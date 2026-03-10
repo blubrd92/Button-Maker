@@ -2,39 +2,18 @@
  * config.js
  *
  * Central configuration for the Button Maker application.
- *
- * Responsibilities:
- * - Defines all button size dimensions (cut, face, safe zone)
- * - Stores layout math for PDF tiling (margins, gutters, rows/columns)
- * - Lists available fonts, colors, and template metadata
- * - Provides coordinate conversion helpers (inches <-> pixels)
- *
- * Depends on:
- * - Nothing. This file has no dependencies.
- *
- * Gotchas:
- * - All physical measurements are in INCHES. Screen display uses pixels.
- * - DPI (300) is used for print rendering. SCREEN_DPI is for canvas display.
- * - To add a new button size, add an entry to BUTTON_SIZES and optionally
- * update SHEET_LAYOUTS if the new size needs different tiling.
  */
 
 const CONFIG = {
 
-  // ─── Print resolution ───────────────────────────────────────────────
-  DPI: 300,             // Print resolution (dots per inch)
-  SCREEN_DPI: 96,       // Standard screen resolution for reference
+  // Print resolution
+  DPI: 300,             
+  SCREEN_DPI: 96,       
 
-  // ─── Canvas display settings ────────────────────────────────────────
-  // The editing canvas shows the button much larger than actual size.
-  // CANVAS_DISPLAY_DIAMETER is the on-screen pixel diameter for editing.
+  // Canvas display settings
   CANVAS_DISPLAY_DIAMETER: 500,
 
-  // ─── Button size definitions ────────────────────────────────────────
-  // Each size stores physical dimensions in inches.
-  // cutDiameter:  where the paper is physically cut
-  // faceDiameter: the visible front of the finished button
-  // safeDiameter: all important content must stay inside this circle
+  // Button size definitions
   BUTTON_SIZES: {
     "1.5": {
       label: '1.5"',
@@ -42,39 +21,42 @@ const CONFIG = {
       faceDiameter: 1.5,      // inches
       safeDiameter: 1.35,     // inches
       primary: true
+    },
+    "1.25": {
+      label: '1.25"',
+      cutDiameter: 1.629,     // inches
+      faceDiameter: 1.25,     // inches
+      safeDiameter: 1.15,     // inches
+      primary: false
     }
   },
 
-  // The currently selected button size key (matches a key in BUTTON_SIZES)
   currentButtonSize: "1.5",
 
-  // ─── Page & layout constants (US Letter) ────────────────────────────
+  // Page & layout constants (US Letter)
   PAGE: {
     width: 8.5,           // inches
     height: 11,           // inches
     margin: 0.25          // inches on all sides
   },
 
-  // ─── Sheet tiling layouts ───────────────────────────────────────────
+  // Sheet tiling layouts mapped directly to button size
   SHEET_LAYOUTS: {
-    "15": {
-      label: "Standard (15)",
-      description: "3 columns × 5 rows — generous gutters for easy cutting",
-      cols: 3,
-      rows: 5
-    },
-    "20": {
-      label: "Max (20)",
-      description: "4 columns × 5 rows — tighter fit, maximizes yield",
+    "1.5": {
+      label: "Standard (20)",
+      description: "4 columns x 5 rows",
       cols: 4,
       rows: 5
+    },
+    "1.25": {
+      label: "Standard (24)",
+      description: "4 columns x 6 rows",
+      cols: 4,
+      rows: 6
     }
   },
 
-  // Currently selected layout key - Defaulted to 20
-  currentLayout: "20",
-
-  // ─── Guide circle styles ───────────────────────────────────────────
+  // Guide circle styles
   GUIDES: {
     cutLine: {
       color: "rgba(255, 80, 80, 0.6)",
@@ -99,7 +81,7 @@ const CONFIG = {
   guidesVisible: true,
   WRAP_ZONE_DIM: "rgba(0, 0, 0, 0.08)",
 
-  // ─── Font list ──────────────────────────────────────────────────────
+  // Font list
   FONTS: [
     { family: "Roboto", category: "sans-serif" },
     { family: "Merriweather", category: "serif" },
@@ -111,7 +93,7 @@ const CONFIG = {
     { family: "Lora", category: "serif" }
   ],
 
-  // ─── Color palette ─────────────────────────────────────────────────
+  // Color palette
   COLOR_PALETTE: [
     "#FFFFFF",   // White
     "#1A202C",   // Rich Black
@@ -125,18 +107,18 @@ const CONFIG = {
     "#718096"    // Neutral Slate
   ],
 
-  // ─── Default design values ──────────────────────────────────────────
+  // Default design values
   DEFAULTS: {
     backgroundColor: "#FFFFFF",
     textColor: "#222222",
     fontFamily: "Roboto",
     fontSize: 24,              // points (at print size)
-    libraryInfoFontSize: 4.3,  // points (at print size) — intentionally small
+    libraryInfoFontSize: 4.3,  // points (at print size)
     libraryInfoColor: "#666666",
     libraryInfoText: ""
   },
 
-  // ─── PDF export settings ────────────────────────────────────────────
+  // PDF export settings
   PDF: {
     showCutGuides: true,         // whether to draw cut circles on the PDF
     pointsPerInch: 72            // jsPDF uses 72 points per inch
@@ -144,14 +126,14 @@ const CONFIG = {
 };
 
 
-// ─── Helper functions ───────────────────────────────────────────────
+// Helper functions
 
 function getCurrentButtonSize() {
   return CONFIG.BUTTON_SIZES[CONFIG.currentButtonSize];
 }
 
 function getCurrentLayout() {
-  return CONFIG.SHEET_LAYOUTS[CONFIG.currentLayout];
+  return CONFIG.SHEET_LAYOUTS[CONFIG.currentButtonSize];
 }
 
 function inchesToPrintPixels(inches) {
@@ -171,22 +153,15 @@ function inchesToCanvasPixels(inches) {
   return inches * getCanvasScale();
 }
 
-function computeSheetGutters(layoutKey) {
-  const layout = CONFIG.SHEET_LAYOUTS[layoutKey || CONFIG.currentLayout];
+function computeSheetGutters() {
+  const layout = getCurrentLayout();
   const size = getCurrentButtonSize();
   const usableWidth = CONFIG.PAGE.width - 2 * CONFIG.PAGE.margin;
   const usableHeight = CONFIG.PAGE.height - 2 * CONFIG.PAGE.margin;
+  
   const rowGutter = (usableHeight - layout.rows * size.cutDiameter) / (layout.rows - 1);
-
-  var columnGutter, columnInset;
-  if (layout.cols === 3) {
-    var totalWhitespace = usableWidth - layout.cols * size.cutDiameter;
-    columnGutter = totalWhitespace / 4;
-    columnInset = columnGutter;
-  } else {
-    columnGutter = (usableWidth - layout.cols * size.cutDiameter) / (layout.cols - 1);
-    columnInset = 0;
-  }
+  const columnGutter = (usableWidth - layout.cols * size.cutDiameter) / (layout.cols - 1);
+  const columnInset = 0;
 
   return { columnGutter, rowGutter, columnInset, usableWidth, usableHeight };
 }

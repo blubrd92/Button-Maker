@@ -2,26 +2,9 @@
  * app.js
  *
  * Main application initialization and top-level event wiring.
- *
- * Responsibilities:
- * - Initializing all modules in the correct order
- * - Wiring up top-level UI controls (guides toggle, background pickers,
- * layout toggle, sheet name)
- * - Managing application-level state (current mode, etc.)
- * - Save/Load/Reset via top bar buttons
- *
- * Depends on:
- * - config.js (all configuration)
- * - canvas.js (initDesignCanvas, renderDesignCanvas)
- * - templates.js (applyTemplate, getTemplateById)
- * - text-tool.js (rendering functions - text tool UI removed)
- * - image-tool.js (initImageTool)
- * - storage.js (initStorage)
- * - pdf-export.js (initPDFExport)
- * - sheet-mode.js (initSheetMode)
  */
 
-// ─── Notification System ─────────────────────────────────────────
+// Notification System
 
 var _notificationTimeout = null;
 var NOTIFICATION_DURATION_MS = 3000;
@@ -87,8 +70,6 @@ function initApp() {
   if (!restored) {
     applyTemplate('blank');
   } else {
-    // Render immediately so the restored design (background, text, etc.)
-    // shows right away. Images will re-render via their onload callbacks.
     renderDesignCanvas();
   }
 
@@ -99,7 +80,7 @@ function initApp() {
  * Wire up controls that don't belong to a specific module.
  */
 function initTopLevelControls() {
-  // -- Sidebar toggle --
+  // Sidebar toggle
   var toggleBtn = document.getElementById('toggle-sidebar-btn');
   var sidebar = document.getElementById('left-sidebar');
   if (toggleBtn && sidebar) {
@@ -108,8 +89,24 @@ function initTopLevelControls() {
       toggleBtn.classList.toggle('active');
     });
   }
+  
+  // Button Size Selection
+  var sizeSelect = document.getElementById('button-size-select');
+  if (sizeSelect) {
+    sizeSelect.addEventListener('change', function(e) {
+      CONFIG.currentButtonSize = e.target.value;
+      
+      if (currentMode === 'sheet') {
+        sheetZoom = computeFitToScreenZoom(); 
+        renderSheetView();
+        applyZoom();
+      } else {
+        renderDesignCanvas();
+      }
+    });
+  }
 
-  // -- Background color swatches --
+  // Background color swatches
   var swatchContainer = document.getElementById('bg-color-swatches');
   CONFIG.COLOR_PALETTE.forEach(function(color) {
     var swatch = document.createElement('div');
@@ -122,10 +119,7 @@ function initTopLevelControls() {
     }
 
     swatch.addEventListener('click', function() {
-      // Clear preset highlights since we are picking a manual color
       clearGradientPresetHighlight();
-      
-      // Update the picker value first so the gradient function reads the new color
       document.getElementById('bg-color-picker').value = color;
       handleBackgroundColorChange(color);
     });
@@ -133,14 +127,13 @@ function initTopLevelControls() {
     swatchContainer.appendChild(swatch);
   });
 
-  // -- Background custom color picker --
+  // Background custom color picker
   document.getElementById('bg-color-picker').addEventListener('input', function(e) {
-    // Clear preset highlights since we are picking a manual color
     clearGradientPresetHighlight();
     handleBackgroundColorChange(e.target.value);
   });
 
-  // -- Brand text (formerly library info) --
+  // Brand text 
   document.getElementById('library-info-input').addEventListener('input', function(e) {
     if (currentMode === 'sheet' && selectedSlots.length > 0) {
       applyOverrideToSelectedSlots('libraryInfoText', e.target.value);
@@ -165,7 +158,7 @@ function initTopLevelControls() {
     }
   });
 
-  // -- Mode toggle tracking --
+  // Mode toggle tracking
   document.getElementById('btn-design-mode').addEventListener('click', function() {
     currentMode = 'design';
     applyZoom();
@@ -176,7 +169,7 @@ function initTopLevelControls() {
     applyZoom();
   });
 
-  // -- Make canvas safe-zone clickable for image upload --
+  // Make canvas safe-zone clickable for image upload
   document.getElementById('design-canvas').addEventListener('click', function(e) {
     if (lastMouseDownHitElement) return;
 
@@ -197,7 +190,7 @@ function initTopLevelControls() {
     }
   });
 
-  // -- Gradient toggle --
+  // Gradient toggle
   renderGradientPresets();
   document.getElementById('toggle-gradient').addEventListener('change', function(e) {
     var gradientControls = document.getElementById('gradient-controls');
@@ -215,9 +208,7 @@ function initTopLevelControls() {
       } else {
         currentDesign.gradient = null;
         currentDesign.templateDraw = null;
-        // Clear active preset highlight
         clearGradientPresetHighlight();
-        // Re-apply solid bg color
         handleBackgroundColorChange(currentDesign.backgroundColor);
       }
     }
@@ -225,7 +216,6 @@ function initTopLevelControls() {
 
   document.getElementById('bg-gradient-color2').addEventListener('input', function() {
     if (document.getElementById('toggle-gradient').checked) {
-      // Manual color change clears preset
       clearGradientPresetHighlight();
       if (currentMode === 'sheet' && selectedSlots.length > 0) {
         applyGradientOverrideToSelectedSlots();
@@ -242,9 +232,7 @@ function initTopLevelControls() {
         return;
       }
       
-      // Changing direction re-applies current gradient (preset or custom)
       if (currentDesign.gradient && currentDesign.gradient.stops) {
-        // Re-apply with new direction but keep stops
         var direction = document.getElementById('gradient-direction').value;
         currentDesign.gradient.direction = direction;
         currentDesign.templateDraw = buildGradientDrawFunction(currentDesign.gradient);
@@ -258,14 +246,14 @@ function initTopLevelControls() {
     }
   });
 
-  // -- Zoom controls --
+  // Zoom controls
   initZoomControls();
 
-  // -- Reset button --
+  // Reset button
   document.getElementById('btn-reset').addEventListener('click', function() {
     if (!confirm('Reset to defaults? This will clear the current design and all saved designs from browser storage.')) return;
     localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem('buttonmaker_autosave'); // Wipes the session recovery data
+    localStorage.removeItem('buttonmaker_autosave'); 
     resetDesignToDefaults();
     sheetSlots = [];
     selectedSlots = [];
@@ -287,7 +275,7 @@ function applyGradientFromUI() {
   currentDesign.gradient = {
     color1: color1,
     color2: color2,
-    stops: null,  // null = use color1/color2; array = multi-stop
+    stops: null,  
     direction: direction,
     preset: null
   };
@@ -316,7 +304,6 @@ function applyGradientOverrideToSelectedSlots() {
     preset: null
   };
 
-  // If there's an active preset, grab its stops
   var activePresetBtn = document.querySelector('.gradient-preset-btn.active');
   if (activePresetBtn) {
     var presetName = activePresetBtn.dataset.preset;
@@ -340,12 +327,10 @@ function applyGradientPreset(presetName) {
 
   var direction = document.getElementById('gradient-direction').value;
 
-  // Update the two color pickers to reflect the first/last stops
   document.getElementById('bg-color-picker').value = preset.stops[0].color;
   document.getElementById('bg-gradient-color2').value = preset.stops[preset.stops.length - 1].color;
   updateBackgroundSwatches(preset.stops[0].color);
 
-  // Highlight active preset
   document.querySelectorAll('.gradient-preset-btn').forEach(function(btn) {
     btn.classList.toggle('active', btn.dataset.preset === presetName);
   });
@@ -373,9 +358,6 @@ function applyGradientPreset(presetName) {
 
 /**
  * Build a draw function for a gradient specification.
- * Supports both 2-color (color1/color2) and multi-stop (stops array) gradients.
- * @param {Object} grad - { color1, color2, stops, direction }
- * @returns {Function} draw(ctx, cx, cy, radius)
  */
 function buildGradientDrawFunction(grad) {
   return function(ctx, cx, cy, radius) {
@@ -389,7 +371,6 @@ function buildGradientDrawFunction(grad) {
     } else if (grad.direction === 'bottom-top') {
       gradient = ctx.createLinearGradient(cx, cy + radius, cx, cy - radius);
     } else {
-      // top-bottom (default)
       gradient = ctx.createLinearGradient(cx, cy - radius, cx, cy + radius);
     }
 
@@ -437,14 +418,12 @@ function renderGradientPresets() {
     btn.dataset.preset = key;
     btn.title = preset.label;
 
-    // Build a CSS linear-gradient for the swatch preview
     var cssStops = preset.stops.map(function(s) {
       return s.color + ' ' + Math.round(s.offset * 100) + '%';
     }).join(', ');
     btn.style.background = 'linear-gradient(to right, ' + cssStops + ')';
 
     btn.addEventListener('click', function() {
-      // Ensure gradient toggle is on
       document.getElementById('toggle-gradient').checked = true;
       document.getElementById('gradient-controls').classList.remove('hidden');
       applyGradientPreset(key);
@@ -454,9 +433,7 @@ function renderGradientPresets() {
   });
 }
 
-// --- Gradient Presets ---------------------------------------------
-// All presets use evenly-spaced stops with smooth blending between colors.
-// Colors have been adjusted to be richer and slightly darker pastels.
+// Gradient Presets 
 var GRADIENT_PRESETS = {
   rainbow: {
     label: 'Rainbow',
@@ -611,12 +588,10 @@ function initZoomControls() {
   }, { passive: false });
 }
 
-/** Get the zoom level for the active view. */
 function getCurrentZoom() {
   return currentMode === 'sheet' ? sheetZoom : designZoom;
 }
 
-/** Set the zoom level for the active view. */
 function setCurrentZoom(val) {
   if (currentMode === 'sheet') {
     sheetZoom = val;
@@ -625,12 +600,6 @@ function setCurrentZoom(val) {
   }
 }
 
-/**
- * Apply the current zoom level to the active view.
- * Uses CSS zoom (not transform: scale) so the element's layout box
- * scales with it, allowing overflow: auto to show scrollbars when
- * zoomed content exceeds the viewport.
- */
 function applyZoom() {
   var wrapper = document.getElementById('design-canvas-wrapper');
   var sheetView = document.getElementById('sheet-view');
@@ -639,7 +608,6 @@ function applyZoom() {
   wrapper.style.zoom = designZoom;
   sheetView.style.zoom = sheetZoom;
 
-  // Reset scroll when zoom is back at 100%
   var scrollContainer = document.getElementById('canvas-area-scroll');
   var activeZoom = getCurrentZoom();
   if (activeZoom === 1.0 && scrollContainer) {
@@ -650,10 +618,6 @@ function applyZoom() {
   label.textContent = Math.round(activeZoom * 100) + '%';
 }
 
-/**
- * Compute the zoom level that fits the sheet page within the scroll container.
- * Returns a value clamped to [ZOOM_MIN, ZOOM_MAX].
- */
 function computeFitToScreenZoom() {
   var scrollContainer = document.getElementById('canvas-area-scroll');
   if (!scrollContainer) return 1.0;
@@ -661,13 +625,11 @@ function computeFitToScreenZoom() {
   var containerW = scrollContainer.clientWidth;
   var containerH = scrollContainer.clientHeight;
 
-  // Page dimensions at zoom=1 (96 CSS px/inch)
   var pageW = CONFIG.PAGE.width * 96;
   var pageH = CONFIG.PAGE.height * 96;
 
-  // Accurately account for chrome if we are in sheet mode
-  var extraW = 80;  // row headers + padding
-  var extraH = 40;  // base padding (20 top + 20 bottom)
+  var extraW = 80;  
+  var extraH = 40;  
 
   if (currentMode === 'sheet') {
     var nameRow = document.querySelector('.sheet-name-row');
@@ -682,14 +644,10 @@ function computeFitToScreenZoom() {
   }
 
   var fitZoom = Math.min(containerW / (pageW + extraW), containerH / (pageH + extraH));
-  // Add a 2% buffer so it doesn't rub against the edge of the window
   fitZoom *= 0.98;
   return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, fitZoom));
 }
 
-/**
- * Reset the current design to factory defaults.
- */
 function resetDesignToDefaults() {
   currentDesign.templateId = 'blank';
   currentDesign.backgroundColor = CONFIG.DEFAULTS.backgroundColor;
@@ -700,7 +658,6 @@ function resetDesignToDefaults() {
   currentDesign.libraryInfoText = CONFIG.DEFAULTS.libraryInfoText;
   currentDesign.libraryInfoColor = CONFIG.DEFAULTS.libraryInfoColor;
 
-  // Reset UI controls
   document.getElementById('bg-color-picker').value = CONFIG.DEFAULTS.backgroundColor;
   document.getElementById('library-info-input').value = '';
   document.getElementById('library-info-color').value = CONFIG.DEFAULTS.libraryInfoColor;
@@ -712,14 +669,9 @@ function resetDesignToDefaults() {
   selectedElement = null;
   hideImageControls();
 
-  // Apply blank template and re-render
   applyTemplate('blank');
 }
 
-/**
- * Handle background color change. In design mode, updates the master.
- * In sheet mode with selected slots, applies as overrides.
- */
 function handleBackgroundColorChange(color) {
   if (currentMode === 'sheet' && selectedSlots.length > 0) {
     applyOverrideToSelectedSlots('backgroundColor', color);
@@ -728,7 +680,6 @@ function handleBackgroundColorChange(color) {
     }
   } else {
     setBackgroundColor(color);
-    // If gradient is enabled, update color1 and re-apply
     if (document.getElementById('toggle-gradient').checked) {
       applyGradientFromUI();
     }
@@ -736,5 +687,4 @@ function handleBackgroundColorChange(color) {
   updateBackgroundSwatches(color);
 }
 
-// --- Start the app when DOM is ready -------------------------------
 document.addEventListener('DOMContentLoaded', initApp);
