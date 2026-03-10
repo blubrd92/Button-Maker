@@ -61,8 +61,10 @@ Global variables shared across modules:
 - `currentMode` (app.js) — 'design' or 'sheet'
 - `selectedSlots` (sheet-mode.js) — selected slot indices in sheet mode
 - `sheetSlots` (sheet-mode.js) — per-button override data
+- `sheetName` (sheet-mode.js) — user-editable name for the sheet (used as filename)
 - `CONFIG` (config.js) — all configuration
 - `TEMPLATES` (templates.js) — template definitions
+- `GRADIENT_PRESETS` (app.js) — named multi-stop gradient presets
 
 ## Config.js Structure
 
@@ -120,43 +122,58 @@ To add a new template:
 
 ## Save/Load Data Structure
 
-Saved in localStorage under key `buttonmaker_designs` (storage.js):
+Saved in localStorage under key `buttonmaker_designs` and exported as `.buttons` JSON files (storage.js):
 
 ```javascript
+// .buttons file wrapper format
 {
-  designs: [{
-    name: "My Design",                   // user-provided name
-    savedAt: "2024-01-15T10:30:00Z",     // ISO timestamp
-    buttonSize: "1.5",                    // key into CONFIG.BUTTON_SIZES
-    layout: "15",                         // key into CONFIG.SHEET_LAYOUTS
-    master: {
-      templateId: "blank",               // key into TEMPLATES array
-      backgroundColor: "#FFFFFF",
-      textElements: [{
-        text, fontFamily, fontSize, color, bold, italic,
-        align, x, y, curved, curveRadius
-      }],
-      imageElements: [{
-        dataUrl,                          // base64 data URL (NOT imgObj)
-        x, y, width, height,
-        naturalWidth, naturalHeight, lockAspect
-      }],
-      libraryInfoText: "",
-      libraryInfoColor: "#666666"
+  app: "ButtonMaker",
+  version: "1.0",
+  exportedAt: "2024-01-15T10:30:00Z",
+  designs: [/* array of design objects */]
+}
+
+// Each design object
+{
+  name: "My Design",                   // user-provided name (from sheetName)
+  savedAt: "2024-01-15T10:30:00Z",     // ISO timestamp
+  buttonSize: "1.5",                    // key into CONFIG.BUTTON_SIZES
+  layout: "15",                         // key into CONFIG.SHEET_LAYOUTS
+  master: {
+    templateId: "blank",               // key into TEMPLATES array
+    backgroundColor: "#FFFFFF",
+    gradient: {                        // null if no gradient
+      color1, color2,                  // hex endpoint colors
+      stops: [{offset, color}],        // multi-stop array or null
+      direction: "top-bottom",         // gradient direction
+      preset: "rainbow"               // preset name or null
     },
-    slots: [{
-      slotIndex: 0, row: 0, col: 0,
-      overrides: {}                       // sparse: only changed properties
-    }]
+    textElements: [{
+      text, fontFamily, fontSize, color, bold, italic,
+      align, x, y, curved, curveRadius
+    }],
+    imageElements: [{
+      dataUrl,                          // base64 data URL (NOT imgObj)
+      x, y, width, height,
+      naturalWidth, naturalHeight,
+      baseWidth, baseHeight,            // cover-fill baseline dimensions
+      imageScale                        // multiplier >= 1.0
+    }],
+    libraryInfoText: "",
+    libraryInfoColor: "#666666"
+  },
+  slots: [{
+    slotIndex: 0, row: 0, col: 0,
+    overrides: {}                       // sparse: only changed properties
   }]
 }
 ```
 
-**Non-serializable fields**:
-- `templateDraw` (function) → reconstructed from `templateId` via `getTemplateById()`
+**Non-serializable fields** (stripped by `serializeDesign()`, restored by `deserializeDesign()`):
+- `templateDraw` (function) → reconstructed from `templateId` via `getTemplateById()`, or from `gradient` via `buildGradientDrawFunction()`
 - `imgObj` (DOM Image) → reconstructed from `dataUrl` via `new Image()`
 
-Both are restored in `deserializeDesign()` (storage.js).
+**Important**: In `deserializeDesign()`, image elements are pushed to `currentDesign.imageElements` *before* setting `img.src`, because base64 data URLs can fire `onload` synchronously.
 
 ## Rendering Pipeline
 

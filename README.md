@@ -13,12 +13,14 @@ A web-based tool for designing and printing 1.5" pinback buttons. Built for libr
 ## Features
 
 - Template-based design with solid colors, patterns, and gradients
+- Gradient presets including rainbow and pride flag themes
 - Text tool with font selection, sizing, color, and curved text
-- Image upload with positioning and layer ordering
-- Library info curved footer text
-- Save/load designs to browser localStorage
+- Image upload with cover-fill sizing, scale slider, and drag-to-reposition
+- Library info curved footer text (brand text)
+- Save/load designs via `.buttons` files with auto-save session recovery
 - PDF export with 15 or 20 button layouts per US Letter sheet
 - Sheet Mode for per-button customization with master/override system
+- Toast notifications for file load success/error feedback
 
 ## For Developers
 
@@ -30,5 +32,6 @@ No build step required. Pure vanilla JavaScript with HTML5 Canvas.
 
 ## Dependencies
 
-- [jsPDF](https://github.com/parallax/jsPDF) — PDF generation (loaded via CDN)
+- [jsPDF](https://github.com/parallax/jsPDF) — PDF generation (bundled locally with CDN fallback)
 - [Google Fonts](https://fonts.google.com/) — Typography (loaded via CDN)
+- [Font Awesome](https://fontawesome.com/) 6.4.0 — UI icons (loaded via CDN)
