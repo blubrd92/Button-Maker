@@ -559,17 +559,17 @@ function setCurrentZoom(val) {
 
 /**
  * Apply the current zoom level to the active view.
+ * Uses CSS zoom (not transform: scale) so the element's layout box
+ * scales with it, allowing overflow: auto to show scrollbars when
+ * zoomed content exceeds the viewport.
  */
 function applyZoom() {
   var wrapper = document.getElementById('design-canvas-wrapper');
   var sheetView = document.getElementById('sheet-view');
   var label = document.getElementById('btn-zoom-reset');
 
-  wrapper.style.transform = 'scale(' + designZoom + ')';
-  wrapper.style.transformOrigin = 'center center';
-
-  sheetView.style.transform = 'scale(' + sheetZoom + ')';
-  sheetView.style.transformOrigin = 'top center';
+  wrapper.style.zoom = designZoom;
+  sheetView.style.zoom = sheetZoom;
 
   // Reset scroll when zoom is back at 100%
   var scrollContainer = document.getElementById('canvas-area-scroll');
