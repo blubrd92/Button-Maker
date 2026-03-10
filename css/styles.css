@@ -89,20 +89,25 @@ body {
 
 #canvas-area {
   flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+#canvas-area-scroll {
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--bg-color);
-  position: relative;
   overflow: auto;
 }
 
 /* Zoom Controls */
 .zoom-controls {
-  position: sticky;
+  position: absolute;
   bottom: 16px;
-  align-self: flex-end;
-  margin-right: 16px;
+  right: 16px;
   display: flex;
   align-items: center;
   gap: 2px;
