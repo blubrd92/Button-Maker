@@ -265,6 +265,7 @@ function initTopLevelControls() {
   document.getElementById('btn-reset').addEventListener('click', function() {
     if (!confirm('Reset to defaults? This will clear the current design and all saved designs from browser storage.')) return;
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem('buttonmaker_autosave'); // Wipes the session recovery data
     resetDesignToDefaults();
     sheetSlots = [];
     selectedSlots = [];
