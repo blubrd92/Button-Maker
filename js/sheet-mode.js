@@ -167,30 +167,23 @@ function renderSheetView() {
   var controlsDiv = document.createElement('div');
   controlsDiv.id = 'sheet-controls';
   controlsDiv.className = 'sheet-controls-bar';
-  controlsDiv.style.width = 'fit-content';
-  controlsDiv.style.margin = '0 auto 8px auto';
-  
-  // Use visibility: hidden so the buttons reserve space and prevent layout shifts
-  controlsDiv.innerHTML =
-    '<div style="display:flex; gap:8px;">' +
-      '<button class="btn btn-small" id="btn-sheet-reset" style="visibility:hidden;">Reset Selected to Main</button>' +
-      '<button class="btn btn-small" id="btn-apply-col" style="visibility:hidden;">Apply to Col</button>' +
-      '<button class="btn btn-small" id="btn-apply-row" style="visibility:hidden;">Apply to Row</button>' +
-      '<button class="btn btn-small" id="btn-make-main" style="visibility:hidden;">Make Main Design</button>' +
-      '<button class="btn btn-small" id="btn-edit-selected" style="visibility:hidden;">Edit Selected in Design</button>' +
-    '</div>' +
-    '<span id="sheet-selection-info" style="font-size:12px; font-weight:bold; color:#888; display:flex; align-items:center;">Click to select \u00b7 Ctrl/Cmd-click for multiple \u00b7 Double-click to edit</span>';
-  
-  container.appendChild(controlsDiv);
 
-  // Wire up the new controls
-  document.getElementById('btn-sheet-reset').addEventListener('click', function() {
+  controlsDiv.innerHTML =
+    '<button class="btn btn-small" id="btn-sheet-reset" style="display:none;">Reset Selected to Main</button>' +
+    '<button class="btn btn-small" id="btn-apply-col" style="display:none;">Apply to Col</button>' +
+    '<button class="btn btn-small" id="btn-apply-row" style="display:none;">Apply to Row</button>' +
+    '<button class="btn btn-small" id="btn-make-main" style="display:none;">Make Main Design</button>' +
+    '<button class="btn btn-small" id="btn-edit-selected" style="display:none;">Edit Selected in Design</button>' +
+    '<span id="sheet-selection-info" style="font-size:12px; font-weight:bold; color:#888;">Click to select \u00b7 Ctrl/Cmd-click for multiple \u00b7 Double-click to edit</span>';
+
+  // Wire up the new controls (use querySelector on controlsDiv since it's not in the DOM yet)
+  controlsDiv.querySelector('#btn-sheet-reset').addEventListener('click', function() {
     selectedSlots.forEach(function(idx) { resetSlotToMain(idx); });
     renderSheetView();
     updateSheetSelectionUI();
   });
 
-  document.getElementById('btn-apply-col').addEventListener('click', function() {
+  controlsDiv.querySelector('#btn-apply-col').addEventListener('click', function() {
     if (selectedSlots.length !== 1) return;
     var sourceIdx = selectedSlots[0];
     var sourceSlot = sheetSlots[sourceIdx];
@@ -206,7 +199,7 @@ function renderSheetView() {
     updateSheetSelectionUI();
   });
 
-  document.getElementById('btn-apply-row').addEventListener('click', function() {
+  controlsDiv.querySelector('#btn-apply-row').addEventListener('click', function() {
     if (selectedSlots.length !== 1) return;
     var sourceIdx = selectedSlots[0];
     var sourceSlot = sheetSlots[sourceIdx];
@@ -222,7 +215,7 @@ function renderSheetView() {
     updateSheetSelectionUI();
   });
 
-  document.getElementById('btn-make-main').addEventListener('click', function() {
+  controlsDiv.querySelector('#btn-make-main').addEventListener('click', function() {
     if (selectedSlots.length !== 1) return;
     var sourceIdx = selectedSlots[0];
     var overrides = getSlotOverrides(sourceIdx);
@@ -303,7 +296,7 @@ function renderSheetView() {
     }
   });
 
-  document.getElementById('btn-edit-selected').addEventListener('click', function() {
+  controlsDiv.querySelector('#btn-edit-selected').addEventListener('click', function() {
     if (selectedSlots.length < 2) return;
     _editingGroup = { type: 'selection', index: null, slots: selectedSlots.slice() };
     editSlotInDesignMode(selectedSlots[0]);
@@ -326,6 +319,9 @@ function renderSheetView() {
   // -- Outer wrapper with headers --
   var outerWrapper = document.createElement('div');
   outerWrapper.className = 'sheet-outer-wrapper';
+
+  // Controls bar inside the wrapper so it shares the same width
+  outerWrapper.appendChild(controlsDiv);
 
   // -- Column headers above the page (aligned with button centers) --
   var colHeaderRow = document.createElement('div');
@@ -572,27 +568,26 @@ function updateSheetSelectionUI() {
 
   var hasOverrides = selectedSlots.some(function(idx) { return slotHasOverrides(idx); });
 
-  // Use visibility to prevent layout shifts
+  // Show/hide buttons dynamically so they flow to the left of the info text
   if (resetBtn) {
-    resetBtn.style.visibility = hasOverrides ? 'visible' : 'hidden';
+    resetBtn.style.display = hasOverrides ? 'inline-flex' : 'none';
   }
 
-  // Show Apply/Make Main buttons if EXACTLY ONE button is selected
   if (applyColBtn && applyRowBtn && makeMainBtn) {
     if (selectedSlots.length === 1) {
-      applyColBtn.style.visibility = 'visible';
-      applyRowBtn.style.visibility = 'visible';
-      makeMainBtn.style.visibility = slotHasOverrides(selectedSlots[0]) ? 'visible' : 'hidden';
+      applyColBtn.style.display = 'inline-flex';
+      applyRowBtn.style.display = 'inline-flex';
+      makeMainBtn.style.display = slotHasOverrides(selectedSlots[0]) ? 'inline-flex' : 'none';
     } else {
-      applyColBtn.style.visibility = 'hidden';
-      applyRowBtn.style.visibility = 'hidden';
-      makeMainBtn.style.visibility = 'hidden';
+      applyColBtn.style.display = 'none';
+      applyRowBtn.style.display = 'none';
+      makeMainBtn.style.display = 'none';
     }
   }
 
   // Show "Edit Selected in Design" when 2+ buttons are selected
   if (editSelectedBtn) {
-    editSelectedBtn.style.visibility = selectedSlots.length >= 2 ? 'visible' : 'hidden';
+    editSelectedBtn.style.display = selectedSlots.length >= 2 ? 'inline-flex' : 'none';
   }
 }
 

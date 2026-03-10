@@ -719,11 +719,14 @@ input[type="checkbox"], input[type="radio"] {
 .sheet-controls-bar {
   margin-top: 0;
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
+  justify-content: flex-end;
   background: transparent;
-  padding: 4px 12px;
+  padding: 4px 0;
   border-radius: var(--radius);
+  align-self: stretch;
+  margin-bottom: 8px;
 }
 
 /* Upload Label */
