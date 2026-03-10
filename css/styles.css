@@ -99,9 +99,10 @@ body {
 
 /* Zoom Controls */
 .zoom-controls {
-  position: absolute;
+  position: sticky;
   bottom: 16px;
-  right: 16px;
+  align-self: flex-end;
+  margin-right: 16px;
   display: flex;
   align-items: center;
   gap: 2px;
@@ -110,12 +111,12 @@ body {
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
   z-index: 10;
-  padding: 2px;
+  padding: 4px;
 }
 
 .zoom-btn {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border: none;
   background: transparent;
   cursor: pointer;
@@ -124,7 +125,7 @@ body {
   justify-content: center;
   border-radius: var(--radius-sm);
   color: var(--text-color);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   transition: background var(--transition-fast);
 }
 
@@ -133,12 +134,12 @@ body {
 }
 
 .zoom-label {
-  min-width: 48px;
-  height: 32px;
+  min-width: 54px;
+  height: 36px;
   border: none;
   background: transparent;
   cursor: pointer;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--text-light);
   display: flex;
