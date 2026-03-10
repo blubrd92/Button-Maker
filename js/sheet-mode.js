@@ -493,9 +493,9 @@ function renderSheetThumbnail(canvas, slotIndex) {
   // Draw a thin black outline so light-colored buttons are visible
   var cutRadius = (btnSize.cutDiameter / 2) * thumbScale;
   ctx.beginPath();
-  ctx.arc(cx, cy, cutRadius - 0.5, 0, Math.PI * 2);
+  ctx.arc(cx, cy, cutRadius - 1, 0, Math.PI * 2);
   ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 2;
   ctx.stroke();
 }
 
