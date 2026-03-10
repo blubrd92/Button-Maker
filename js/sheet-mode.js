@@ -164,9 +164,16 @@ function renderSheetView() {
   nameInput.addEventListener('input', function(e) { sheetName = e.target.value; });
   
   nameRow.appendChild(nameInput);
+
+  var hintSpan = document.createElement('span');
+  hintSpan.id = 'sheet-selection-info';
+  hintSpan.className = 'sheet-selection-hint';
+  hintSpan.textContent = 'Click to select \u00b7 Ctrl/Cmd-click for multiple \u00b7 Double-click to edit';
+  nameRow.appendChild(hintSpan);
+
   container.appendChild(nameRow);
 
-  // -- Controls (Moved below sheet name, above the grid) --
+  // -- Controls (below sheet name, above the grid) --
   var controlsDiv = document.createElement('div');
   controlsDiv.id = 'sheet-controls';
   controlsDiv.className = 'sheet-controls-bar';
@@ -178,8 +185,7 @@ function renderSheetView() {
     '<button class="btn btn-small" id="btn-make-main" style="display:none;">Make Main Design</button>' +
     '<button class="btn btn-small" id="btn-edit-selected" style="display:none;">Edit Selected in Design</button>' +
     '<button class="btn btn-small" id="btn-copy-design" style="display:none;">Copy Design</button>' +
-    '<button class="btn btn-small" id="btn-paste-design" style="display:none;">Paste Design</button>' +
-    '<span id="sheet-selection-info" style="font-size:12px; font-weight:bold; color:#888;">Click to select \u00b7 Ctrl/Cmd-click for multiple \u00b7 Double-click to edit</span>';
+    '<button class="btn btn-small" id="btn-paste-design" style="display:none;">Paste Design</button>';
 
   // Wire up the new controls (use querySelector on controlsDiv since it's not in the DOM yet)
   controlsDiv.querySelector('#btn-sheet-reset').addEventListener('click', function() {

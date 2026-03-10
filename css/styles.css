@@ -583,9 +583,16 @@ input[type="checkbox"], input[type="radio"] {
 .sheet-name-row {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 8px;
   margin-bottom: 8px;
+}
+
+.sheet-selection-hint {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: bold;
+  color: #888;
+  white-space: nowrap;
 }
 
 .sheet-name-row label {
@@ -719,6 +726,7 @@ input[type="checkbox"], input[type="radio"] {
 .sheet-controls-bar {
   margin-top: 0;
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
   justify-content: flex-end;
@@ -727,7 +735,7 @@ input[type="checkbox"], input[type="radio"] {
   border-radius: var(--radius);
   align-self: stretch;
   margin-bottom: 8px;
-  min-height: 37px; /* Reserve space for .btn-small height to prevent layout shift */
+  min-height: 37px; /* Reserve space for button height to prevent layout shift */
 }
 
 /* Upload Label */
