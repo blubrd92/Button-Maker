@@ -372,107 +372,107 @@ var GRADIENT_PRESETS = {
   rainbow: {
     label: 'Rainbow',
     stops: [
-      { offset: 0,    color: '#FF0000' },
-      { offset: 0.17, color: '#FF8000' },
-      { offset: 0.33, color: '#FFFF00' },
-      { offset: 0.50, color: '#00CC00' },
-      { offset: 0.67, color: '#0000FF' },
-      { offset: 0.83, color: '#4B0082' },
-      { offset: 1,    color: '#8B00FF' }
+      { offset: 0,    color: '#FFB3B3' },
+      { offset: 0.17, color: '#FFD9B3' },
+      { offset: 0.33, color: '#FFFFB3' },
+      { offset: 0.50, color: '#B3FFB3' },
+      { offset: 0.67, color: '#B3B3FF' },
+      { offset: 0.83, color: '#D4B3E6' },
+      { offset: 1,    color: '#E0B3FF' }
     ]
   },
   'pride-progress': {
     label: 'Progress',
     stops: [
-      { offset: 0,    color: '#000000' },
-      { offset: 0.14, color: '#784F17' },
-      { offset: 0.28, color: '#E40303' },
-      { offset: 0.42, color: '#FF8C00' },
-      { offset: 0.57, color: '#FFED00' },
-      { offset: 0.71, color: '#008026' },
-      { offset: 0.85, color: '#004DFF' },
-      { offset: 1,    color: '#750787' }
+      { offset: 0,    color: '#B3B3B3' },
+      { offset: 0.14, color: '#C9B49E' },
+      { offset: 0.28, color: '#F4AAAA' },
+      { offset: 0.42, color: '#FFDBB3' },
+      { offset: 0.57, color: '#FFF8B3' },
+      { offset: 0.71, color: '#B3D9B3' },
+      { offset: 0.85, color: '#B3C8FF' },
+      { offset: 1,    color: '#D4B3E0' }
     ]
   },
   'pride-trans': {
     label: 'Trans',
     stops: [
-      { offset: 0,    color: '#5BCEFA' },
-      { offset: 0.25, color: '#F5A9B8' },
+      { offset: 0,    color: '#BDE8FC' },
+      { offset: 0.25, color: '#FBDCE4' },
       { offset: 0.5,  color: '#FFFFFF' },
-      { offset: 0.75, color: '#F5A9B8' },
-      { offset: 1,    color: '#5BCEFA' }
+      { offset: 0.75, color: '#FBDCE4' },
+      { offset: 1,    color: '#BDE8FC' }
     ]
   },
   'pride-bi': {
     label: 'Bisexual',
     stops: [
-      { offset: 0,    color: '#D60270' },
-      { offset: 0.35, color: '#D60270' },
-      { offset: 0.5,  color: '#9B4F96' },
-      { offset: 0.65, color: '#0038A8' },
-      { offset: 1,    color: '#0038A8' }
+      { offset: 0,    color: '#F0B3CE' },
+      { offset: 0.35, color: '#F0B3CE' },
+      { offset: 0.5,  color: '#D4B8D9' },
+      { offset: 0.65, color: '#B3C4E6' },
+      { offset: 1,    color: '#B3C4E6' }
     ]
   },
   'pride-pan': {
     label: 'Pansexual',
     stops: [
-      { offset: 0,    color: '#FF218C' },
-      { offset: 0.33, color: '#FFD800' },
-      { offset: 0.67, color: '#21B1FF' },
-      { offset: 1,    color: '#21B1FF' }
+      { offset: 0,    color: '#FFB8D9' },
+      { offset: 0.33, color: '#FFF0B3' },
+      { offset: 0.67, color: '#B8DEFF' },
+      { offset: 1,    color: '#B8DEFF' }
     ]
   },
   'pride-nonbinary': {
     label: 'Non-binary',
     stops: [
-      { offset: 0,    color: '#FCF434' },
+      { offset: 0,    color: '#FEFBB3' },
       { offset: 0.33, color: '#FFFFFF' },
-      { offset: 0.67, color: '#9C59D1' },
-      { offset: 1,    color: '#2C2C2C' }
+      { offset: 0.67, color: '#D9BEF0' },
+      { offset: 1,    color: '#C8C8C8' }
     ]
   },
   'pride-lesbian': {
     label: 'Lesbian',
     stops: [
-      { offset: 0,    color: '#D52D00' },
-      { offset: 0.17, color: '#EF7627' },
-      { offset: 0.33, color: '#FF9A56' },
+      { offset: 0,    color: '#F0B3A0' },
+      { offset: 0.17, color: '#F9CEAB' },
+      { offset: 0.33, color: '#FFD9BA' },
       { offset: 0.50, color: '#FFFFFF' },
-      { offset: 0.67, color: '#D162A4' },
-      { offset: 0.83, color: '#B55690' },
-      { offset: 1,    color: '#A30262' }
+      { offset: 0.67, color: '#F0C4DE' },
+      { offset: 0.83, color: '#E6BCD4' },
+      { offset: 1,    color: '#DBA3C8' }
     ]
   },
   'pride-ace': {
     label: 'Asexual',
     stops: [
-      { offset: 0,    color: '#000000' },
-      { offset: 0.33, color: '#A3A3A3' },
+      { offset: 0,    color: '#B3B3B3' },
+      { offset: 0.33, color: '#DCDCDC' },
       { offset: 0.67, color: '#FFFFFF' },
-      { offset: 1,    color: '#800080' }
+      { offset: 1,    color: '#D9B3D9' }
     ]
   },
   'pride-gay': {
     label: 'Gay Men',
     stops: [
-      { offset: 0,    color: '#078D70' },
-      { offset: 0.17, color: '#26CEAA' },
-      { offset: 0.33, color: '#98E8C1' },
+      { offset: 0,    color: '#B3DDD0' },
+      { offset: 0.17, color: '#B8EBD9' },
+      { offset: 0.33, color: '#D4F5E5' },
       { offset: 0.50, color: '#FFFFFF' },
-      { offset: 0.67, color: '#7BADE2' },
-      { offset: 0.83, color: '#5049CC' },
-      { offset: 1,    color: '#3D1A78' }
+      { offset: 0.67, color: '#CCDDEF' },
+      { offset: 0.83, color: '#BDB8E8' },
+      { offset: 1,    color: '#C4B3D9' }
     ]
   },
   'pride-aroace': {
     label: 'Aro/Ace',
     stops: [
-      { offset: 0,    color: '#E28C00' },
-      { offset: 0.25, color: '#ECCD00' },
+      { offset: 0,    color: '#F5D9A8' },
+      { offset: 0.25, color: '#F8ECB3' },
       { offset: 0.50, color: '#FFFFFF' },
-      { offset: 0.75, color: '#62AEDC' },
-      { offset: 1,    color: '#203856' }
+      { offset: 0.75, color: '#C0DDF0' },
+      { offset: 1,    color: '#B3C4D6' }
     ]
   }
 };
