@@ -167,11 +167,8 @@ function renderSheetView() {
   var controlsDiv = document.createElement('div');
   controlsDiv.id = 'sheet-controls';
   controlsDiv.className = 'sheet-controls-bar';
-  // Adjust spacing so it looks natural above the grid, allow content to fit its width naturally
-  controlsDiv.style.marginTop = '0';
-  controlsDiv.style.marginBottom = '20px';
   controlsDiv.style.width = 'fit-content';
-  controlsDiv.style.margin = '0 auto 20px auto';
+  controlsDiv.style.margin = '0 auto 8px auto';
   
   // Use visibility: hidden so the buttons reserve space and prevent layout shifts
   controlsDiv.innerHTML =
@@ -225,9 +222,9 @@ function renderSheetView() {
 
 
   // -- Compute pixel scaling for the page representation --
-  // Target page height in CSS pixels (fit nicely in viewport)
-  var pageDisplayHeight = 680;
-  var pageScale = pageDisplayHeight / CONFIG.PAGE.height; // px per inch
+  // Use 96 CSS px per inch so the preview matches actual US Letter paper size
+  var pageScale = 96; // 1 CSS inch = 96px (standard)
+  var pageDisplayHeight = CONFIG.PAGE.height * pageScale;
   var pageDisplayWidth = CONFIG.PAGE.width * pageScale;
 
   // Button thumbnail size in CSS px (based on cutDiameter scaled to page)
