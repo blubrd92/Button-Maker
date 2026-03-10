@@ -177,6 +177,7 @@ function renderSheetView() {
       '<button class="btn btn-small" id="btn-apply-col" style="visibility:hidden;">Apply to Col</button>' +
       '<button class="btn btn-small" id="btn-apply-row" style="visibility:hidden;">Apply to Row</button>' +
       '<button class="btn btn-small" id="btn-make-main" style="visibility:hidden;">Make Main Design</button>' +
+      '<button class="btn btn-small" id="btn-edit-selected" style="visibility:hidden;">Edit Selected in Design</button>' +
     '</div>' +
     '<span id="sheet-selection-info" style="font-size:12px; font-weight:bold; color:#888; display:flex; align-items:center;">Click to select \u00b7 Ctrl/Cmd-click for multiple \u00b7 Double-click to edit</span>';
   
@@ -302,6 +303,12 @@ function renderSheetView() {
     }
   });
 
+  document.getElementById('btn-edit-selected').addEventListener('click', function() {
+    if (selectedSlots.length < 2) return;
+    _editingGroup = { type: 'selection', index: null, slots: selectedSlots.slice() };
+    editSlotInDesignMode(selectedSlots[0]);
+  });
+
 
   // -- Compute pixel scaling for the page representation --
   // Use 96 CSS px per inch so the preview matches actual US Letter paper size
@@ -362,6 +369,12 @@ function renderSheetView() {
     rowHeader.dataset.row = row;
     rowHeader.addEventListener('click', (function(r) {
       return function(e) { handleRowHeaderClick(r, e); };
+    })(row));
+    rowHeader.addEventListener('dblclick', (function(r) {
+      return function(e) {
+        e.stopPropagation();
+        editGroupInDesignMode('row', r);
+      };
     })(row));
     rowHeaderCol.appendChild(rowHeader);
   }
@@ -490,7 +503,10 @@ function handleColumnHeaderClick(col, event) {
       if (!selectedSlots.includes(idx)) selectedSlots.push(idx);
     });
   } else {
-    selectedSlots = columnSlots;
+    // Toggle: if this column is already exactly selected, deselect all
+    var alreadySelected = selectedSlots.length === columnSlots.length &&
+      columnSlots.every(function(idx) { return selectedSlots.includes(idx); });
+    selectedSlots = alreadySelected ? [] : columnSlots;
   }
   updateSheetSelectionUI();
   updateSheetOverridePanel();
@@ -507,7 +523,10 @@ function handleRowHeaderClick(row, event) {
       if (!selectedSlots.includes(idx)) selectedSlots.push(idx);
     });
   } else {
-    selectedSlots = rowSlots;
+    // Toggle: if this row is already exactly selected, deselect all
+    var alreadySelected = selectedSlots.length === rowSlots.length &&
+      rowSlots.every(function(idx) { return selectedSlots.includes(idx); });
+    selectedSlots = alreadySelected ? [] : rowSlots;
   }
   updateSheetSelectionUI();
   updateSheetOverridePanel();
@@ -543,15 +562,16 @@ function updateSheetSelectionUI() {
   var applyColBtn = document.getElementById('btn-apply-col');
   var applyRowBtn = document.getElementById('btn-apply-row');
   var makeMainBtn = document.getElementById('btn-make-main');
-  
+  var editSelectedBtn = document.getElementById('btn-edit-selected');
+
   if (info) {
     info.textContent = selectedSlots.length > 0
       ? selectedSlots.length + ' button(s) selected \u00b7 Ctrl/Cmd-click for multiple \u00b7 Double-click to edit'
       : 'Click to select \u00b7 Ctrl/Cmd-click for multiple \u00b7 Double-click to edit';
   }
-  
+
   var hasOverrides = selectedSlots.some(function(idx) { return slotHasOverrides(idx); });
-  
+
   // Use visibility to prevent layout shifts
   if (resetBtn) {
     resetBtn.style.visibility = hasOverrides ? 'visible' : 'hidden';
@@ -568,6 +588,11 @@ function updateSheetSelectionUI() {
       applyRowBtn.style.visibility = 'hidden';
       makeMainBtn.style.visibility = 'hidden';
     }
+  }
+
+  // Show "Edit Selected in Design" when 2+ buttons are selected
+  if (editSelectedBtn) {
+    editSelectedBtn.style.visibility = selectedSlots.length >= 2 ? 'visible' : 'hidden';
   }
 }
 
@@ -766,8 +791,10 @@ function showSlotEditBanner(slotIndex) {
   if (_editingGroup) {
     if (_editingGroup.type === 'row') {
       label = 'Row ' + (_editingGroup.index + 1) + ' (' + _editingGroup.slots.length + ' buttons)';
-    } else {
+    } else if (_editingGroup.type === 'col') {
       label = 'Column ' + String.fromCharCode(65 + _editingGroup.index) + ' (' + _editingGroup.slots.length + ' buttons)';
+    } else {
+      label = _editingGroup.slots.length + ' selected buttons';
     }
   } else {
     label = 'button ' + String.fromCharCode(65 + col) + (row + 1);
