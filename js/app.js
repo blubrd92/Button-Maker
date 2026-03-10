@@ -53,8 +53,11 @@ function initApp() {
   // 6. Wire up top-level controls
   initTopLevelControls();
 
-  // 7. Apply default template (blank white)
-  applyTemplate('blank');
+  // 7. Restore auto-saved session, or apply default template
+  var restored = autoRestoreState();
+  if (!restored) {
+    applyTemplate('blank');
+  }
 
   console.log('Button Maker initialized.');
 }
@@ -539,7 +542,15 @@ function applyZoom() {
   sheetView.style.transform = 'scale(' + sheetZoom + ')';
   sheetView.style.transformOrigin = 'top center';
 
-  label.textContent = Math.round(getCurrentZoom() * 100) + '%';
+  // Reset scroll when zoom is back at 100%
+  var scrollContainer = document.getElementById('canvas-area-scroll');
+  var activeZoom = getCurrentZoom();
+  if (activeZoom === 1.0 && scrollContainer) {
+    scrollContainer.scrollTop = 0;
+    scrollContainer.scrollLeft = 0;
+  }
+
+  label.textContent = Math.round(activeZoom * 100) + '%';
 }
 
 /**

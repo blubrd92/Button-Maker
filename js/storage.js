@@ -329,6 +329,62 @@ function importDesignsFromJSON(file) {
   reader.readAsText(file);
 }
 
+// ─── Auto-save (session recovery) ────────────────────────────────
+
+var AUTOSAVE_KEY = 'buttonmaker_autosave';
+
+/**
+ * Auto-save current working state to localStorage.
+ * Called on beforeunload and periodically.
+ */
+function autoSaveState() {
+  try {
+    var state = {
+      savedAt: new Date().toISOString(),
+      master: serializeDesign(currentDesign),
+      buttonSize: CONFIG.currentButtonSize,
+      layout: CONFIG.currentLayout,
+      sheetName: (typeof sheetName === 'string') ? sheetName : '',
+      slots: (typeof getSheetSlots === 'function') ? getSheetSlots() : [],
+      mode: currentMode
+    };
+    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(state));
+  } catch (e) {
+    // Storage full or unavailable — silently ignore
+  }
+}
+
+/**
+ * Restore auto-saved state if present. Returns true if restored.
+ */
+function autoRestoreState() {
+  try {
+    var raw = localStorage.getItem(AUTOSAVE_KEY);
+    if (!raw) return false;
+    var state = JSON.parse(raw);
+    if (!state || !state.master) return false;
+
+    CONFIG.currentButtonSize = state.buttonSize || '1.5';
+    CONFIG.currentLayout = state.layout || '15';
+    if (typeof sheetName !== 'undefined') {
+      sheetName = state.sheetName || '';
+      var nameInput = document.getElementById('sheet-name-input');
+      if (nameInput) nameInput.value = sheetName;
+    }
+
+    deserializeDesign(state.master);
+
+    if (typeof setSheetSlots === 'function' && state.slots) {
+      setSheetSlots(state.slots);
+    }
+
+    return true;
+  } catch (e) {
+    console.warn('Auto-restore failed:', e);
+    return false;
+  }
+}
+
 /**
  * Initialize storage: wire up top bar Save/Load buttons and file input.
  * Called once from app.js.
@@ -347,4 +403,7 @@ function initStorage() {
       e.target.value = '';
     }
   });
+
+  // Auto-save on window close / navigate away
+  window.addEventListener('beforeunload', autoSaveState);
 }
