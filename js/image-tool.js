@@ -18,11 +18,11 @@
  *
  * Gotchas:
  * - Image positions (x, y) are in INCHES relative to button center.
- *   Width and height are also in inches.
+ * Width and height are also in inches.
  * - Images are stored as data URLs (base64) so they survive localStorage
- *   serialization. This means large images will increase save data size.
+ * serialization. This means large images will increase save data size.
  * - The Image object (DOM) is stored as `imgObj` but is NOT serialized.
- *   On load, it's reconstructed from the dataUrl.
+ * On load, it's reconstructed from the dataUrl.
  * - `imageScale` is a multiplier >= 1.0 over the cover-fill size.
  */
 
@@ -108,6 +108,27 @@ function buildImageElement(dataUrl, img) {
     baseHeight: cover.height,
     imageScale: 1.0
   };
+}
+
+/**
+ * Recalculate base dimensions for existing images when the button size changes.
+ * Ensures the image perfectly fills the new safe zone.
+ */
+function recalculateImageBaseDimensions() {
+  if (!currentDesign || !currentDesign.imageElements || currentDesign.imageElements.length === 0) return;
+
+  currentDesign.imageElements.forEach(function(imgEl) {
+    var cover = computeCoverFillSize(imgEl.naturalWidth, imgEl.naturalHeight);
+    imgEl.baseWidth = cover.width;
+    imgEl.baseHeight = cover.height;
+    
+    // Reapply the user's zoom scale
+    imgEl.width = imgEl.baseWidth * (imgEl.imageScale || 1.0);
+    imgEl.height = imgEl.baseHeight * (imgEl.imageScale || 1.0);
+    
+    // Ensure it still covers the new safe zone without slipping out of bounds
+    constrainImagePosition(imgEl);
+  });
 }
 
 /**

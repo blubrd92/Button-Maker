@@ -96,11 +96,18 @@ function initTopLevelControls() {
     sizeSelect.addEventListener('change', function(e) {
       CONFIG.currentButtonSize = e.target.value;
       
+      // Force existing images to adapt to the new size geometry
+      if (typeof recalculateImageBaseDimensions === 'function') {
+        recalculateImageBaseDimensions();
+      }
+      
       if (currentMode === 'sheet') {
+        // Re-render the sheet with the new dimensions
         sheetZoom = computeFitToScreenZoom(); 
         renderSheetView();
         applyZoom();
       } else {
+        // Re-render the design canvas
         renderDesignCanvas();
       }
     });
