@@ -91,10 +91,11 @@ function generatePDF(options) {
       }
     }
 
-    // Use sheet name as filename (with spaces preserved), fallback to 'buttons'
-    var filename = (typeof sheetName === 'string' && sheetName.trim())
-      ? sheetName.trim() + '.pdf'
-      : 'buttons.pdf';
+    // Use button size and sheet name as filename, fallback to 'buttons'
+    var baseName = (typeof sheetName === 'string' && sheetName.trim())
+      ? sheetName.trim()
+      : 'buttons';
+    var filename = CONFIG.currentButtonSize + ' - ' + baseName + '.pdf';
     doc.save(filename);
 
   } catch (err) {

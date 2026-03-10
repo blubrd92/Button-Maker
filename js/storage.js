@@ -263,10 +263,10 @@ function exportDesignsFromArray(designs) {
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
-  var name = (typeof sheetName === 'string' && sheetName.trim())
+  var baseName = (typeof sheetName === 'string' && sheetName.trim())
     ? sheetName.trim()
     : 'buttonmaker-designs';
-  a.download = name + '.buttons';
+  a.download = CONFIG.currentButtonSize + ' - ' + baseName + '.buttons';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
