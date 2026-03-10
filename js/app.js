@@ -203,14 +203,23 @@ function initTopLevelControls() {
     var gradientControls = document.getElementById('gradient-controls');
     gradientControls.classList.toggle('hidden', !e.target.checked);
     if (e.target.checked) {
-      applyGradientFromUI();
+      if (currentMode === 'sheet' && selectedSlots.length > 0) {
+        applyGradientOverrideToSelectedSlots();
+      } else {
+        applyGradientFromUI();
+      }
     } else {
-      currentDesign.gradient = null;
-      currentDesign.templateDraw = null;
-      // Clear active preset highlight
-      clearGradientPresetHighlight();
-      // Re-apply solid bg color
-      handleBackgroundColorChange(currentDesign.backgroundColor);
+      if (currentMode === 'sheet' && selectedSlots.length > 0) {
+        applyOverrideToSelectedSlots('gradient', null);
+        applyOverrideToSelectedSlots('backgroundColor', document.getElementById('bg-color-picker').value);
+      } else {
+        currentDesign.gradient = null;
+        currentDesign.templateDraw = null;
+        // Clear active preset highlight
+        clearGradientPresetHighlight();
+        // Re-apply solid bg color
+        handleBackgroundColorChange(currentDesign.backgroundColor);
+      }
     }
   });
 
@@ -218,12 +227,21 @@ function initTopLevelControls() {
     if (document.getElementById('toggle-gradient').checked) {
       // Manual color change clears preset
       clearGradientPresetHighlight();
-      applyGradientFromUI();
+      if (currentMode === 'sheet' && selectedSlots.length > 0) {
+        applyGradientOverrideToSelectedSlots();
+      } else {
+        applyGradientFromUI();
+      }
     }
   });
 
   document.getElementById('gradient-direction').addEventListener('change', function() {
     if (document.getElementById('toggle-gradient').checked) {
+      if (currentMode === 'sheet' && selectedSlots.length > 0) {
+        applyGradientOverrideToSelectedSlots();
+        return;
+      }
+      
       // Changing direction re-applies current gradient (preset or custom)
       if (currentDesign.gradient && currentDesign.gradient.stops) {
         // Re-apply with new direction but keep stops
@@ -282,6 +300,36 @@ function applyGradientFromUI() {
 }
 
 /**
+ * Read gradient settings from the UI and apply as an override to selected slots.
+ */
+function applyGradientOverrideToSelectedSlots() {
+  var color1 = document.getElementById('bg-color-picker').value;
+  var color2 = document.getElementById('bg-gradient-color2').value;
+  var direction = document.getElementById('gradient-direction').value;
+
+  var grad = {
+    color1: color1,
+    color2: color2,
+    stops: null,
+    direction: direction,
+    preset: null
+  };
+
+  // If there's an active preset, grab its stops
+  var activePresetBtn = document.querySelector('.gradient-preset-btn.active');
+  if (activePresetBtn) {
+    var presetName = activePresetBtn.dataset.preset;
+    var preset = GRADIENT_PRESETS[presetName];
+    if (preset) {
+       grad.stops = preset.stops;
+       grad.preset = presetName;
+    }
+  }
+
+  applyOverrideToSelectedSlots('gradient', grad);
+}
+
+/**
  * Apply a gradient preset by name.
  * @param {string} presetName - key in GRADIENT_PRESETS
  */
@@ -291,7 +339,17 @@ function applyGradientPreset(presetName) {
 
   var direction = document.getElementById('gradient-direction').value;
 
-  currentDesign.gradient = {
+  // Update the two color pickers to reflect the first/last stops
+  document.getElementById('bg-color-picker').value = preset.stops[0].color;
+  document.getElementById('bg-gradient-color2').value = preset.stops[preset.stops.length - 1].color;
+  updateBackgroundSwatches(preset.stops[0].color);
+
+  // Highlight active preset
+  document.querySelectorAll('.gradient-preset-btn').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.preset === presetName);
+  });
+
+  var grad = {
     color1: preset.stops[0].color,
     color2: preset.stops[preset.stops.length - 1].color,
     stops: preset.stops,
@@ -299,21 +357,16 @@ function applyGradientPreset(presetName) {
     preset: presetName
   };
 
-  // Update the two color pickers to reflect the first/last stops
-  document.getElementById('bg-color-picker').value = currentDesign.gradient.color1;
-  document.getElementById('bg-gradient-color2').value = currentDesign.gradient.color2;
-  updateBackgroundSwatches(currentDesign.gradient.color1);
-
-  // Highlight active preset
-  document.querySelectorAll('.gradient-preset-btn').forEach(function(btn) {
-    btn.classList.toggle('active', btn.dataset.preset === presetName);
-  });
-
-  currentDesign.templateDraw = buildGradientDrawFunction(currentDesign.gradient);
-  currentDesign.templateId = null;
-  renderDesignCanvas();
-  if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
-    refreshSheetThumbnails();
+  if (currentMode === 'sheet' && selectedSlots.length > 0) {
+    applyOverrideToSelectedSlots('gradient', grad);
+  } else {
+    currentDesign.gradient = grad;
+    currentDesign.templateDraw = buildGradientDrawFunction(currentDesign.gradient);
+    currentDesign.templateId = null;
+    renderDesignCanvas();
+    if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
+      refreshSheetThumbnails();
+    }
   }
 }
 
@@ -402,111 +455,112 @@ function renderGradientPresets() {
 
 // --- Gradient Presets ---------------------------------------------
 // All presets use evenly-spaced stops with smooth blending between colors.
+// Colors have been adjusted to be richer and slightly darker pastels.
 var GRADIENT_PRESETS = {
   rainbow: {
     label: 'Rainbow',
     stops: [
-      { offset: 0,    color: '#F09090' },
-      { offset: 0.17, color: '#F0C090' },
-      { offset: 0.33, color: '#F0F090' },
-      { offset: 0.50, color: '#90E090' },
-      { offset: 0.67, color: '#9090E8' },
-      { offset: 0.83, color: '#C090D0' },
-      { offset: 1,    color: '#D090F0' }
+      { offset: 0,    color: '#E57575' },
+      { offset: 0.17, color: '#E5B075' },
+      { offset: 0.33, color: '#E5E575' },
+      { offset: 0.50, color: '#75D075' },
+      { offset: 0.67, color: '#7575DA' },
+      { offset: 0.83, color: '#B075C5' },
+      { offset: 1,    color: '#C575E5' }
     ]
   },
   'pride-progress': {
     label: 'Progress',
     stops: [
-      { offset: 0,    color: '#989898' },
-      { offset: 0.14, color: '#B8A088' },
-      { offset: 0.28, color: '#E89090' },
-      { offset: 0.42, color: '#F0C898' },
-      { offset: 0.57, color: '#F0E890' },
-      { offset: 0.71, color: '#90C890' },
-      { offset: 0.85, color: '#90B0F0' },
-      { offset: 1,    color: '#C090CC' }
+      { offset: 0,    color: '#858585' },
+      { offset: 0.14, color: '#A58B70' },
+      { offset: 0.28, color: '#DB7575' },
+      { offset: 0.42, color: '#E5B580' },
+      { offset: 0.57, color: '#E5DB75' },
+      { offset: 0.71, color: '#75B575' },
+      { offset: 0.85, color: '#759BE5' },
+      { offset: 1,    color: '#B075BD' }
     ]
   },
   'pride-trans': {
     label: 'Trans',
     stops: [
-      { offset: 0,    color: '#A0D8F0' },
-      { offset: 0.25, color: '#F0C8D4' },
-      { offset: 0.5,  color: '#FAFAFA' },
-      { offset: 0.75, color: '#F0C8D4' },
-      { offset: 1,    color: '#A0D8F0' }
+      { offset: 0,    color: '#85C5E5' },
+      { offset: 0.25, color: '#E5B5C5' },
+      { offset: 0.5,  color: '#F0F0F0' },
+      { offset: 0.75, color: '#E5B5C5' },
+      { offset: 1,    color: '#85C5E5' }
     ]
   },
   'pride-bi': {
     label: 'Bisexual',
     stops: [
-      { offset: 0,    color: '#E098B8' },
-      { offset: 0.35, color: '#E098B8' },
-      { offset: 0.5,  color: '#C0A0C8' },
-      { offset: 0.65, color: '#98ACD8' },
-      { offset: 1,    color: '#98ACD8' }
+      { offset: 0,    color: '#D580A5' },
+      { offset: 0.35, color: '#D580A5' },
+      { offset: 0.5,  color: '#B08BB8' },
+      { offset: 0.65, color: '#809AD5' },
+      { offset: 1,    color: '#809AD5' }
     ]
   },
   'pride-pan': {
     label: 'Pansexual',
     stops: [
-      { offset: 0,    color: '#F0A0C4' },
-      { offset: 0.33, color: '#F0E098' },
-      { offset: 0.67, color: '#98CCF0' },
-      { offset: 1,    color: '#98CCF0' }
+      { offset: 0,    color: '#E585B0' },
+      { offset: 0.33, color: '#E5D080' },
+      { offset: 0.67, color: '#80BCE5' },
+      { offset: 1,    color: '#80BCE5' }
     ]
   },
   'pride-nonbinary': {
     label: 'Non-binary',
     stops: [
-      { offset: 0,    color: '#F0EC90' },
-      { offset: 0.33, color: '#FAFAFA' },
-      { offset: 0.67, color: '#C8A8E0' },
-      { offset: 1,    color: '#B0B0B0' }
+      { offset: 0,    color: '#E5E075' },
+      { offset: 0.33, color: '#F0F0F0' },
+      { offset: 0.67, color: '#B590D5' },
+      { offset: 1,    color: '#9A9A9A' }
     ]
   },
   'pride-lesbian': {
     label: 'Lesbian',
     stops: [
-      { offset: 0,    color: '#E09880' },
-      { offset: 0.17, color: '#EBB890' },
-      { offset: 0.33, color: '#F0C8A0' },
-      { offset: 0.50, color: '#FAFAFA' },
-      { offset: 0.67, color: '#E0ACC8' },
-      { offset: 0.83, color: '#D4A0BC' },
-      { offset: 1,    color: '#C888B0' }
+      { offset: 0,    color: '#D58065' },
+      { offset: 0.17, color: '#E0A075' },
+      { offset: 0.33, color: '#E5B585' },
+      { offset: 0.50, color: '#F0F0F0' },
+      { offset: 0.67, color: '#D595B5' },
+      { offset: 0.83, color: '#C58AA5' },
+      { offset: 1,    color: '#B5709A' }
     ]
   },
   'pride-ace': {
     label: 'Asexual',
     stops: [
-      { offset: 0,    color: '#989898' },
-      { offset: 0.33, color: '#CCCCCC' },
-      { offset: 0.67, color: '#FAFAFA' },
-      { offset: 1,    color: '#C898C8' }
+      { offset: 0,    color: '#858585' },
+      { offset: 0.33, color: '#B5B5B5' },
+      { offset: 0.67, color: '#F0F0F0' },
+      { offset: 1,    color: '#B580B5' }
     ]
   },
   'pride-gay': {
     label: 'Gay Men',
     stops: [
-      { offset: 0,    color: '#90CCB8' },
-      { offset: 0.17, color: '#98DCC4' },
-      { offset: 0.33, color: '#B8E8D0' },
-      { offset: 0.50, color: '#FAFAFA' },
-      { offset: 0.67, color: '#B0C8E0' },
-      { offset: 0.83, color: '#A8A0D8' },
-      { offset: 1,    color: '#B098C8' }
+      { offset: 0,    color: '#75BCA5' },
+      { offset: 0.17, color: '#80D0B5' },
+      { offset: 0.33, color: '#A0DBC0' },
+      { offset: 0.50, color: '#F0F0F0' },
+      { offset: 0.67, color: '#9AB5D5' },
+      { offset: 0.83, color: '#9085C5' },
+      { offset: 1,    color: '#9A80B5' }
     ]
   },
   'pride-aroace': {
     label: 'Aro/Ace',
     stops: [
-      { offset: 0,    color: '#E8C888' },
-      { offset: 0.25, color: '#ECD898' },
-      { offset: 0.50, color: '#FAFAFA' },
-      { offset: 0.75, color: '#A8C8E0' },
-      { offset: 1,    color: '#98B0C4' }
+      { offset: 0,    color: '#DBB570' },
+      { offset: 0.25, color: '#E0C580' },
+      { offset: 0.50, color: '#F0F0F0' },
+      { offset: 0.75, color: '#90B5D5' },
+      { offset: 1,    color: '#809DB5' }
     ]
   }
 };
@@ -668,6 +722,9 @@ function resetDesignToDefaults() {
 function handleBackgroundColorChange(color) {
   if (currentMode === 'sheet' && selectedSlots.length > 0) {
     applyOverrideToSelectedSlots('backgroundColor', color);
+    if (document.getElementById('toggle-gradient').checked) {
+      applyGradientOverrideToSelectedSlots();
+    }
   } else {
     setBackgroundColor(color);
     // If gradient is enabled, update color1 and re-apply
