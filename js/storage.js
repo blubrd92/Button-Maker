@@ -127,11 +127,14 @@ function deserializeDesign(data) {
     if (!element.imageScale) {
       element.imageScale = 1.0;
     }
+    // Push element BEFORE setting src — base64 data URLs can fire onload
+    // synchronously, so the element must already be in the array when
+    // renderDesignCanvas runs.
+    currentDesign.imageElements.push(element);
     img.onload = function() {
       renderDesignCanvas();
     };
     img.src = imgData.dataUrl;
-    currentDesign.imageElements.push(element);
   });
 
   // Restore library info (brand text)
@@ -184,7 +187,7 @@ function quickSave() {
     slots: slotsData
   };
 
-  // Save to localStorage
+  // Save to localStorage (best-effort; may fail if quota exceeded)
   var designs = getSavedDesigns();
   // Overwrite if same name exists
   var existingIdx = -1;
@@ -199,10 +202,14 @@ function quickSave() {
   } else {
     designs.push(savedDesign);
   }
-  saveDesignsToStorage(designs);
+  try {
+    saveDesignsToStorage(designs);
+  } catch (e) {
+    console.warn('localStorage save failed (quota?):', e);
+  }
 
-  // Also export as .buttons file download
-  exportDesignsToJSON();
+  // Always export as .buttons file download, even if localStorage failed
+  exportDesignsFromArray(designs);
 }
 
 /**
@@ -220,7 +227,19 @@ function quickLoad() {
 function exportDesignsToJSON() {
   var designs = getSavedDesigns();
   if (designs.length === 0) {
-    alert('No designs to export. Save a design first.');
+    showNotification('No designs to export. Save a design first.');
+    return;
+  }
+  exportDesignsFromArray(designs);
+}
+
+/**
+ * Export a given array of designs as a .buttons file download.
+ * @param {Array} designs - Array of design objects to export
+ */
+function exportDesignsFromArray(designs) {
+  if (!designs || designs.length === 0) {
+    showNotification('No designs to export. Save a design first.');
     return;
   }
   var payload = {
@@ -261,7 +280,7 @@ function importDesignsFromJSON(file) {
       } else if (raw && Array.isArray(raw.designs)) {
         incoming = raw.designs;
       } else {
-        alert('Invalid file format.');
+        showNotification('Invalid file format.');
         return;
       }
 
@@ -280,7 +299,7 @@ function importDesignsFromJSON(file) {
       });
 
       if (incoming.length === 0) {
-        alert('No valid designs found in file.');
+        showNotification('No valid designs found in file.');
         return;
       }
 
@@ -320,10 +339,10 @@ function importDesignsFromJSON(file) {
         renderDesignCanvas();
       }
 
-      alert('Imported ' + incoming.length + ' design(s).');
+      showNotification('Buttons loaded.', 'success');
     } catch (err) {
       console.error('Import failed:', err);
-      alert('Import failed: invalid JSON.');
+      showNotification('Could not load this file. Is it a valid .buttons file?');
     }
   };
   reader.readAsText(file);

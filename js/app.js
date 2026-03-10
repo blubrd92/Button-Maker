@@ -21,6 +21,35 @@
  * - sheet-mode.js (initSheetMode)
  */
 
+// ─── Notification System ─────────────────────────────────────────
+
+var _notificationTimeout = null;
+var NOTIFICATION_DURATION_MS = 3000;
+
+function showNotification(message, type, autoHide) {
+  if (type === undefined) type = 'error';
+  if (autoHide === undefined) autoHide = true;
+  var area = document.getElementById('notification-area');
+  if (!area) return;
+  if (_notificationTimeout) {
+    clearTimeout(_notificationTimeout);
+    _notificationTimeout = null;
+  }
+  area.textContent = message;
+  area.className = type;
+  area.classList.add('show');
+  if (autoHide) {
+    _notificationTimeout = setTimeout(function() {
+      hideNotification();
+    }, NOTIFICATION_DURATION_MS);
+  }
+}
+
+function hideNotification() {
+  var area = document.getElementById('notification-area');
+  if (area) area.classList.remove('show');
+}
+
 // Track the current editing mode
 var currentMode = 'design'; // 'design' or 'sheet'
 

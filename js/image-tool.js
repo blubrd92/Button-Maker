@@ -149,6 +149,18 @@ function handleImageUpload(file) {
         return;
       }
 
+      // Sheet mode with NO selected slots → apply to master (all buttons)
+      if (typeof currentMode !== 'undefined' && currentMode === 'sheet') {
+        currentDesign.imageElements = [imageElement];
+        if (typeof refreshSheetThumbnails === 'function') {
+          refreshSheetThumbnails();
+        }
+        if (typeof showNotification === 'function') {
+          showNotification('Image applied to all buttons.', 'success');
+        }
+        return;
+      }
+
       // Design mode → replace master image
       currentDesign.imageElements = [imageElement];
       selectedElement = { type: 'image', index: 0 };
