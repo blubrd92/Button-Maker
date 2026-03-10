@@ -37,7 +37,7 @@ const CONFIG = {
   PAGE: {
     width: 8.5,           // inches
     height: 11,           // inches
-    margin: 0.25          // inches on all sides
+    margin: 0.3           // inches on all sides
   },
 
   // Sheet tiling layouts mapped directly to button size
