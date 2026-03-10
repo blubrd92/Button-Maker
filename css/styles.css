@@ -727,6 +727,7 @@ input[type="checkbox"], input[type="radio"] {
   border-radius: var(--radius);
   align-self: stretch;
   margin-bottom: 8px;
+  min-height: 33px; /* Reserve space for .btn-small height to prevent layout shift */
 }
 
 /* Upload Label */
