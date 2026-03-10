@@ -133,6 +133,10 @@ function deserializeDesign(data) {
     currentDesign.imageElements.push(element);
     img.onload = function() {
       renderDesignCanvas();
+      
+      if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
+        refreshSheetThumbnails();
+      }
     };
     img.src = imgData.dataUrl;
   });
@@ -332,11 +336,25 @@ function importDesignsFromJSON(file) {
         setSheetSlots(first.slots);
       }
       
-      // Update the active view based on current mode
-      if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof renderSheetView === 'function') {
+      // Force the active view over to sheet mode
+      currentMode = 'sheet';
+      var btnDesign = document.getElementById('btn-design-mode');
+      var btnSheet = document.getElementById('btn-sheet-mode');
+      if (btnDesign) btnDesign.classList.remove('active');
+      if (btnSheet) btnSheet.classList.add('active');
+
+      if (typeof enterSheetMode === 'function') {
+        enterSheetMode();
+      } else if (typeof renderSheetView === 'function') {
+        document.getElementById('design-canvas-wrapper').classList.add('hidden');
+        document.getElementById('sheet-view').classList.remove('hidden');
         renderSheetView();
-      } else {
-        renderDesignCanvas();
+      }
+
+      // Automatically apply "Fit to Page" math since we are loading a new sheet
+      if (typeof computeFitToScreenZoom === 'function' && typeof setCurrentZoom === 'function' && typeof applyZoom === 'function') {
+        setCurrentZoom(computeFitToScreenZoom());
+        applyZoom();
       }
 
       showNotification('Buttons loaded.', 'success');

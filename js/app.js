@@ -518,6 +518,7 @@ function initZoomControls() {
   var btnIn = document.getElementById('btn-zoom-in');
   var btnOut = document.getElementById('btn-zoom-out');
   var btnReset = document.getElementById('btn-zoom-reset');
+  var btnFit = document.getElementById('btn-zoom-fit');
 
   btnIn.addEventListener('click', function() {
     setCurrentZoom(Math.min(ZOOM_MAX, getCurrentZoom() + ZOOM_STEP));
@@ -533,6 +534,13 @@ function initZoomControls() {
     setCurrentZoom(1.0);
     applyZoom();
   });
+
+  if (btnFit) {
+    btnFit.addEventListener('click', function() {
+      setCurrentZoom(computeFitToScreenZoom());
+      applyZoom();
+    });
+  }
 
   // Ctrl+scroll wheel zoom
   var canvasArea = document.getElementById('canvas-area');
@@ -602,11 +610,25 @@ function computeFitToScreenZoom() {
   var pageW = CONFIG.PAGE.width * 96;
   var pageH = CONFIG.PAGE.height * 96;
 
-  // Add estimated padding/chrome around the page (headers, controls, margins)
+  // Accurately account for chrome if we are in sheet mode
   var extraW = 80;  // row headers + padding
-  var extraH = 100; // name row + controls + col headers + padding
+  var extraH = 40;  // base padding (20 top + 20 bottom)
+
+  if (currentMode === 'sheet') {
+    var nameRow = document.querySelector('.sheet-name-row');
+    var controls = document.getElementById('sheet-controls');
+    var colHeaders = document.querySelector('.sheet-col-headers');
+    
+    var nameH = nameRow ? nameRow.offsetHeight + 8 : 40;
+    var controlsH = controls ? controls.offsetHeight + 8 : 40;
+    var colHeadH = colHeaders ? colHeaders.offsetHeight + 8 : 40;
+    
+    extraH += (nameH + controlsH + colHeadH);
+  }
 
   var fitZoom = Math.min(containerW / (pageW + extraW), containerH / (pageH + extraH));
+  // Add a 2% buffer so it doesn't rub against the edge of the window
+  fitZoom *= 0.98;
   return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, fitZoom));
 }
 
