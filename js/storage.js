@@ -334,6 +334,12 @@ function importDesignsFromJSON(file) {
       // Load the first imported design
       var first = incoming[0];
       CONFIG.currentButtonSize = first.buttonSize || '1.5';
+      
+      var sizeSelect = document.getElementById('button-size-select');
+      if (sizeSelect) {
+        sizeSelect.value = CONFIG.currentButtonSize;
+      }
+
       CONFIG.currentLayout = first.layout || '15';
       if (typeof sheetName !== 'undefined') {
         sheetName = first.name || '';
@@ -397,7 +403,7 @@ function autoSaveState() {
     };
     localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(state));
   } catch (e) {
-    // Storage full or unavailable — silently ignore
+    // Storage full or unavailable
   }
 }
 
@@ -412,6 +418,12 @@ function autoRestoreState() {
     if (!state || !state.master) return false;
 
     CONFIG.currentButtonSize = state.buttonSize || '1.5';
+    
+    var sizeSelect = document.getElementById('button-size-select');
+    if (sizeSelect) {
+      sizeSelect.value = CONFIG.currentButtonSize;
+    }
+
     CONFIG.currentLayout = state.layout || '15';
     if (typeof sheetName !== 'undefined') {
       sheetName = state.sheetName || '';
@@ -459,10 +471,10 @@ function autoRestoreState() {
  * Called once from app.js.
  */
 function initStorage() {
-  // Save button — quick save to localStorage + file download
+  // Save button
   document.getElementById('btn-save').addEventListener('click', quickSave);
 
-  // Load button — opens file picker
+  // Load button
   document.getElementById('btn-load').addEventListener('click', quickLoad);
 
   // File input for .buttons import
