@@ -16,13 +16,13 @@
  *
  * Gotchas:
  * - Text positions (x, y) are stored in INCHES relative to the button center.
- *   (0, 0) is the center of the button.
+ * (0, 0) is the center of the button.
  * - Font size is stored in POINTS at print size. When rendering to screen,
- *   convert: screenPx = points * (canvasScale / 72).
+ * convert: screenPx = points * (canvasScale / 72).
  * - Curved text uses individual character placement along an arc path.
- *   This is more reliable than trying to use textPath equivalents on canvas.
- * - The text bounding box for hit-testing is approximate — uses measureText
- *   width and a height estimate based on font size.
+ * This is more reliable than trying to use textPath equivalents on canvas.
+ * - The text bounding box for hit-testing is approximate (uses measureText
+ * width and a height estimate based on font size).
  */
 
 // ─── Text element data structure ───────────────────────────────────
@@ -325,7 +325,7 @@ function renderLibraryInfoTextInternal(ctx, cx, cy, safeRadius, scale, text, col
   var fontSizePx = fontSizePt * (scale / 72);
 
   ctx.save();
-  ctx.font = 'normal normal ' + fontSizePx + 'px "Roboto"';
+  ctx.font = 'normal bold ' + fontSizePx + 'px "Roboto"';
   ctx.fillStyle = color;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
