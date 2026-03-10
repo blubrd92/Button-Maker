@@ -86,6 +86,10 @@ function initApp() {
   var restored = autoRestoreState();
   if (!restored) {
     applyTemplate('blank');
+  } else {
+    // Render immediately so the restored design (background, text, etc.)
+    // shows right away. Images will re-render via their onload callbacks.
+    renderDesignCanvas();
   }
 
   console.log('Button Maker initialized.');
@@ -168,6 +172,7 @@ function initTopLevelControls() {
   });
   document.getElementById('btn-sheet-mode').addEventListener('click', function() {
     currentMode = 'sheet';
+    sheetZoom = computeFitToScreenZoom();
     applyZoom();
   });
 
@@ -580,6 +585,29 @@ function applyZoom() {
   }
 
   label.textContent = Math.round(activeZoom * 100) + '%';
+}
+
+/**
+ * Compute the zoom level that fits the sheet page within the scroll container.
+ * Returns a value clamped to [ZOOM_MIN, ZOOM_MAX].
+ */
+function computeFitToScreenZoom() {
+  var scrollContainer = document.getElementById('canvas-area-scroll');
+  if (!scrollContainer) return 1.0;
+
+  var containerW = scrollContainer.clientWidth;
+  var containerH = scrollContainer.clientHeight;
+
+  // Page dimensions at zoom=1 (96 CSS px/inch)
+  var pageW = CONFIG.PAGE.width * 96;
+  var pageH = CONFIG.PAGE.height * 96;
+
+  // Add estimated padding/chrome around the page (headers, controls, margins)
+  var extraW = 80;  // row headers + padding
+  var extraH = 100; // name row + controls + col headers + padding
+
+  var fitZoom = Math.min(containerW / (pageW + extraW), containerH / (pageH + extraH));
+  return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, fitZoom));
 }
 
 /**
