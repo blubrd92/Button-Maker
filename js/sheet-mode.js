@@ -171,7 +171,7 @@ function renderSheetView() {
   hintSpan.textContent = 'Click to select \u00b7 Ctrl/Cmd-click for multiple \u00b7 Double-click to edit';
   nameRow.appendChild(hintSpan);
 
-  container.appendChild(nameRow);
+  // nameRow will be inserted into outerWrapper (below) so it shares the page width
 
   // -- Controls (below sheet name, above the grid) --
   var controlsDiv = document.createElement('div');
@@ -351,7 +351,9 @@ function renderSheetView() {
   var outerWrapper = document.createElement('div');
   outerWrapper.className = 'sheet-outer-wrapper';
 
-  // Controls bar inside the wrapper so it shares the same width
+  // Name row & controls bar inside the wrapper so they share the page width
+  nameRow.style.paddingLeft = '36px'; // offset for row-header column width
+  outerWrapper.appendChild(nameRow);
   outerWrapper.appendChild(controlsDiv);
 
   // -- Column headers above the page (aligned with button centers) --

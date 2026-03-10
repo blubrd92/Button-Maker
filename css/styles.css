@@ -585,6 +585,8 @@ input[type="checkbox"], input[type="radio"] {
   align-items: center;
   gap: 8px;
   margin-bottom: 8px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .sheet-selection-hint {
@@ -731,11 +733,12 @@ input[type="checkbox"], input[type="radio"] {
   align-items: center;
   justify-content: flex-end;
   background: transparent;
-  padding: 4px 0;
+  padding: 4px 0 4px 36px;
   border-radius: var(--radius);
   align-self: stretch;
   margin-bottom: 8px;
   min-height: 37px; /* Reserve space for button height to prevent layout shift */
+  box-sizing: border-box;
 }
 
 /* Upload Label */
