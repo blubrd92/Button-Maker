@@ -39,6 +39,9 @@ let selectedSlots = [];
 // User-editable name for this sheet (shown above grid, used as PDF filename)
 let sheetName = '';
 
+// Clipboard for copying a button's full design (main + overrides merged)
+let _copiedDesign = null;
+
 // --- Slot management ---
 
 /**
@@ -174,6 +177,8 @@ function renderSheetView() {
     '<button class="btn btn-small" id="btn-apply-row" style="display:none;">Apply to Row</button>' +
     '<button class="btn btn-small" id="btn-make-main" style="display:none;">Make Main Design</button>' +
     '<button class="btn btn-small" id="btn-edit-selected" style="display:none;">Edit Selected in Design</button>' +
+    '<button class="btn btn-small" id="btn-copy-design" style="display:none;">Copy Design</button>' +
+    '<button class="btn btn-small" id="btn-paste-design" style="display:none;">Paste Design</button>' +
     '<span id="sheet-selection-info" style="font-size:12px; font-weight:bold; color:#888;">Click to select \u00b7 Ctrl/Cmd-click for multiple \u00b7 Double-click to edit</span>';
 
   // Wire up the new controls (use querySelector on controlsDiv since it's not in the DOM yet)
@@ -300,6 +305,26 @@ function renderSheetView() {
     if (selectedSlots.length < 2) return;
     _editingGroup = { type: 'selection', index: null, slots: selectedSlots.slice() };
     editSlotInDesignMode(selectedSlots[0]);
+  });
+
+  controlsDiv.querySelector('#btn-copy-design').addEventListener('click', function() {
+    if (selectedSlots.length !== 1) return;
+    var overrides = getSlotOverrides(selectedSlots[0]);
+    // Store a deep copy of the overrides
+    _copiedDesign = JSON.parse(JSON.stringify(overrides));
+    updateSheetSelectionUI();
+  });
+
+  controlsDiv.querySelector('#btn-paste-design').addEventListener('click', function() {
+    if (!_copiedDesign || selectedSlots.length === 0) return;
+    selectedSlots.forEach(function(idx) {
+      // Merge copied overrides onto each target slot
+      var existing = getSlotOverrides(idx);
+      var merged = Object.assign({}, existing, JSON.parse(JSON.stringify(_copiedDesign)));
+      setSlotOverrides(idx, merged);
+    });
+    refreshSheetThumbnails();
+    updateSheetSelectionUI();
   });
 
 
@@ -494,10 +519,18 @@ function handleColumnHeaderClick(col, event) {
   for (var row = 0; row < layout.rows; row++) {
     columnSlots.push(row * layout.cols + col);
   }
-  if (event.shiftKey) {
-    columnSlots.forEach(function(idx) {
-      if (!selectedSlots.includes(idx)) selectedSlots.push(idx);
-    });
+  if (event.shiftKey || event.ctrlKey || event.metaKey) {
+    // Shift/Ctrl/Cmd: toggle this column's slots in the current selection
+    var allPresent = columnSlots.every(function(idx) { return selectedSlots.includes(idx); });
+    if (allPresent) {
+      // Remove column from selection
+      selectedSlots = selectedSlots.filter(function(idx) { return !columnSlots.includes(idx); });
+    } else {
+      // Add column to selection
+      columnSlots.forEach(function(idx) {
+        if (!selectedSlots.includes(idx)) selectedSlots.push(idx);
+      });
+    }
   } else {
     // Toggle: if this column is already exactly selected, deselect all
     var alreadySelected = selectedSlots.length === columnSlots.length &&
@@ -514,10 +547,18 @@ function handleRowHeaderClick(row, event) {
   for (var col = 0; col < layout.cols; col++) {
     rowSlots.push(row * layout.cols + col);
   }
-  if (event.shiftKey) {
-    rowSlots.forEach(function(idx) {
-      if (!selectedSlots.includes(idx)) selectedSlots.push(idx);
-    });
+  if (event.shiftKey || event.ctrlKey || event.metaKey) {
+    // Shift/Ctrl/Cmd: toggle this row's slots in the current selection
+    var allPresent = rowSlots.every(function(idx) { return selectedSlots.includes(idx); });
+    if (allPresent) {
+      // Remove row from selection
+      selectedSlots = selectedSlots.filter(function(idx) { return !rowSlots.includes(idx); });
+    } else {
+      // Add row to selection
+      rowSlots.forEach(function(idx) {
+        if (!selectedSlots.includes(idx)) selectedSlots.push(idx);
+      });
+    }
   } else {
     // Toggle: if this row is already exactly selected, deselect all
     var alreadySelected = selectedSlots.length === rowSlots.length &&
@@ -588,6 +629,18 @@ function updateSheetSelectionUI() {
   // Show "Edit Selected in Design" when 2+ buttons are selected
   if (editSelectedBtn) {
     editSelectedBtn.style.display = selectedSlots.length >= 2 ? 'inline-flex' : 'none';
+  }
+
+  // Copy Design: visible when exactly 1 button is selected
+  var copyBtn = document.getElementById('btn-copy-design');
+  if (copyBtn) {
+    copyBtn.style.display = selectedSlots.length === 1 ? 'inline-flex' : 'none';
+  }
+
+  // Paste Design: visible when there's a copied design and buttons are selected
+  var pasteBtn = document.getElementById('btn-paste-design');
+  if (pasteBtn) {
+    pasteBtn.style.display = (_copiedDesign && selectedSlots.length > 0) ? 'inline-flex' : 'none';
   }
 }
 
