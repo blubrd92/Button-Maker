@@ -407,6 +407,20 @@ function drawImageSelectionBox(ctx, imgEl, cx, cy, scale) {
   ctx.setLineDash([]);
 }
 
+// Image resize via drag handles (removed, using scale slider instead)
+
+let isResizing = false;
+let resizeCorner = null;
+let resizeStartPos = null;
+let resizeStartDims = null;
+
+/**
+ * Not used in single-image model (kept for compatibility with canvas.js).
+ */
+function getResizeHandle() {
+  return null;
+}
+
 // ─── Event wiring ──────────────────────────────────────────────────
 
 /**
