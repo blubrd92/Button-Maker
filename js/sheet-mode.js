@@ -179,11 +179,11 @@ function renderSheetView() {
   controlsDiv.className = 'sheet-controls-bar';
 
   controlsDiv.innerHTML =
-    '<button class="btn btn-small" id="btn-sheet-reset" style="display:none;">Reset Selected to Main</button>' +
+    '<button class="btn btn-small" id="btn-sheet-reset" style="display:none;">Reset to Main</button>' +
     '<button class="btn btn-small" id="btn-apply-col" style="display:none;">Apply to Col</button>' +
     '<button class="btn btn-small" id="btn-apply-row" style="display:none;">Apply to Row</button>' +
     '<button class="btn btn-small" id="btn-make-main" style="display:none;">Make Main Design</button>' +
-    '<button class="btn btn-small" id="btn-edit-selected" style="display:none;">Edit Selected in Design</button>' +
+    '<button class="btn btn-small" id="btn-edit-selected" style="display:none;">Edit in Design</button>' +
     '<button class="btn btn-small" id="btn-copy-design" style="display:none;">Copy Design</button>' +
     '<button class="btn btn-small" id="btn-paste-design" style="display:none;">Paste Design</button>' +
     '<button class="btn btn-small" id="btn-clear-selection" style="display:none;">Clear Selection</button>';
@@ -424,12 +424,6 @@ function renderSheetView() {
     rowHeader.addEventListener('click', (function(r) {
       return function(e) { handleRowHeaderClick(r, e); };
     })(row));
-    rowHeader.addEventListener('dblclick', (function(r) {
-      return function(e) {
-        e.stopPropagation();
-        editGroupInDesignMode('row', r);
-      };
-    })(row));
     rowHeaderCol.appendChild(rowHeader);
   }
 
@@ -665,10 +659,10 @@ function updateSheetSelectionUI() {
     editSelectedBtn.style.display = selectedSlots.length >= 1 ? 'inline-flex' : 'none';
   }
 
-  // Copy Design: visible when exactly 1 button is selected
+  // Copy Design: visible when exactly 1 button is selected and it has custom overrides
   var copyBtn = document.getElementById('btn-copy-design');
   if (copyBtn) {
-    copyBtn.style.display = selectedSlots.length === 1 ? 'inline-flex' : 'none';
+    copyBtn.style.display = (selectedSlots.length === 1 && slotHasOverrides(selectedSlots[0])) ? 'inline-flex' : 'none';
   }
 
   // Paste Design: visible when there's a copied design and buttons are selected
