@@ -18,6 +18,7 @@
 
 const STORAGE_KEY = 'buttonmaker_designs';
 const AUTOSAVE_KEY = 'buttonmaker_autosave';
+const MAX_HISTORY_SLOTS = 2;
 
 /**
  * Get all saved designs from localStorage.
@@ -220,7 +221,7 @@ function quickSave() {
     slots: slotsData
   };
 
-  // Save to localStorage (best-effort; limit to last 5 to prevent bloat)
+  // Save to localStorage
   var designs = getSavedDesigns();
   var existingIdx = -1;
   for (var i = 0; i < designs.length; i++) {
@@ -235,9 +236,9 @@ function quickSave() {
     designs.push(savedDesign);
   }
 
-  // Enforce a maximum of 5 saved designs in local storage
-  if (designs.length > 5) {
-    designs = designs.slice(designs.length - 5);
+  // Enforce the maximum history limit
+  if (designs.length > MAX_HISTORY_SLOTS) {
+    designs = designs.slice(designs.length - MAX_HISTORY_SLOTS);
   }
 
   try {
@@ -357,9 +358,9 @@ function importDesignsFromJSON(file) {
         }
       });
 
-      // Enforce the same limit of 5 designs after importing
-      if (existing.length > 5) {
-        existing = existing.slice(existing.length - 5);
+      // Enforce the history limit after importing
+      if (existing.length > MAX_HISTORY_SLOTS) {
+        existing = existing.slice(existing.length - MAX_HISTORY_SLOTS);
       }
 
       saveDesignsToStorage(existing);

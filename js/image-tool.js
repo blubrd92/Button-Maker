@@ -4,7 +4,7 @@
  * Manages a single background image on the button design canvas.
  *
  * Responsibilities:
- * - Uploading images (PNG, JPG, SVG)
+ * - Uploading images (PNG, JPG, SVG) and automatically downscaling large ones
  * - Single-image model: new upload replaces existing image
  * - Cover-fill: image always fills the safe zone (no white gaps)
  * - Scale slider for zooming in beyond cover-fill minimum
@@ -20,7 +20,7 @@
  * - Image positions (x, y) are in INCHES relative to button center.
  * Width and height are also in inches.
  * - Images are stored as data URLs (base64) so they survive localStorage
- * serialization. This means large images will increase save data size.
+ * serialization. 
  * - The Image object (DOM) is stored as `imgObj` but is NOT serialized.
  * On load, it's reconstructed from the dataUrl.
  * - `imageScale` is a multiplier >= 1.0 over the cover-fill size.
@@ -133,10 +133,7 @@ function recalculateImageBaseDimensions() {
 
 /**
  * Handle image file upload. Reads the file, creates an Image object,
- * and replaces any existing image (single-image model).
- *
- * In sheet mode with selected slots, the image is applied as a per-slot
- * override instead of changing the master design.
+ * applies downscaling if necessary, and replaces any existing image.
  *
  * @param {File} file - The uploaded file
  */
@@ -145,52 +142,89 @@ function handleImageUpload(file) {
 
   var reader = new FileReader();
   reader.onload = function(e) {
-    var dataUrl = e.target.result;
+    var rawDataUrl = e.target.result;
     var img = new Image();
+    
     img.onload = function() {
-      var imageElement = buildImageElement(dataUrl, img);
+      var MAX_SIZE = 1200;
+      var finalDataUrl = rawDataUrl;
+      var w = img.naturalWidth;
+      var h = img.naturalHeight;
 
-      // Sheet mode with selected slots → apply as per-slot override
-      if (typeof currentMode !== 'undefined' && currentMode === 'sheet' &&
-          typeof selectedSlots !== 'undefined' && selectedSlots.length > 0) {
-        // Serialize for override storage (no imgObj)
-        var serialized = [{
-          dataUrl: imageElement.dataUrl,
-          x: imageElement.x,
-          y: imageElement.y,
-          width: imageElement.width,
-          height: imageElement.height,
-          naturalWidth: imageElement.naturalWidth,
-          naturalHeight: imageElement.naturalHeight,
-          baseWidth: imageElement.baseWidth,
-          baseHeight: imageElement.baseHeight,
-          imageScale: imageElement.imageScale
-        }];
-        applyOverrideToSelectedSlots('imageElements', serialized);
-        return;
+      // Downscale if the image is exceptionally large
+      if (w > MAX_SIZE || h > MAX_SIZE) {
+        var scale = Math.min(MAX_SIZE / w, MAX_SIZE / h);
+        var newW = Math.round(w * scale);
+        var newH = Math.round(h * scale);
+
+        var canvas = document.createElement('canvas');
+        canvas.width = newW;
+        canvas.height = newH;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, newW, newH);
+        
+        var mimeType = file.type === 'image/jpeg' ? 'image/jpeg' : 'image/png';
+        var quality = mimeType === 'image/jpeg' ? 0.9 : undefined;
+        finalDataUrl = canvas.toDataURL(mimeType, quality);
+        
+        // We need a new Image object for the downscaled version so natural properties match
+        var downscaledImg = new Image();
+        downscaledImg.onload = function() {
+          processLoadedImage(finalDataUrl, downscaledImg);
+        };
+        downscaledImg.src = finalDataUrl;
+      } else {
+        processLoadedImage(finalDataUrl, img);
       }
-
-      // Sheet mode with NO selected slots → apply to master (all buttons)
-      if (typeof currentMode !== 'undefined' && currentMode === 'sheet') {
-        currentDesign.imageElements = [imageElement];
-        if (typeof refreshSheetThumbnails === 'function') {
-          refreshSheetThumbnails();
-        }
-        if (typeof showNotification === 'function') {
-          showNotification('Image applied to all buttons.', 'success');
-        }
-        return;
-      }
-
-      // Design mode → replace master image
-      currentDesign.imageElements = [imageElement];
-      selectedElement = { type: 'image', index: 0 };
-      showImageControls(0);
-      renderDesignCanvas();
     };
-    img.src = dataUrl;
+    img.src = rawDataUrl;
   };
   reader.readAsDataURL(file);
+}
+
+/**
+ * Core application logic for an image once it has been loaded and potentially downscaled.
+ */
+function processLoadedImage(dataUrl, img) {
+  var imageElement = buildImageElement(dataUrl, img);
+
+  // Sheet mode with selected slots → apply as per-slot override
+  if (typeof currentMode !== 'undefined' && currentMode === 'sheet' &&
+      typeof selectedSlots !== 'undefined' && selectedSlots.length > 0) {
+    // Serialize for override storage (no imgObj)
+    var serialized = [{
+      dataUrl: imageElement.dataUrl,
+      x: imageElement.x,
+      y: imageElement.y,
+      width: imageElement.width,
+      height: imageElement.height,
+      naturalWidth: imageElement.naturalWidth,
+      naturalHeight: imageElement.naturalHeight,
+      baseWidth: imageElement.baseWidth,
+      baseHeight: imageElement.baseHeight,
+      imageScale: imageElement.imageScale
+    }];
+    applyOverrideToSelectedSlots('imageElements', serialized);
+    return;
+  }
+
+  // Sheet mode with NO selected slots → apply to master (all buttons)
+  if (typeof currentMode !== 'undefined' && currentMode === 'sheet') {
+    currentDesign.imageElements = [imageElement];
+    if (typeof refreshSheetThumbnails === 'function') {
+      refreshSheetThumbnails();
+    }
+    if (typeof showNotification === 'function') {
+      showNotification('Image applied to all buttons.', 'success');
+    }
+    return;
+  }
+
+  // Design mode → replace master image
+  currentDesign.imageElements = [imageElement];
+  selectedElement = { type: 'image', index: 0 };
+  showImageControls(0);
+  renderDesignCanvas();
 }
 
 /**
@@ -223,7 +257,7 @@ function showImageControls(index) {
   }
 
   // Hide text controls if visible
-  hideTextControls();
+  if (typeof hideTextControls === 'function') hideTextControls();
 }
 
 /**
@@ -371,20 +405,6 @@ function drawImageSelectionBox(ctx, imgEl, cx, cy, scale) {
   ctx.setLineDash([4, 3]);
   ctx.strokeRect(px, py, pw, ph);
   ctx.setLineDash([]);
-}
-
-// ─── Image resize via drag handles (removed — using scale slider instead) ──
-
-let isResizing = false;
-let resizeCorner = null;
-let resizeStartPos = null;
-let resizeStartDims = null;
-
-/**
- * Not used in single-image model (kept for compatibility with canvas.js).
- */
-function getResizeHandle() {
-  return null;
 }
 
 // ─── Event wiring ──────────────────────────────────────────────────

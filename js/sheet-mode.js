@@ -329,10 +329,8 @@ function renderSheetView() {
   controlsDiv.querySelector('#btn-paste-design').addEventListener('click', function() {
     if (!_copiedDesign || selectedSlots.length === 0) return;
     selectedSlots.forEach(function(idx) {
-      // Merge copied overrides onto each target slot
-      var existing = getSlotOverrides(idx);
-      var merged = Object.assign({}, existing, JSON.parse(JSON.stringify(_copiedDesign)));
-      setSlotOverrides(idx, merged);
+      // Replace target slot overrides entirely with the copied design
+      setSlotOverrides(idx, JSON.parse(JSON.stringify(_copiedDesign)));
     });
     _copiedDesign = null; // Clear clipboard after paste
     refreshSheetThumbnails();
@@ -1013,14 +1011,11 @@ function finishSlotEdit() {
   // Save overrides - if editing a group, apply to all slots in the group
   if (_editingGroup) {
     _editingGroup.slots.forEach(function(idx) {
-      // Merge new overrides with any existing per-slot overrides
-      var existing = getSlotOverrides(idx);
-      var merged = Object.assign({}, existing, overrides);
-      // If no actual differences remain, clear overrides
-      if (Object.keys(merged).length === 0) {
+      // Set the overrides directly, replacing any existing ones instead of merging
+      if (Object.keys(overrides).length === 0) {
         setSlotOverrides(idx, {});
       } else {
-        setSlotOverrides(idx, merged);
+        setSlotOverrides(idx, JSON.parse(JSON.stringify(overrides)));
       }
     });
     _editingGroup = null;
