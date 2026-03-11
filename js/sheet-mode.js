@@ -82,7 +82,7 @@ function getSlotOverrides(slotIndex) {
 /**
  * Set overrides for a specific slot.
  */
-function setSlotOverrides(slotIndex) {
+function setSlotOverrides(slotIndex, overrides) {
   if (sheetSlots[slotIndex]) {
     sheetSlots[slotIndex].overrides = overrides;
   }
@@ -790,6 +790,14 @@ function editSlotInDesignMode(slotIndex) {
   }
   if (overrides.libraryInfoColor !== undefined) {
     currentDesign.libraryInfoColor = overrides.libraryInfoColor;
+  }
+  if (overrides.templateId !== undefined) {
+    currentDesign.templateId = overrides.templateId;
+    var tmpl = getTemplateById(overrides.templateId);
+    currentDesign.templateDraw = tmpl ? tmpl.draw : null;
+  }
+  if (overrides.textElements !== undefined) {
+    currentDesign.textElements = overrides.textElements.map(function(t) { return Object.assign({}, t); });
   }
   if (overrides.imageElements !== undefined) {
     currentDesign.imageElements = overrides.imageElements.map(function(img) {
