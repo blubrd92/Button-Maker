@@ -18,29 +18,30 @@
  *
  * Gotchas:
  * - The editing canvas uses getCanvasScale() to convert inches to pixels.
- * All positions/sizes in the design state are stored in INCHES, then
- * converted to canvas pixels only at render time.
+ *   All positions/sizes in the design state are stored in INCHES, then
+ *   converted to canvas pixels only at render time.
  * - The canvas is square, sized to CANVAS_DISPLAY_DIAMETER.
  * - The wrap zone (between button face and cut circle) is dimmed to
- * visually distinguish it from the button face.
+ *   visually distinguish it from the button face.
  */
 
 // ─── Design state ──────────────────────────────────────────────────
+
 // The master design object. All positions and sizes are in INCHES
 // at print resolution. Canvas and PDF rendering convert from this.
 let currentDesign = {
   templateId: "blank",
   backgroundColor: CONFIG.DEFAULTS.backgroundColor,
-  templateDraw: null,          // reference to template's draw function
-  gradient: null,              // { color1, color2, direction } or null
-  textElements: [],            // array of text element objects (see text-tool.js)
-  imageElements: [],           // array of image element objects (see image-tool.js)
+  templateDraw: null, // reference to template's draw function
+  gradient: null, // { color1, color2, direction } or null
+  textElements: [], // array of text element objects (see text-tool.js)
+  imageElements: [], // array of image element objects (see image-tool.js)
   libraryInfoText: CONFIG.DEFAULTS.libraryInfoText,
   libraryInfoColor: CONFIG.DEFAULTS.libraryInfoColor
 };
 
 // Track which element is currently selected for editing
-let selectedElement = null;     // { type: 'text'|'image', index: number } or null
+let selectedElement = null; // { type: 'text'|'image', index: number } or null
 
 // ─── Canvas setup ──────────────────────────────────────────────────
 
@@ -62,6 +63,7 @@ function initDesignCanvas() {
   // Pointer cursor when hovering the safe zone (image upload target)
   canvas.addEventListener('mousemove', function(e) {
     if (isDragging || isResizing) return;
+
     var rect = canvas.getBoundingClientRect();
     var cssToCanvas = canvas.width / rect.width;
     var mouseX = (e.clientX - rect.left) * cssToCanvas;
@@ -80,6 +82,37 @@ function initDesignCanvas() {
 }
 
 /**
+ * Draw the background for a design.
+ * Preference order:
+ * 1. Live gradient data
+ * 2. Template draw function
+ * 3. Solid background color
+ */
+function drawDesignBackground(ctx, cx, cy, radius, design) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.clip();
+
+  if (
+    design.gradient &&
+    typeof buildGradientDrawFunction === 'function'
+  ) {
+    var gradientDraw = buildGradientDrawFunction(design.gradient);
+    gradientDraw(ctx, cx, cy, radius);
+  } else if (design.templateDraw) {
+    design.templateDraw(ctx, cx, cy, radius);
+  } else {
+    ctx.fillStyle = design.backgroundColor;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+/**
  * Main render function for the editing canvas.
  * Draws everything in z-order: background -> images -> text -> library info -> guides.
  */
@@ -91,7 +124,6 @@ function renderDesignCanvas() {
   const cy = size / 2;
   const scale = getCanvasScale();
   const btnSize = getCurrentButtonSize();
-
   const cutRadius = (btnSize.cutDiameter / 2) * scale;
   const faceRadius = (btnSize.faceDiameter / 2) * scale;
   const safeRadius = (btnSize.safeDiameter / 2) * scale;
@@ -100,22 +132,7 @@ function renderDesignCanvas() {
   ctx.clearRect(0, 0, size, size);
 
   // ── 1. Background ──
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(cx, cy, cutRadius, 0, Math.PI * 2);
-  ctx.clip();
-
-  if (currentDesign.templateDraw) {
-    // Use template's draw function
-    currentDesign.templateDraw(ctx, cx, cy, cutRadius);
-  } else {
-    // Solid color fallback
-    ctx.fillStyle = currentDesign.backgroundColor;
-    ctx.beginPath();
-    ctx.arc(cx, cy, cutRadius, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
+  drawDesignBackground(ctx, cx, cy, cutRadius, currentDesign);
 
   // ── 2. Wrap zone dimming ──
   // Dim the area between face and cut circles to indicate wrap zone
@@ -208,20 +225,7 @@ function renderButtonDesign(ctx, cx, cy, scale, design, options = {}) {
   const safeRadius = (btnSize.safeDiameter / 2) * scale;
 
   // Background
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(cx, cy, cutRadius, 0, Math.PI * 2);
-  ctx.clip();
-
-  if (design.templateDraw) {
-    design.templateDraw(ctx, cx, cy, cutRadius);
-  } else {
-    ctx.fillStyle = design.backgroundColor;
-    ctx.beginPath();
-    ctx.arc(cx, cy, cutRadius, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
+  drawDesignBackground(ctx, cx, cy, cutRadius, design);
 
   // Images
   renderImageElementsWithDesign(ctx, cx, cy, scale, design);
@@ -255,6 +259,7 @@ function renderButtonDesign(ctx, cx, cy, scale, design, options = {}) {
 
 let isDragging = false;
 let dragOffset = { x: 0, y: 0 };
+
 // Set to true on mousedown if an element was hit, so the click handler knows
 let lastMouseDownHitElement = false;
 
@@ -264,10 +269,12 @@ let lastMouseDownHitElement = false;
 function handleCanvasMouseDown(e) {
   const canvas = e.target;
   const rect = canvas.getBoundingClientRect();
+
   // Account for CSS sizing vs canvas pixel size
   const cssToCanvas = canvas.width / rect.width;
   const mouseX = (e.clientX - rect.left) * cssToCanvas;
   const mouseY = (e.clientY - rect.top) * cssToCanvas;
+
   const scale = getCanvasScale();
   const cx = CONFIG.CANVAS_DISPLAY_DIAMETER / 2;
   const cy = CONFIG.CANVAS_DISPLAY_DIAMETER / 2;
@@ -340,6 +347,7 @@ function handleCanvasMouseMove(e) {
   const cssToCanvas = canvas.width / rect.width;
   const mouseX = (e.clientX - rect.left) * cssToCanvas;
   const mouseY = (e.clientY - rect.top) * cssToCanvas;
+
   const scale = getCanvasScale();
   const cx = CONFIG.CANVAS_DISPLAY_DIAMETER / 2;
   const cy = CONFIG.CANVAS_DISPLAY_DIAMETER / 2;
@@ -385,7 +393,6 @@ function handleCanvasMouseMove(e) {
 
     imgEl.width = newWidth;
     imgEl.height = newHeight;
-
     renderDesignCanvas();
     return;
   }
@@ -428,17 +435,25 @@ function handleCanvasMouseUp(e) {
  */
 function setBackgroundColor(color) {
   currentDesign.backgroundColor = color;
+
   // When the user picks a custom color, we keep the template draw
   // function so patterns stay. If they want solid, they pick a solid template.
   // But if they use the color picker, override to solid:
   currentDesign.templateDraw = null;
   currentDesign.templateId = null;
+
   document.querySelectorAll('.template-card').forEach(function(card) {
     card.classList.remove('selected');
   });
+
   renderDesignCanvas();
+
   // Also refresh sheet thumbnails if in sheet mode
-  if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
+  if (
+    typeof currentMode !== 'undefined' &&
+    currentMode === 'sheet' &&
+    typeof refreshSheetThumbnails === 'function'
+  ) {
     refreshSheetThumbnails();
   }
 }
