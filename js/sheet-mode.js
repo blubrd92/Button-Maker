@@ -732,7 +732,23 @@ function refreshSheetThumbnails() {
 
 // --- Mode switching ---
 
+function showMainDesignBanner() {
+  if (document.getElementById('main-design-banner')) return;
+  var banner = document.createElement('div');
+  banner.id = 'main-design-banner';
+  banner.innerHTML =
+    '<span>Editing <strong>Main Button Design</strong> — changes apply to all buttons</span>';
+  var canvasWrapper = document.getElementById('design-canvas-wrapper');
+  canvasWrapper.insertBefore(banner, canvasWrapper.firstChild);
+}
+
+function removeMainDesignBanner() {
+  var existing = document.getElementById('main-design-banner');
+  if (existing) existing.remove();
+}
+
 function enterSheetMode() {
+  removeMainDesignBanner();
   document.getElementById('design-canvas-wrapper').classList.add('hidden');
   document.getElementById('sheet-view').classList.remove('hidden');
   renderSheetView();
@@ -742,6 +758,7 @@ function exitSheetMode() {
   document.getElementById('sheet-view').classList.add('hidden');
   document.getElementById('design-canvas-wrapper').classList.remove('hidden');
   selectedSlots = [];
+  showMainDesignBanner();
   renderDesignCanvas();
 }
 
@@ -877,6 +894,7 @@ function editGroupInDesignMode(groupType, groupIndex) {
  * with a "Done - Back to Sheet" button.
  */
 function showSlotEditBanner(slotIndex) {
+  removeMainDesignBanner();
   removeSlotEditBanner();
   var layout = getCurrentLayout();
   var row = Math.floor(slotIndex / layout.cols);
@@ -1063,6 +1081,7 @@ function initSheetMode() {
       document.getElementById('btn-sheet-mode').classList.remove('active');
       document.getElementById('design-canvas-wrapper').classList.remove('hidden');
       document.getElementById('sheet-view').classList.add('hidden');
+      showMainDesignBanner();
       renderDesignCanvas();
       return;
     }
@@ -1080,4 +1099,7 @@ function initSheetMode() {
     document.getElementById('btn-design-mode').classList.remove('active');
     enterSheetMode();
   });
+
+  // App starts in design mode — show the main design banner immediately
+  showMainDesignBanner();
 }
