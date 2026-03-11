@@ -404,10 +404,6 @@ function clearGradientPresetHighlight() {
   document.querySelectorAll('.gradient-preset-btn').forEach(function(btn) {
     btn.classList.remove('active');
   });
-  if (currentDesign.gradient) {
-    currentDesign.gradient.preset = null;
-    currentDesign.gradient.stops = null;
-  }
 }
 
 /**

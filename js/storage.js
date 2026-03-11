@@ -171,19 +171,23 @@ function deserializeDesign(data) {
   currentDesign.libraryInfoColor = data.libraryInfoColor || CONFIG.DEFAULTS.libraryInfoColor;
 
   // Update UI controls
-  document.getElementById('bg-color-picker').value = currentDesign.backgroundColor;
+  var grad = currentDesign.gradient;
+  var bgColor = grad && grad.color1 ? grad.color1 : currentDesign.backgroundColor;
+  document.getElementById('bg-color-picker').value = bgColor;
   document.getElementById('library-info-input').value = currentDesign.libraryInfoText;
   document.getElementById('library-info-color').value = currentDesign.libraryInfoColor;
   if (typeof updateBackgroundSwatches === 'function') {
-    updateBackgroundSwatches(currentDesign.backgroundColor);
+    updateBackgroundSwatches(bgColor);
   }
 
   // Update gradient UI
-  var grad = currentDesign.gradient;
   var toggleGradient = document.getElementById('toggle-gradient');
   var gradientControls = document.getElementById('gradient-controls');
   if (toggleGradient) toggleGradient.checked = !!grad;
   if (gradientControls) gradientControls.classList.toggle('hidden', !grad);
+  document.querySelectorAll('.gradient-preset-btn').forEach(function(btn) {
+    btn.classList.remove('active');
+  });
   if (grad) {
     var color2 = document.getElementById('bg-gradient-color2');
     var dir = document.getElementById('gradient-direction');

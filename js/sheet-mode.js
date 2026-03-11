@@ -42,6 +42,72 @@ let sheetName = '';
 // Clipboard for copying a button's full design (main + overrides merged)
 let _copiedDesign = null;
 
+function getEffectiveDesignForSlot(slotIndex) {
+  var design = cloneDesignForRender(currentDesign);
+  var overrides = getSlotOverrides(slotIndex);
+  if (overrides && Object.keys(overrides).length > 0) {
+    applyOverridesToDesign(design, overrides);
+  }
+  return design;
+}
+
+function buildFullOverrideFromDesign(design) {
+  return {
+    templateId: design.templateId,
+    backgroundColor: design.backgroundColor,
+    gradient: design.gradient ? JSON.parse(JSON.stringify(design.gradient)) : null,
+    textElements: design.textElements.map(function(t) { return Object.assign({}, t); }),
+    imageElements: design.imageElements.map(function(img) {
+      return {
+        dataUrl: img.dataUrl,
+        x: img.x,
+        y: img.y,
+        width: img.width,
+        height: img.height,
+        naturalWidth: img.naturalWidth,
+        naturalHeight: img.naturalHeight,
+        baseWidth: img.baseWidth,
+        baseHeight: img.baseHeight,
+        imageScale: img.imageScale || 1.0
+      };
+    }),
+    libraryInfoText: design.libraryInfoText,
+    libraryInfoColor: design.libraryInfoColor
+  };
+}
+
+function syncSidebarToDesign(design) {
+  var effective = design || currentDesign;
+  var grad = effective.gradient;
+  var bgColor = grad && grad.color1 ? grad.color1 : effective.backgroundColor;
+
+  document.getElementById('bg-color-picker').value = bgColor;
+  if (typeof updateBackgroundSwatches === 'function') updateBackgroundSwatches(bgColor);
+  document.getElementById('library-info-input').value = effective.libraryInfoText || '';
+  document.getElementById('library-info-color').value = effective.libraryInfoColor || CONFIG.DEFAULTS.libraryInfoColor;
+
+  var gradToggle = document.getElementById('toggle-gradient');
+  var gradControls = document.getElementById('gradient-controls');
+  if (gradToggle) gradToggle.checked = !!grad;
+  if (gradControls) gradControls.classList.toggle('hidden', !grad);
+
+  document.querySelectorAll('.gradient-preset-btn').forEach(function(btn) {
+    btn.classList.remove('active');
+  });
+
+  if (grad) {
+    var color2Input = document.getElementById('bg-gradient-color2');
+    var dirInput = document.getElementById('gradient-direction');
+    if (color2Input) color2Input.value = grad.color2 || '#4A90D9';
+    if (dirInput) dirInput.value = grad.direction || 'top-bottom';
+    if (grad.preset) {
+      document.querySelectorAll('.gradient-preset-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.preset === grad.preset);
+      });
+    }
+  }
+}
+
 // --- Slot management ---
 
 /**
@@ -287,25 +353,7 @@ function renderSheetView() {
     updateSheetSelectionUI();
     updateSheetOverridePanel();
 
-    document.getElementById('bg-color-picker').value = currentDesign.backgroundColor;
-    if (typeof updateBackgroundSwatches === 'function') updateBackgroundSwatches(currentDesign.backgroundColor);
-    document.getElementById('library-info-input').value = currentDesign.libraryInfoText;
-    document.getElementById('library-info-color').value = currentDesign.libraryInfoColor;
-    
-    var grad = currentDesign.gradient;
-    var gradToggle = document.getElementById('toggle-gradient');
-    if (gradToggle) gradToggle.checked = !!grad;
-    
-    var gradControls = document.getElementById('gradient-controls');
-    if (gradControls) gradControls.classList.toggle('hidden', !grad);
-    
-    if (grad) {
-      var color2Input = document.getElementById('bg-gradient-color2');
-      if (color2Input) color2Input.value = grad.color2 || '#4A90D9';
-      
-      var dirInput = document.getElementById('gradient-direction');
-      if (dirInput) dirInput.value = grad.direction || 'top-bottom';
-    }
+    syncSidebarToDesign(currentDesign);
   });
 
   controlsDiv.querySelector('#btn-edit-selected').addEventListener('click', function() {
@@ -682,17 +730,9 @@ function updateSheetSelectionUI() {
 
 function updateSheetOverridePanel() {
   if (selectedSlots.length === 1) {
-    var slotIndex = selectedSlots[0];
-    var overrides = getSlotOverrides(slotIndex);
-    var bgColor = overrides.backgroundColor || currentDesign.backgroundColor;
-    document.getElementById('bg-color-picker').value = bgColor;
-    updateBackgroundSwatches(bgColor);
-    var libText = overrides.libraryInfoText !== undefined
-      ? overrides.libraryInfoText : currentDesign.libraryInfoText;
-    var libColor = overrides.libraryInfoColor !== undefined
-      ? overrides.libraryInfoColor : currentDesign.libraryInfoColor;
-    document.getElementById('library-info-input').value = libText;
-    document.getElementById('library-info-color').value = libColor;
+    syncSidebarToDesign(getEffectiveDesignForSlot(selectedSlots[0]));
+  } else if (selectedSlots.length === 0) {
+    syncSidebarToDesign(currentDesign);
   }
 }
 
@@ -832,24 +872,7 @@ function editSlotInDesignMode(slotIndex) {
   document.getElementById('sheet-view').classList.add('hidden');
 
   // Sync sidebar controls
-  document.getElementById('bg-color-picker').value = currentDesign.backgroundColor;
-  updateBackgroundSwatches(currentDesign.backgroundColor);
-  document.getElementById('library-info-input').value = currentDesign.libraryInfoText;
-  document.getElementById('library-info-color').value = currentDesign.libraryInfoColor;
-
-  // Sync gradient UI
-  var grad = currentDesign.gradient;
-  document.getElementById('toggle-gradient').checked = !!grad;
-  document.getElementById('gradient-controls').classList.toggle('hidden', !grad);
-  if (grad) {
-    document.getElementById('bg-gradient-color2').value = grad.color2 || '#4A90D9';
-    document.getElementById('gradient-direction').value = grad.direction || 'top-bottom';
-    if (grad.preset) {
-      document.querySelectorAll('.gradient-preset-btn').forEach(function(btn) {
-        btn.classList.toggle('active', btn.dataset.preset === grad.preset);
-      });
-    }
-  }
+  syncSidebarToDesign(currentDesign);
 
   // Show image controls if there's an image
   if (currentDesign.imageElements.length > 0) {
@@ -1040,13 +1063,7 @@ function finishSlotEdit() {
   currentDesign.libraryInfoColor = _mainDesignBackup.libraryInfoColor;
 
   // Reset sidebar to main values
-  document.getElementById('bg-color-picker').value = currentDesign.backgroundColor;
-  updateBackgroundSwatches(currentDesign.backgroundColor);
-  document.getElementById('library-info-input').value = currentDesign.libraryInfoText;
-  document.getElementById('library-info-color').value = currentDesign.libraryInfoColor;
-  var grad = currentDesign.gradient;
-  document.getElementById('toggle-gradient').checked = !!grad;
-  document.getElementById('gradient-controls').classList.toggle('hidden', !grad);
+  syncSidebarToDesign(currentDesign);
 
   // Clean up
   _editingSlotIndex = null;
