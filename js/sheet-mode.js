@@ -422,6 +422,12 @@ function renderSheetView() {
     rowHeader.addEventListener('click', (function(r) {
       return function(e) { handleRowHeaderClick(r, e); };
     })(row));
+    rowHeader.addEventListener('dblclick', (function(r) {
+      return function(e) {
+        e.stopPropagation();
+        editGroupInDesignMode('row', r);
+      };
+    })(row));
     rowHeaderCol.appendChild(rowHeader);
   }
 
