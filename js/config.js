@@ -110,11 +110,9 @@ const CONFIG = {
   // Default design values
   DEFAULTS: {
     backgroundColor: "#FFFFFF",
-    textColor: "#222222",
     fontFamily: "Roboto",
-    fontSize: 24,              // points (at print size)
-    libraryInfoFontSize: 4.3,  // points (at print size)
-    libraryInfoColor: "#666666",
+    libraryInfoFontSize: 4.5,  // points (at print size)
+    libraryInfoColor: "#000000",
     libraryInfoText: ""
   },
 
