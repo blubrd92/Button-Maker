@@ -82,7 +82,7 @@ function getSlotOverrides(slotIndex) {
 /**
  * Set overrides for a specific slot.
  */
-function setSlotOverrides(slotIndex, overrides) {
+function setSlotOverrides(slotIndex) {
   if (sheetSlots[slotIndex]) {
     sheetSlots[slotIndex].overrides = overrides;
   }
@@ -185,7 +185,8 @@ function renderSheetView() {
     '<button class="btn btn-small" id="btn-make-main" style="display:none;">Make Main Design</button>' +
     '<button class="btn btn-small" id="btn-edit-selected" style="display:none;">Edit Selected in Design</button>' +
     '<button class="btn btn-small" id="btn-copy-design" style="display:none;">Copy Design</button>' +
-    '<button class="btn btn-small" id="btn-paste-design" style="display:none;">Paste Design</button>';
+    '<button class="btn btn-small" id="btn-paste-design" style="display:none;">Paste Design</button>' +
+    '<button class="btn btn-small" id="btn-clear-selection" style="display:none;">Clear Selection</button>';
 
   // Wire up the new controls (use querySelector on controlsDiv since it's not in the DOM yet)
   controlsDiv.querySelector('#btn-sheet-reset').addEventListener('click', function() {
@@ -338,6 +339,12 @@ function renderSheetView() {
     updateSheetSelectionUI();
   });
 
+  controlsDiv.querySelector('#btn-clear-selection').addEventListener('click', function() {
+    selectedSlots = [];
+    updateSheetSelectionUI();
+    updateSheetOverridePanel();
+  });
+
 
   // -- Compute pixel scaling for the page representation --
   // Use 96 CSS px per inch so the preview matches actual US Letter paper size
@@ -355,6 +362,19 @@ function renderSheetView() {
   // -- Outer wrapper with headers --
   var outerWrapper = document.createElement('div');
   outerWrapper.className = 'sheet-outer-wrapper';
+  
+  // Listen for clicks on the void to clear selection
+  outerWrapper.addEventListener('click', function(e) {
+    var isVoid = e.target.classList.contains('sheet-outer-wrapper') || 
+                 e.target.classList.contains('sheet-main-area') || 
+                 e.target.classList.contains('sheet-page') || 
+                 e.target.classList.contains('sheet-grid');
+    if (isVoid && selectedSlots.length > 0) {
+      selectedSlots = [];
+      updateSheetSelectionUI();
+      updateSheetOverridePanel();
+    }
+  });
 
   // Name row & controls bar inside the wrapper so they share the page width
   nameRow.style.paddingLeft = '36px'; // offset for row-header column width
@@ -613,6 +633,7 @@ function updateSheetSelectionUI() {
   var applyRowBtn = document.getElementById('btn-apply-row');
   var makeMainBtn = document.getElementById('btn-make-main');
   var editSelectedBtn = document.getElementById('btn-edit-selected');
+  var clearSelectionBtn = document.getElementById('btn-clear-selection');
 
   if (info) {
     info.textContent = selectedSlots.length > 0
@@ -654,6 +675,10 @@ function updateSheetSelectionUI() {
   var pasteBtn = document.getElementById('btn-paste-design');
   if (pasteBtn) {
     pasteBtn.style.display = (_copiedDesign && selectedSlots.length > 0) ? 'inline-flex' : 'none';
+  }
+  
+  if (clearSelectionBtn) {
+    clearSelectionBtn.style.display = selectedSlots.length > 0 ? 'inline-flex' : 'none';
   }
 }
 
