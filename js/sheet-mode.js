@@ -108,6 +108,62 @@ function syncSidebarToDesign(design) {
   }
 }
 
+
+function cloneDesignForPromotion(design) {
+  return {
+    templateId: design.templateId != null ? design.templateId : null,
+    backgroundColor: design.backgroundColor,
+    templateDraw: null,
+    gradient: design.gradient ? JSON.parse(JSON.stringify(design.gradient)) : null,
+    textElements: (design.textElements || []).map(function(t) { return Object.assign({}, t); }),
+    imageElements: (design.imageElements || []).map(function(img) {
+      var element = Object.assign({}, img);
+      if (!element.imgObj && element.dataUrl) {
+        element.imgObj = getOrCreateCachedImage(element.dataUrl);
+      }
+      return element;
+    }),
+    libraryInfoText: design.libraryInfoText,
+    libraryInfoColor: design.libraryInfoColor
+  };
+}
+
+function normalizePromotedMainDesign(design) {
+  if (design.gradient) {
+    design.templateId = null;
+    if (typeof buildGradientDrawFunction === 'function') {
+      design.templateDraw = buildGradientDrawFunction(design.gradient);
+    } else {
+      design.templateDraw = null;
+    }
+  } else if (design.templateId) {
+    if (typeof getTemplateById === 'function') {
+      var template = getTemplateById(design.templateId);
+      design.templateDraw = template ? template.draw : null;
+    } else {
+      design.templateDraw = null;
+    }
+  } else {
+    design.templateId = null;
+    design.templateDraw = null;
+  }
+
+  return design;
+}
+
+function applyPromotedMainDesign(design) {
+  var normalized = normalizePromotedMainDesign(cloneDesignForPromotion(design));
+
+  currentDesign.templateId = normalized.templateId;
+  currentDesign.backgroundColor = normalized.backgroundColor;
+  currentDesign.templateDraw = normalized.templateDraw;
+  currentDesign.gradient = normalized.gradient;
+  currentDesign.textElements = normalized.textElements;
+  currentDesign.imageElements = normalized.imageElements;
+  currentDesign.libraryInfoText = normalized.libraryInfoText;
+  currentDesign.libraryInfoColor = normalized.libraryInfoColor;
+}
+
 // --- Slot management ---
 
 /**
@@ -295,65 +351,18 @@ function renderSheetView() {
 
   controlsDiv.querySelector('#btn-make-main').addEventListener('click', function() {
     if (selectedSlots.length !== 1) return;
+
     var sourceIdx = selectedSlots[0];
-    var overrides = getSlotOverrides(sourceIdx);
+    if (!slotHasOverrides(sourceIdx)) return;
 
-    if (Object.keys(overrides).length === 0) return;
-
-    if (overrides.backgroundColor !== undefined) {
-      currentDesign.backgroundColor = overrides.backgroundColor;
-      currentDesign.templateDraw = null;
-      currentDesign.templateId = null;
-    }
-    
-    if (overrides.gradient !== undefined) {
-      currentDesign.gradient = overrides.gradient;
-      if (overrides.gradient && typeof buildGradientDrawFunction === 'function') {
-        currentDesign.templateDraw = buildGradientDrawFunction(overrides.gradient);
-      } else {
-        currentDesign.templateDraw = null;
-      }
-    }
-    
-    if (overrides.templateId !== undefined) {
-      currentDesign.templateId = overrides.templateId;
-      if (typeof getTemplateById === 'function') {
-        var t = getTemplateById(overrides.templateId);
-        currentDesign.templateDraw = t ? t.draw : null;
-      }
-    }
-    
-    if (overrides.libraryInfoText !== undefined) {
-      currentDesign.libraryInfoText = overrides.libraryInfoText;
-    }
-    
-    if (overrides.libraryInfoColor !== undefined) {
-      currentDesign.libraryInfoColor = overrides.libraryInfoColor;
-    }
-    
-    if (overrides.textElements !== undefined) {
-      currentDesign.textElements = JSON.parse(JSON.stringify(overrides.textElements));
-    }
-    
-    if (overrides.imageElements !== undefined) {
-      currentDesign.imageElements = [];
-      overrides.imageElements.forEach(function(imgData) {
-        var img = new Image();
-        var element = Object.assign({}, imgData, { imgObj: img });
-        currentDesign.imageElements.push(element);
-        img.onload = function() {
-          refreshSheetThumbnails();
-        };
-        img.src = imgData.dataUrl;
-      });
-    }
-
+    applyPromotedMainDesign(getEffectiveDesignForSlot(sourceIdx));
     setSlotOverrides(sourceIdx, {});
+
     refreshSheetThumbnails();
     updateSheetSelectionUI();
     updateSheetOverridePanel();
-
     syncSidebarToDesign(currentDesign);
+    renderDesignCanvas();
   });
 
   controlsDiv.querySelector('#btn-edit-selected').addEventListener('click', function() {
@@ -540,6 +549,7 @@ function renderSheetView() {
   updateSheetSelectionUI();
   updateSheetOverridePanel();
 }
+
 
 /**
  * Render a single button thumbnail for the sheet view.
@@ -1038,11 +1048,10 @@ function finishSlotEdit() {
     });
   }
 
-  var selectionToRestore = [slotIndex];
-
   // Save overrides - if editing a group, apply to all slots in the group
+  var restoredSelection;
   if (_editingGroup) {
-    selectionToRestore = _editingGroup.slots.slice();
+    restoredSelection = _editingGroup.slots.slice();
     _editingGroup.slots.forEach(function(idx) {
       // Set the overrides directly, replacing any existing ones instead of merging
       if (Object.keys(overrides).length === 0) {
@@ -1053,6 +1062,7 @@ function finishSlotEdit() {
     });
     _editingGroup = null;
   } else {
+    restoredSelection = [slotIndex];
     setSlotOverrides(slotIndex, overrides);
   }
 
@@ -1077,14 +1087,13 @@ function finishSlotEdit() {
   removeSlotEditBanner();
 
   // Switch back to sheet mode
-  selectedSlots = selectionToRestore;
+  selectedSlots = restoredSelection;
   currentMode = 'sheet';
   document.getElementById('btn-sheet-mode').classList.add('active');
   document.getElementById('btn-design-mode').classList.remove('active');
   document.getElementById('design-canvas-wrapper').classList.add('hidden');
   document.getElementById('sheet-view').classList.remove('hidden');
   renderSheetView();
-  updateSheetOverridePanel();
 }
 
 function initSheetMode() {
