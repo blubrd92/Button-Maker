@@ -113,34 +113,57 @@ function deserializeDesign(data) {
 
   // Restore image elements (reconstruct Image objects and cover-fill fields)
   currentDesign.imageElements = [];
-  (data.imageElements || []).forEach(function(imgData) {
-    var img = new Image();
-    var element = Object.assign({}, imgData, { imgObj: img });
-    // Ensure cover-fill fields exist (for designs saved before this feature)
-    if (!element.baseWidth || !element.baseHeight) {
-      var cover = computeCoverFillSize(
-        element.naturalWidth || 1,
-        element.naturalHeight || 1
-      );
-      element.baseWidth = cover.width;
-      element.baseHeight = cover.height;
-    }
-    if (!element.imageScale) {
-      element.imageScale = 1.0;
-    }
-    // Push element BEFORE setting src — base64 data URLs can fire onload
-    // synchronously, so the element must already be in the array when
-    // renderDesignCanvas runs.
-    currentDesign.imageElements.push(element);
-    img.onload = function() {
-      renderDesignCanvas();
+  var totalImages = data.imageElements ? data.imageElements.length : 0;
+  var loadedImages = 0;
+
+  function attemptRender() {
+    loadedImages++;
+    // Only render the canvas when all images have either loaded or failed
+    if (loadedImages === totalImages) {
+      if (typeof renderDesignCanvas === 'function') renderDesignCanvas();
       
       if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
         refreshSheetThumbnails();
       }
-    };
-    img.src = imgData.dataUrl;
-  });
+    }
+  }
+
+  if (totalImages === 0) {
+    // If there are no images, we can just render immediately
+    if (typeof renderDesignCanvas === 'function') renderDesignCanvas();
+    if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
+      refreshSheetThumbnails();
+    }
+  } else {
+    (data.imageElements || []).forEach(function(imgData) {
+      var img = new Image();
+      var element = Object.assign({}, imgData, { imgObj: img });
+      
+      // Ensure cover-fill fields exist (for designs saved before this feature)
+      if (!element.baseWidth || !element.baseHeight) {
+        var cover = computeCoverFillSize(
+          element.naturalWidth || 1,
+          element.naturalHeight || 1
+        );
+        element.baseWidth = cover.width;
+        element.baseHeight = cover.height;
+      }
+      if (!element.imageScale) {
+        element.imageScale = 1.0;
+      }
+      
+      // Push element BEFORE setting src
+      currentDesign.imageElements.push(element);
+      
+      img.onload = attemptRender;
+      img.onerror = function() {
+        console.warn('Button Maker: An image failed to load from the save file.');
+        attemptRender();
+      };
+      
+      img.src = imgData.dataUrl;
+    });
+  }
 
   // Restore library info (brand text)
   currentDesign.libraryInfoText = data.libraryInfoText || '';
@@ -197,9 +220,8 @@ function quickSave() {
     slots: slotsData
   };
 
-  // Save to localStorage (best-effort; may fail if quota exceeded)
+  // Save to localStorage (best-effort; limit to last 5 to prevent bloat)
   var designs = getSavedDesigns();
-  // Overwrite if same name exists
   var existingIdx = -1;
   for (var i = 0; i < designs.length; i++) {
     if (designs[i].name.toLowerCase() === name.toLowerCase()) {
@@ -212,14 +234,23 @@ function quickSave() {
   } else {
     designs.push(savedDesign);
   }
+
+  // Enforce a maximum of 5 saved designs in local storage
+  if (designs.length > 5) {
+    designs = designs.slice(designs.length - 5);
+  }
+
   try {
     saveDesignsToStorage(designs);
   } catch (e) {
     console.warn('localStorage save failed (quota?):', e);
+    if (typeof showNotification === 'function') {
+      showNotification('Browser memory full. Background save failed. Please rely on downloaded files.', 'error');
+    }
   }
 
   // Always export as .buttons file download, even if localStorage failed
-  exportDesignsFromArray(designs);
+  exportDesignsFromArray([savedDesign]);
 }
 
 /**
@@ -237,7 +268,7 @@ function quickLoad() {
 function exportDesignsToJSON() {
   var designs = getSavedDesigns();
   if (designs.length === 0) {
-    showNotification('No designs to export. Save a design first.');
+    if (typeof showNotification === 'function') showNotification('No designs to export. Save a design first.');
     return;
   }
   exportDesignsFromArray(designs);
@@ -249,7 +280,7 @@ function exportDesignsToJSON() {
  */
 function exportDesignsFromArray(designs) {
   if (!designs || designs.length === 0) {
-    showNotification('No designs to export. Save a design first.');
+    if (typeof showNotification === 'function') showNotification('No designs to export. Save a design first.');
     return;
   }
   var payload = {
@@ -274,7 +305,7 @@ function exportDesignsFromArray(designs) {
 
 /**
  * Import designs from a JSON file. Supports wrapped { designs: [...] }
- * or raw array [...] formats. Merges by name (case-insensitive overwrite).
+ * or raw array [...] formats. Avoids name collisions.
  * After import, loads the first design.
  * @param {File} file - The JSON file to import
  */
@@ -290,7 +321,7 @@ function importDesignsFromJSON(file) {
       } else if (raw && Array.isArray(raw.designs)) {
         incoming = raw.designs;
       } else {
-        showNotification('Invalid file format.');
+        if (typeof showNotification === 'function') showNotification('Invalid file format.');
         return;
       }
 
@@ -308,24 +339,35 @@ function importDesignsFromJSON(file) {
       });
 
       if (incoming.length === 0) {
-        showNotification('No valid designs found in file.');
+        if (typeof showNotification === 'function') showNotification('No valid designs found in file.');
         return;
       }
 
-      // Merge by name (case-insensitive): imported overwrites existing
+      // Merge by name: append a number if the name already exists
       var existing = getSavedDesigns();
       var nameMap = {};
       existing.forEach(function(d, i) { nameMap[d.name.toLowerCase()] = i; });
 
       incoming.forEach(function(d) {
-        var key = d.name.toLowerCase();
-        if (key in nameMap) {
-          existing[nameMap[key]] = d;
-        } else {
-          existing.push(d);
-          nameMap[key] = existing.length - 1;
+        var originalName = d.name;
+        var key = originalName.toLowerCase();
+        var counter = 1;
+        
+        // If the name is already taken, keep incrementing a number until we find a free slot
+        while (key in nameMap) {
+          d.name = originalName + ' (' + counter + ')';
+          key = d.name.toLowerCase();
+          counter++;
         }
+        
+        existing.push(d);
+        nameMap[key] = existing.length - 1;
       });
+
+      // Enforce the same limit of 5 designs after importing
+      if (existing.length > 5) {
+        existing = existing.slice(existing.length - 5);
+      }
 
       saveDesignsToStorage(existing);
 
@@ -368,13 +410,13 @@ function importDesignsFromJSON(file) {
         applyZoom();
       }
 
-      showNotification('Buttons loaded.', 'success');
+      if (typeof showNotification === 'function') showNotification('Buttons loaded.', 'success');
       
       // Force an auto-save right now so it survives an immediate window close
       autoSaveState();
     } catch (err) {
       console.error('Import failed:', err);
-      showNotification('Could not load this file. Is it a valid .buttons file?');
+      if (typeof showNotification === 'function') showNotification('Could not load this file. Is it a valid .buttons file?');
     }
   };
   reader.readAsText(file);
