@@ -137,7 +137,9 @@ function renderDesignCanvas() {
   renderLibraryInfoText(ctx, cx, cy, safeRadius, scale);
 
   // ── 6. Guide circles ──
-  drawGuideCircles(ctx, cx, cy, cutRadius, faceRadius, safeRadius);
+  if (CONFIG.guidesVisible) {
+    drawGuideCircles(ctx, cx, cy, cutRadius, faceRadius, safeRadius);
+  }
 
   // ── 7. Selection highlight ──
   drawSelectionHighlight(ctx, cx, cy, scale);
@@ -236,10 +238,10 @@ function renderButtonDesign(ctx, cx, cy, scale, design, options = {}) {
   if (options.showCutGuide) {
     ctx.beginPath();
     // Inset slightly to prevent clipping against the absolute edge of the canvas
-    ctx.arc(cx, cy, cutRadius - (options.isPrint ? 1 : 0.5), 0, Math.PI * 2);
+    ctx.arc(cx, cy, cutRadius - (options.isPrint ? 2 : 0.5), 0, Math.PI * 2);
     ctx.strokeStyle = '#000000';
-    // 2 pixels at 300 DPI is a clean, highly visible line
-    ctx.lineWidth = options.isPrint ? 2 : 1;
+    // 4 pixels at 300 DPI is a clean, highly visible line
+    ctx.lineWidth = options.isPrint ? 4 : 1;
     ctx.stroke();
   }
 

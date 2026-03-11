@@ -319,7 +319,7 @@ function renderLibraryInfoTextWithDesign(ctx, cx, cy, safeRadius, scale, design,
  * @param {boolean} isPrint - render at print DPI
  */
 function renderLibraryInfoTextInternal(ctx, cx, cy, safeRadius, scale, text, color, isPrint) {
-  // Font size: 4.3pt at print size -> convert to current scale pixels.
+  // Font size: 4.5pt at print size -> convert to current scale pixels.
   // Points are 1/72 inch; multiply by scale (px/inch) to get pixels.
   var fontSizePt = CONFIG.DEFAULTS.libraryInfoFontSize;
   var fontSizePx = fontSizePt * (scale / 72);
@@ -469,6 +469,7 @@ function initTextTool() {
   // Font size
   document.getElementById('font-size').addEventListener('input', (e) => {
     const size = parseInt(e.target.value);
+    if (isNaN(size)) return;
     document.getElementById('font-size-display').textContent = size;
     updateSelectedTextProperty('fontSize', size);
   });
@@ -515,7 +516,9 @@ function initTextTool() {
 
   // Curve radius
   document.getElementById('curve-radius').addEventListener('input', (e) => {
-    updateSelectedTextProperty('curveRadius', parseInt(e.target.value));
+    const radius = parseInt(e.target.value);
+    if (isNaN(radius)) return;
+    updateSelectedTextProperty('curveRadius', radius);
   });
 
   // Populate font selector from CONFIG

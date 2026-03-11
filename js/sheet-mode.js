@@ -141,7 +141,7 @@ function renderSheetView() {
   var container = document.getElementById('sheet-view');
   var layout = getCurrentLayout();
   var btnSize = getCurrentButtonSize();
-  var gutters = computeSheetGutters(CONFIG.currentLayout);
+  var gutters = computeSheetGutters();
   initSheetSlots();
 
   container.innerHTML = '';
@@ -179,13 +179,14 @@ function renderSheetView() {
   controlsDiv.className = 'sheet-controls-bar';
 
   controlsDiv.innerHTML =
-    '<button class="btn btn-small" id="btn-sheet-reset" style="display:none;">Reset Selected to Main</button>' +
+    '<button class="btn btn-small" id="btn-sheet-reset" style="display:none;">Reset to Main</button>' +
     '<button class="btn btn-small" id="btn-apply-col" style="display:none;">Apply to Col</button>' +
     '<button class="btn btn-small" id="btn-apply-row" style="display:none;">Apply to Row</button>' +
     '<button class="btn btn-small" id="btn-make-main" style="display:none;">Make Main Design</button>' +
-    '<button class="btn btn-small" id="btn-edit-selected" style="display:none;">Edit Selected in Design</button>' +
-    '<button class="btn btn-small" id="btn-copy-design" style="display:none;">Copy Design</button>' +
-    '<button class="btn btn-small" id="btn-paste-design" style="display:none;">Paste Design</button>';
+    '<button class="btn btn-small" id="btn-edit-selected" style="display:none;">Edit</button>' +
+    '<button class="btn btn-small" id="btn-copy-design" style="display:none;">Copy</button>' +
+    '<button class="btn btn-small" id="btn-paste-design" style="display:none;">Paste</button>' +
+    '<button class="btn btn-small" id="btn-clear-selection" style="display:none;">Clear Selection</button>';
 
   // Wire up the new controls (use querySelector on controlsDiv since it's not in the DOM yet)
   controlsDiv.querySelector('#btn-sheet-reset').addEventListener('click', function() {
@@ -308,9 +309,13 @@ function renderSheetView() {
   });
 
   controlsDiv.querySelector('#btn-edit-selected').addEventListener('click', function() {
-    if (selectedSlots.length < 2) return;
-    _editingGroup = { type: 'selection', index: null, slots: selectedSlots.slice() };
-    editSlotInDesignMode(selectedSlots[0]);
+    if (selectedSlots.length === 0) return;
+    if (selectedSlots.length === 1) {
+      editSlotInDesignMode(selectedSlots[0]);
+    } else {
+      _editingGroup = { type: 'selection', index: null, slots: selectedSlots.slice() };
+      editSlotInDesignMode(selectedSlots[0]);
+    }
   });
 
   controlsDiv.querySelector('#btn-copy-design').addEventListener('click', function() {
@@ -324,13 +329,18 @@ function renderSheetView() {
   controlsDiv.querySelector('#btn-paste-design').addEventListener('click', function() {
     if (!_copiedDesign || selectedSlots.length === 0) return;
     selectedSlots.forEach(function(idx) {
-      // Merge copied overrides onto each target slot
-      var existing = getSlotOverrides(idx);
-      var merged = Object.assign({}, existing, JSON.parse(JSON.stringify(_copiedDesign)));
-      setSlotOverrides(idx, merged);
+      // Replace target slot overrides entirely with the copied design
+      setSlotOverrides(idx, JSON.parse(JSON.stringify(_copiedDesign)));
     });
+    _copiedDesign = null; // Clear clipboard after paste
     refreshSheetThumbnails();
     updateSheetSelectionUI();
+  });
+
+  controlsDiv.querySelector('#btn-clear-selection').addEventListener('click', function() {
+    selectedSlots = [];
+    updateSheetSelectionUI();
+    updateSheetOverridePanel();
   });
 
 
@@ -350,6 +360,19 @@ function renderSheetView() {
   // -- Outer wrapper with headers --
   var outerWrapper = document.createElement('div');
   outerWrapper.className = 'sheet-outer-wrapper';
+  
+  // Listen for clicks on the void to clear selection
+  outerWrapper.addEventListener('click', function(e) {
+    var isVoid = e.target.classList.contains('sheet-outer-wrapper') || 
+                 e.target.classList.contains('sheet-main-area') || 
+                 e.target.classList.contains('sheet-page') || 
+                 e.target.classList.contains('sheet-grid');
+    if (isVoid && selectedSlots.length > 0) {
+      selectedSlots = [];
+      updateSheetSelectionUI();
+      updateSheetOverridePanel();
+    }
+  });
 
   // Name row & controls bar inside the wrapper so they share the page width
   nameRow.style.paddingLeft = '36px'; // offset for row-header column width
@@ -490,7 +513,7 @@ function renderSheetThumbnail(canvas, slotIndex) {
 
   renderButtonDesign(ctx, cx, cy, thumbScale, design, { showGuides: false });
 
-  // Draw a thin black outline so light-colored buttons are visible
+  // Draw a black outline so light-colored buttons are visible
   var cutRadius = (btnSize.cutDiameter / 2) * thumbScale;
   ctx.beginPath();
   ctx.arc(cx, cy, cutRadius - 2, 0, Math.PI * 2);
@@ -608,6 +631,7 @@ function updateSheetSelectionUI() {
   var applyRowBtn = document.getElementById('btn-apply-row');
   var makeMainBtn = document.getElementById('btn-make-main');
   var editSelectedBtn = document.getElementById('btn-edit-selected');
+  var clearSelectionBtn = document.getElementById('btn-clear-selection');
 
   if (info) {
     info.textContent = selectedSlots.length > 0
@@ -634,21 +658,25 @@ function updateSheetSelectionUI() {
     }
   }
 
-  // Show "Edit Selected in Design" when 2+ buttons are selected
+  // Show "Edit Selected in Design" when 1+ buttons are selected
   if (editSelectedBtn) {
-    editSelectedBtn.style.display = selectedSlots.length >= 2 ? 'inline-flex' : 'none';
+    editSelectedBtn.style.display = selectedSlots.length >= 1 ? 'inline-flex' : 'none';
   }
 
-  // Copy Design: visible when exactly 1 button is selected
+  // Copy Design: visible when exactly 1 button is selected and it has custom overrides
   var copyBtn = document.getElementById('btn-copy-design');
   if (copyBtn) {
-    copyBtn.style.display = selectedSlots.length === 1 ? 'inline-flex' : 'none';
+    copyBtn.style.display = (selectedSlots.length === 1 && slotHasOverrides(selectedSlots[0])) ? 'inline-flex' : 'none';
   }
 
   // Paste Design: visible when there's a copied design and buttons are selected
   var pasteBtn = document.getElementById('btn-paste-design');
   if (pasteBtn) {
     pasteBtn.style.display = (_copiedDesign && selectedSlots.length > 0) ? 'inline-flex' : 'none';
+  }
+  
+  if (clearSelectionBtn) {
+    clearSelectionBtn.style.display = selectedSlots.length > 0 ? 'inline-flex' : 'none';
   }
 }
 
@@ -702,7 +730,23 @@ function refreshSheetThumbnails() {
 
 // --- Mode switching ---
 
+function showMainDesignBanner() {
+  if (document.getElementById('main-design-banner')) return;
+  var banner = document.createElement('div');
+  banner.id = 'main-design-banner';
+  banner.innerHTML =
+    '<span>Editing <strong>Main Button Design</strong> - Changes apply to all buttons without custom designs</span>';
+  var canvasWrapper = document.getElementById('design-canvas-wrapper');
+  canvasWrapper.insertBefore(banner, canvasWrapper.firstChild);
+}
+
+function removeMainDesignBanner() {
+  var existing = document.getElementById('main-design-banner');
+  if (existing) existing.remove();
+}
+
 function enterSheetMode() {
+  removeMainDesignBanner();
   document.getElementById('design-canvas-wrapper').classList.add('hidden');
   document.getElementById('sheet-view').classList.remove('hidden');
   renderSheetView();
@@ -712,6 +756,7 @@ function exitSheetMode() {
   document.getElementById('sheet-view').classList.add('hidden');
   document.getElementById('design-canvas-wrapper').classList.remove('hidden');
   selectedSlots = [];
+  showMainDesignBanner();
   renderDesignCanvas();
 }
 
@@ -760,6 +805,14 @@ function editSlotInDesignMode(slotIndex) {
   }
   if (overrides.libraryInfoColor !== undefined) {
     currentDesign.libraryInfoColor = overrides.libraryInfoColor;
+  }
+  if (overrides.templateId !== undefined) {
+    currentDesign.templateId = overrides.templateId;
+    var tmpl = getTemplateById(overrides.templateId);
+    currentDesign.templateDraw = tmpl ? tmpl.draw : null;
+  }
+  if (overrides.textElements !== undefined) {
+    currentDesign.textElements = overrides.textElements.map(function(t) { return Object.assign({}, t); });
   }
   if (overrides.imageElements !== undefined) {
     currentDesign.imageElements = overrides.imageElements.map(function(img) {
@@ -839,6 +892,7 @@ function editGroupInDesignMode(groupType, groupIndex) {
  * with a "Done - Back to Sheet" button.
  */
 function showSlotEditBanner(slotIndex) {
+  removeMainDesignBanner();
   removeSlotEditBanner();
   var layout = getCurrentLayout();
   var row = Math.floor(slotIndex / layout.cols);
@@ -963,14 +1017,11 @@ function finishSlotEdit() {
   // Save overrides - if editing a group, apply to all slots in the group
   if (_editingGroup) {
     _editingGroup.slots.forEach(function(idx) {
-      // Merge new overrides with any existing per-slot overrides
-      var existing = getSlotOverrides(idx);
-      var merged = Object.assign({}, existing, overrides);
-      // If no actual differences remain, clear overrides
-      if (Object.keys(merged).length === 0) {
+      // Set the overrides directly, replacing any existing ones instead of merging
+      if (Object.keys(overrides).length === 0) {
         setSlotOverrides(idx, {});
       } else {
-        setSlotOverrides(idx, merged);
+        setSlotOverrides(idx, JSON.parse(JSON.stringify(overrides)));
       }
     });
     _editingGroup = null;
@@ -1025,6 +1076,7 @@ function initSheetMode() {
       document.getElementById('btn-sheet-mode').classList.remove('active');
       document.getElementById('design-canvas-wrapper').classList.remove('hidden');
       document.getElementById('sheet-view').classList.add('hidden');
+      showMainDesignBanner();
       renderDesignCanvas();
       return;
     }
@@ -1042,4 +1094,7 @@ function initSheetMode() {
     document.getElementById('btn-design-mode').classList.remove('active');
     enterSheetMode();
   });
+
+  // App starts in design mode — show the main design banner immediately
+  showMainDesignBanner();
 }

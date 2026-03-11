@@ -18,6 +18,7 @@
 
 const STORAGE_KEY = 'buttonmaker_designs';
 const AUTOSAVE_KEY = 'buttonmaker_autosave';
+const MAX_HISTORY_SLOTS = 2;
 
 /**
  * Get all saved designs from localStorage.
@@ -113,34 +114,57 @@ function deserializeDesign(data) {
 
   // Restore image elements (reconstruct Image objects and cover-fill fields)
   currentDesign.imageElements = [];
-  (data.imageElements || []).forEach(function(imgData) {
-    var img = new Image();
-    var element = Object.assign({}, imgData, { imgObj: img });
-    // Ensure cover-fill fields exist (for designs saved before this feature)
-    if (!element.baseWidth || !element.baseHeight) {
-      var cover = computeCoverFillSize(
-        element.naturalWidth || 1,
-        element.naturalHeight || 1
-      );
-      element.baseWidth = cover.width;
-      element.baseHeight = cover.height;
-    }
-    if (!element.imageScale) {
-      element.imageScale = 1.0;
-    }
-    // Push element BEFORE setting src — base64 data URLs can fire onload
-    // synchronously, so the element must already be in the array when
-    // renderDesignCanvas runs.
-    currentDesign.imageElements.push(element);
-    img.onload = function() {
-      renderDesignCanvas();
+  var totalImages = data.imageElements ? data.imageElements.length : 0;
+  var loadedImages = 0;
+
+  function attemptRender() {
+    loadedImages++;
+    // Only render the canvas when all images have either loaded or failed
+    if (loadedImages === totalImages) {
+      if (typeof renderDesignCanvas === 'function') renderDesignCanvas();
       
       if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
         refreshSheetThumbnails();
       }
-    };
-    img.src = imgData.dataUrl;
-  });
+    }
+  }
+
+  if (totalImages === 0) {
+    // If there are no images, we can just render immediately
+    if (typeof renderDesignCanvas === 'function') renderDesignCanvas();
+    if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
+      refreshSheetThumbnails();
+    }
+  } else {
+    (data.imageElements || []).forEach(function(imgData) {
+      var img = new Image();
+      var element = Object.assign({}, imgData, { imgObj: img });
+      
+      // Ensure cover-fill fields exist (for designs saved before this feature)
+      if (!element.baseWidth || !element.baseHeight) {
+        var cover = computeCoverFillSize(
+          element.naturalWidth || 1,
+          element.naturalHeight || 1
+        );
+        element.baseWidth = cover.width;
+        element.baseHeight = cover.height;
+      }
+      if (!element.imageScale) {
+        element.imageScale = 1.0;
+      }
+      
+      // Push element BEFORE setting src
+      currentDesign.imageElements.push(element);
+      
+      img.onload = attemptRender;
+      img.onerror = function() {
+        console.warn('Button Maker: An image failed to load from the save file.');
+        attemptRender();
+      };
+      
+      img.src = imgData.dataUrl;
+    });
+  }
 
   // Restore library info (brand text)
   currentDesign.libraryInfoText = data.libraryInfoText || '';
@@ -193,14 +217,12 @@ function quickSave() {
     name: name,
     savedAt: new Date().toISOString(),
     buttonSize: CONFIG.currentButtonSize,
-    layout: CONFIG.currentLayout,
     master: masterData,
     slots: slotsData
   };
 
-  // Save to localStorage (best-effort; may fail if quota exceeded)
+  // Save to localStorage
   var designs = getSavedDesigns();
-  // Overwrite if same name exists
   var existingIdx = -1;
   for (var i = 0; i < designs.length; i++) {
     if (designs[i].name.toLowerCase() === name.toLowerCase()) {
@@ -213,14 +235,23 @@ function quickSave() {
   } else {
     designs.push(savedDesign);
   }
+
+  // Enforce the maximum history limit
+  if (designs.length > MAX_HISTORY_SLOTS) {
+    designs = designs.slice(designs.length - MAX_HISTORY_SLOTS);
+  }
+
   try {
     saveDesignsToStorage(designs);
   } catch (e) {
     console.warn('localStorage save failed (quota?):', e);
+    if (typeof showNotification === 'function') {
+      showNotification('Browser memory full. Background save failed. Please rely on downloaded files.', 'error');
+    }
   }
 
   // Always export as .buttons file download, even if localStorage failed
-  exportDesignsFromArray(designs);
+  exportDesignsFromArray([savedDesign]);
 }
 
 /**
@@ -238,7 +269,7 @@ function quickLoad() {
 function exportDesignsToJSON() {
   var designs = getSavedDesigns();
   if (designs.length === 0) {
-    showNotification('No designs to export. Save a design first.');
+    if (typeof showNotification === 'function') showNotification('No designs to export. Save a design first.');
     return;
   }
   exportDesignsFromArray(designs);
@@ -250,7 +281,7 @@ function exportDesignsToJSON() {
  */
 function exportDesignsFromArray(designs) {
   if (!designs || designs.length === 0) {
-    showNotification('No designs to export. Save a design first.');
+    if (typeof showNotification === 'function') showNotification('No designs to export. Save a design first.');
     return;
   }
   var payload = {
@@ -263,10 +294,10 @@ function exportDesignsFromArray(designs) {
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
-  var name = (typeof sheetName === 'string' && sheetName.trim())
+  var baseName = (typeof sheetName === 'string' && sheetName.trim())
     ? sheetName.trim()
     : 'buttonmaker-designs';
-  a.download = name + '.buttons';
+  a.download = CONFIG.currentButtonSize + ' - ' + baseName + '.buttons';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -274,9 +305,8 @@ function exportDesignsFromArray(designs) {
 }
 
 /**
- * Import designs from a JSON file. Supports wrapped { designs: [...] }
- * or raw array [...] formats. Merges by name (case-insensitive overwrite).
- * After import, loads the first design.
+ * Import designs from a JSON file. Overwrites existing designs in history
+ * if names match. After import, loads the first design.
  * @param {File} file - The JSON file to import
  */
 function importDesignsFromJSON(file) {
@@ -291,7 +321,7 @@ function importDesignsFromJSON(file) {
       } else if (raw && Array.isArray(raw.designs)) {
         incoming = raw.designs;
       } else {
-        showNotification('Invalid file format.');
+        if (typeof showNotification === 'function') showNotification('Invalid file format.');
         return;
       }
 
@@ -303,38 +333,46 @@ function importDesignsFromJSON(file) {
           name: d.name.trim(),
           savedAt: d.savedAt || new Date().toISOString(),
           buttonSize: d.buttonSize || '1.5',
-          layout: d.layout || '15',
           master: d.master || {},
           slots: Array.isArray(d.slots) ? d.slots : []
         };
       });
 
       if (incoming.length === 0) {
-        showNotification('No valid designs found in file.');
+        if (typeof showNotification === 'function') showNotification('No valid designs found in file.');
         return;
       }
 
-      // Merge by name (case-insensitive): imported overwrites existing
       var existing = getSavedDesigns();
-      var nameMap = {};
-      existing.forEach(function(d, i) { nameMap[d.name.toLowerCase()] = i; });
 
-      incoming.forEach(function(d) {
-        var key = d.name.toLowerCase();
-        if (key in nameMap) {
-          existing[nameMap[key]] = d;
+      // Overwrite existing designs with the same name
+      incoming.forEach(function(newDesign) {
+        var existingIdx = existing.findIndex(function(d) {
+          return d.name.toLowerCase() === newDesign.name.toLowerCase();
+        });
+
+        if (existingIdx >= 0) {
+          existing[existingIdx] = newDesign;
         } else {
-          existing.push(d);
-          nameMap[key] = existing.length - 1;
+          existing.push(newDesign);
         }
       });
+
+      // Enforce the history limit after importing
+      if (existing.length > MAX_HISTORY_SLOTS) {
+        existing = existing.slice(existing.length - MAX_HISTORY_SLOTS);
+      }
 
       saveDesignsToStorage(existing);
 
       // Load the first imported design
       var first = incoming[0];
       CONFIG.currentButtonSize = first.buttonSize || '1.5';
-      CONFIG.currentLayout = first.layout || '15';
+
+      var sizeSelect = document.getElementById('button-size-select');
+      if (sizeSelect) {
+        sizeSelect.value = CONFIG.currentButtonSize;
+      }
       if (typeof sheetName !== 'undefined') {
         sheetName = first.name || '';
       }
@@ -366,13 +404,13 @@ function importDesignsFromJSON(file) {
         applyZoom();
       }
 
-      showNotification('Buttons loaded.', 'success');
+      if (typeof showNotification === 'function') showNotification('Buttons loaded.', 'success');
       
       // Force an auto-save right now so it survives an immediate window close
       autoSaveState();
     } catch (err) {
       console.error('Import failed:', err);
-      showNotification('Could not load this file. Is it a valid .buttons file?');
+      if (typeof showNotification === 'function') showNotification('Could not load this file. Is it a valid .buttons file?');
     }
   };
   reader.readAsText(file);
@@ -390,14 +428,13 @@ function autoSaveState() {
       savedAt: new Date().toISOString(),
       master: serializeDesign(currentDesign),
       buttonSize: CONFIG.currentButtonSize,
-      layout: CONFIG.currentLayout,
       sheetName: (typeof sheetName === 'string') ? sheetName : '',
       slots: (typeof getSheetSlots === 'function') ? getSheetSlots() : [],
       mode: currentMode
     };
     localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(state));
   } catch (e) {
-    // Storage full or unavailable — silently ignore
+    // Storage full or unavailable
   }
 }
 
@@ -412,7 +449,11 @@ function autoRestoreState() {
     if (!state || !state.master) return false;
 
     CONFIG.currentButtonSize = state.buttonSize || '1.5';
-    CONFIG.currentLayout = state.layout || '15';
+
+    var sizeSelect = document.getElementById('button-size-select');
+    if (sizeSelect) {
+      sizeSelect.value = CONFIG.currentButtonSize;
+    }
     if (typeof sheetName !== 'undefined') {
       sheetName = state.sheetName || '';
       var nameInput = document.getElementById('sheet-name-input');
@@ -459,10 +500,10 @@ function autoRestoreState() {
  * Called once from app.js.
  */
 function initStorage() {
-  // Save button — quick save to localStorage + file download
+  // Save button
   document.getElementById('btn-save').addEventListener('click', quickSave);
 
-  // Load button — opens file picker
+  // Load button
   document.getElementById('btn-load').addEventListener('click', quickLoad);
 
   // File input for .buttons import

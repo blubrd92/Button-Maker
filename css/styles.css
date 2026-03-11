@@ -591,7 +591,7 @@ input[type="checkbox"], input[type="radio"] {
 
 .sheet-selection-hint {
   margin-left: auto;
-  font-size: 12px;
+  font-size: 13.5px;
   font-weight: bold;
   color: #888;
   white-space: nowrap;
@@ -819,6 +819,25 @@ input[type="checkbox"], input[type="radio"] {
 .reset-btn:hover {
   background: var(--danger-color);
   color: white;
+}
+
+/* Main Design Banner */
+
+#main-design-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 20px;
+  background: #e8f0fe;
+  border: 1px solid #c2d4f8;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  color: #1a3a6e;
+  box-shadow: var(--shadow-sm);
+}
+
+#main-design-banner strong {
+  font-weight: 700;
 }
 
 /* Slot Edit Banner */

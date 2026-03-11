@@ -4,7 +4,7 @@
  * Generates print-ready tiled PDFs of button designs.
  *
  * Responsibilities:
- * - Tiling button designs onto US Letter pages (15 or 20 per sheet)
+ * - Tiling button designs onto US Letter pages
  * - Drawing cut line guides (toggleable)
  * - Rendering all design elements at 300 DPI for print accuracy
  *
@@ -13,27 +13,16 @@
  * - canvas.js (renderButtonDesign for shared rendering)
  * - templates.js (template draw functions)
  * - jsPDF (external library, loaded via CDN)
- *
- * Gotchas:
- * - All measurements are in inches internally. jsPDF uses points (72 per inch).
- * Convert with inchesToPoints(). Do NOT use pixel values here.
- * - The curved library info text must be re-rendered at print DPI,
- * not copied from the screen canvas, or it will be blurry.
- * - Each button is rendered to an offscreen canvas at 300 DPI, then
- * placed as an image in the PDF. This ensures text and curves
- * are crisp at print resolution.
  */
 
 /**
  * Generate and download a PDF with tiled button designs.
  *
  * @param {Object} [options] - Export options
- * @param {string} [options.layout] - Layout key ("15" or "20"), defaults to current
  * @param {boolean} [options.showCutGuides] - Draw cut circle guides on each button
  */
 function generatePDF(options) {
   options = options || {};
-  var layoutKey = options.layout || CONFIG.currentLayout;
   var showCutGuides = options.showCutGuides !== undefined ? options.showCutGuides : CONFIG.PDF.showCutGuides;
 
   // Resolve jsPDF constructor across possible global shapes
@@ -50,15 +39,14 @@ function generatePDF(options) {
     return;
   }
 
-  // Validate selected layout
-  if (!CONFIG.SHEET_LAYOUTS[layoutKey]) {
-    alert('Invalid layout "' + layoutKey + '". Please select a valid layout and try again.');
+  var layout = getCurrentLayout();
+  if (!layout) {
+    alert('Invalid layout. Please select a valid button size and try again.');
     return;
   }
 
-  var layout = CONFIG.SHEET_LAYOUTS[layoutKey];
   var btnSize = getCurrentButtonSize();
-  var gutters = computeSheetGutters(layoutKey);
+  var gutters = computeSheetGutters();
   var columnGutter = gutters.columnGutter;
   var rowGutter = gutters.rowGutter;
   var columnInset = gutters.columnInset || 0;
@@ -103,10 +91,11 @@ function generatePDF(options) {
       }
     }
 
-    // Use sheet name as filename (with spaces preserved), fallback to 'buttons'
-    var filename = (typeof sheetName === 'string' && sheetName.trim())
-      ? sheetName.trim() + '.pdf'
-      : 'buttons.pdf';
+    // Use button size and sheet name as filename, fallback to 'buttons'
+    var baseName = (typeof sheetName === 'string' && sheetName.trim())
+      ? sheetName.trim()
+      : 'buttons';
+    var filename = CONFIG.currentButtonSize + ' - ' + baseName + '.pdf';
     doc.save(filename);
 
   } catch (err) {
@@ -219,6 +208,6 @@ function initPDFExport() {
   const exportBtn = document.getElementById('btn-export');
   
   exportBtn.addEventListener('click', function() {
-    generatePDF({ layout: CONFIG.currentLayout, showCutGuides: true });
+    generatePDF({ showCutGuides: true });
   });
 }
