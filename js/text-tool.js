@@ -325,7 +325,7 @@ function renderLibraryInfoTextInternal(ctx, cx, cy, safeRadius, scale, text, col
   var fontSizePx = fontSizePt * (scale / 72);
 
   ctx.save();
-  ctx.font = 'normal bold ' + fontSizePx + 'px "Roboto"';
+  ctx.font = 'normal ' + fontSizePx + 'px "Roboto"';
   ctx.fillStyle = color;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
