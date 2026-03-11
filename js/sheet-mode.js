@@ -308,9 +308,13 @@ function renderSheetView() {
   });
 
   controlsDiv.querySelector('#btn-edit-selected').addEventListener('click', function() {
-    if (selectedSlots.length < 2) return;
-    _editingGroup = { type: 'selection', index: null, slots: selectedSlots.slice() };
-    editSlotInDesignMode(selectedSlots[0]);
+    if (selectedSlots.length === 0) return;
+    if (selectedSlots.length === 1) {
+      editSlotInDesignMode(selectedSlots[0]);
+    } else {
+      _editingGroup = { type: 'selection', index: null, slots: selectedSlots.slice() };
+      editSlotInDesignMode(selectedSlots[0]);
+    }
   });
 
   controlsDiv.querySelector('#btn-copy-design').addEventListener('click', function() {
@@ -329,6 +333,7 @@ function renderSheetView() {
       var merged = Object.assign({}, existing, JSON.parse(JSON.stringify(_copiedDesign)));
       setSlotOverrides(idx, merged);
     });
+    _copiedDesign = null; // Clear clipboard after paste
     refreshSheetThumbnails();
     updateSheetSelectionUI();
   });
@@ -490,7 +495,7 @@ function renderSheetThumbnail(canvas, slotIndex) {
 
   renderButtonDesign(ctx, cx, cy, thumbScale, design, { showGuides: false });
 
-  // Draw a thin black outline so light-colored buttons are visible
+  // Draw a black outline so light-colored buttons are visible
   var cutRadius = (btnSize.cutDiameter / 2) * thumbScale;
   ctx.beginPath();
   ctx.arc(cx, cy, cutRadius - 2, 0, Math.PI * 2);
@@ -634,9 +639,9 @@ function updateSheetSelectionUI() {
     }
   }
 
-  // Show "Edit Selected in Design" when 2+ buttons are selected
+  // Show "Edit Selected in Design" when 1+ buttons are selected
   if (editSelectedBtn) {
-    editSelectedBtn.style.display = selectedSlots.length >= 2 ? 'inline-flex' : 'none';
+    editSelectedBtn.style.display = selectedSlots.length >= 1 ? 'inline-flex' : 'none';
   }
 
   // Copy Design: visible when exactly 1 button is selected
