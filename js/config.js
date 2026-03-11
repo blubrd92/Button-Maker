@@ -25,7 +25,7 @@ const CONFIG = {
     "1.25": {
       label: '1.25"',
       cutDiameter: 1.629,     // inches
-      faceDiameter: 1.3,     // inches
+      faceDiameter: 1.3,     // inches - Made a little bigger than the strict face diameter to better fit brand text under safe diameter
       safeDiameter: 1.15,     // inches
       primary: false
     }
