@@ -142,7 +142,9 @@ function initTopLevelControls() {
 
   // Brand text 
   document.getElementById('library-info-input').addEventListener('input', function(e) {
-    if (currentMode === 'sheet' && selectedSlots.length > 0) {
+    if (shouldApplyBrandTextToAllButtons()) {
+      applyBrandTextSettingsToAllButtons();
+    } else if (currentMode === 'sheet' && selectedSlots.length > 0) {
       applyOverrideToSelectedSlots('libraryInfoText', e.target.value);
     } else {
       currentDesign.libraryInfoText = e.target.value;
@@ -154,7 +156,9 @@ function initTopLevelControls() {
   });
 
   document.getElementById('library-info-color').addEventListener('input', function(e) {
-    if (currentMode === 'sheet' && selectedSlots.length > 0) {
+    if (shouldApplyBrandTextToAllButtons()) {
+      applyBrandTextSettingsToAllButtons();
+    } else if (currentMode === 'sheet' && selectedSlots.length > 0) {
       applyOverrideToSelectedSlots('libraryInfoColor', e.target.value);
     } else {
       currentDesign.libraryInfoColor = e.target.value;
@@ -203,13 +207,18 @@ function initTopLevelControls() {
     var gradientControls = document.getElementById('gradient-controls');
     gradientControls.classList.toggle('hidden', !e.target.checked);
     if (e.target.checked) {
-      if (currentMode === 'sheet' && selectedSlots.length > 0) {
+      if (shouldApplyBackgroundToAllButtons()) {
+        applyBackgroundSettingsToAllButtons();
+      } else if (currentMode === 'sheet' && selectedSlots.length > 0) {
         applyGradientOverrideToSelectedSlots();
       } else {
         applyGradientFromUI();
       }
     } else {
-      if (currentMode === 'sheet' && selectedSlots.length > 0) {
+      if (shouldApplyBackgroundToAllButtons()) {
+        clearGradientPresetHighlight();
+        applyBackgroundSettingsToAllButtons();
+      } else if (currentMode === 'sheet' && selectedSlots.length > 0) {
         applyOverrideToSelectedSlots('gradient', null);
         applyOverrideToSelectedSlots('backgroundColor', document.getElementById('bg-color-picker').value);
       } else {
@@ -224,7 +233,9 @@ function initTopLevelControls() {
   document.getElementById('bg-gradient-color2').addEventListener('input', function() {
     if (document.getElementById('toggle-gradient').checked) {
       clearGradientPresetHighlight();
-      if (currentMode === 'sheet' && selectedSlots.length > 0) {
+      if (shouldApplyBackgroundToAllButtons()) {
+        applyBackgroundSettingsToAllButtons();
+      } else if (currentMode === 'sheet' && selectedSlots.length > 0) {
         applyGradientOverrideToSelectedSlots();
       } else {
         applyGradientFromUI();
@@ -234,6 +245,11 @@ function initTopLevelControls() {
 
   document.getElementById('gradient-direction').addEventListener('change', function() {
     if (document.getElementById('toggle-gradient').checked) {
+      if (shouldApplyBackgroundToAllButtons()) {
+        applyBackgroundSettingsToAllButtons();
+        return;
+      }
+
       if (currentMode === 'sheet' && selectedSlots.length > 0) {
         applyGradientOverrideToSelectedSlots();
         return;
@@ -269,6 +285,94 @@ function initTopLevelControls() {
       renderSheetView();
     }
   });
+}
+
+function shouldApplyBackgroundToAllButtons() {
+  var checkbox = document.getElementById('apply-background-to-all');
+  return !!(checkbox && checkbox.checked);
+}
+
+function shouldApplyBrandTextToAllButtons() {
+  var checkbox = document.getElementById('apply-brand-text-to-all');
+  return !!(checkbox && checkbox.checked);
+}
+
+function clearBackgroundOverridesForAllSlots() {
+  if (typeof sheetSlots === 'undefined' || !Array.isArray(sheetSlots)) return;
+  sheetSlots.forEach(function(slot) {
+    if (!slot || !slot.overrides) return;
+    delete slot.overrides.backgroundColor;
+    delete slot.overrides.gradient;
+    delete slot.overrides.templateId;
+  });
+}
+
+function clearBrandTextOverridesForAllSlots() {
+  if (typeof sheetSlots === 'undefined' || !Array.isArray(sheetSlots)) return;
+  sheetSlots.forEach(function(slot) {
+    if (!slot || !slot.overrides) return;
+    delete slot.overrides.libraryInfoText;
+    delete slot.overrides.libraryInfoColor;
+  });
+}
+
+function refreshAfterGlobalSectionApply() {
+  renderDesignCanvas();
+  if (typeof refreshSheetThumbnails === 'function') {
+    refreshSheetThumbnails();
+  }
+  if (typeof updateSheetOverridePanel === 'function') {
+    updateSheetOverridePanel();
+  }
+  if (typeof updateSheetSelectionUI === 'function') {
+    updateSheetSelectionUI();
+  }
+}
+
+function applyBackgroundSettingsToAllButtons() {
+  var color1 = document.getElementById('bg-color-picker').value;
+  var gradientEnabled = document.getElementById('toggle-gradient').checked;
+
+  currentDesign.backgroundColor = color1;
+  currentDesign.templateId = null;
+
+  if (gradientEnabled) {
+    var color2 = document.getElementById('bg-gradient-color2').value;
+    var direction = document.getElementById('gradient-direction').value;
+    var grad = {
+      color1: color1,
+      color2: color2,
+      stops: null,
+      direction: direction,
+      preset: null
+    };
+
+    var activePresetBtn = document.querySelector('.gradient-preset-btn.active');
+    if (activePresetBtn) {
+      var presetName = activePresetBtn.dataset.preset;
+      var preset = GRADIENT_PRESETS[presetName];
+      if (preset) {
+        grad.stops = preset.stops;
+        grad.preset = presetName;
+      }
+    }
+
+    currentDesign.gradient = grad;
+    currentDesign.templateDraw = buildGradientDrawFunction(grad);
+  } else {
+    currentDesign.gradient = null;
+    currentDesign.templateDraw = null;
+  }
+
+  clearBackgroundOverridesForAllSlots();
+  refreshAfterGlobalSectionApply();
+}
+
+function applyBrandTextSettingsToAllButtons() {
+  currentDesign.libraryInfoText = document.getElementById('library-info-input').value;
+  currentDesign.libraryInfoColor = document.getElementById('library-info-color').value;
+  clearBrandTextOverridesForAllSlots();
+  refreshAfterGlobalSectionApply();
 }
 
 /**
@@ -350,7 +454,14 @@ function applyGradientPreset(presetName) {
     preset: presetName
   };
 
-  if (currentMode === 'sheet' && selectedSlots.length > 0) {
+  if (shouldApplyBackgroundToAllButtons()) {
+    currentDesign.gradient = grad;
+    currentDesign.backgroundColor = grad.color1;
+    currentDesign.templateDraw = buildGradientDrawFunction(currentDesign.gradient);
+    currentDesign.templateId = null;
+    clearBackgroundOverridesForAllSlots();
+    refreshAfterGlobalSectionApply();
+  } else if (currentMode === 'sheet' && selectedSlots.length > 0) {
     applyOverrideToSelectedSlots('gradient', grad);
   } else {
     currentDesign.gradient = grad;
@@ -676,7 +787,9 @@ function resetDesignToDefaults() {
 }
 
 function handleBackgroundColorChange(color) {
-  if (currentMode === 'sheet' && selectedSlots.length > 0) {
+  if (shouldApplyBackgroundToAllButtons()) {
+    applyBackgroundSettingsToAllButtons();
+  } else if (currentMode === 'sheet' && selectedSlots.length > 0) {
     applyOverrideToSelectedSlots('backgroundColor', color);
     if (document.getElementById('toggle-gradient').checked) {
       applyGradientOverrideToSelectedSlots();
