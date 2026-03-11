@@ -304,9 +304,8 @@ function exportDesignsFromArray(designs) {
 }
 
 /**
- * Import designs from a JSON file. Supports wrapped { designs: [...] }
- * or raw array [...] formats. Avoids name collisions.
- * After import, loads the first design.
+ * Import designs from a JSON file. Overwrites existing designs in history
+ * if names match. After import, loads the first design.
  * @param {File} file - The JSON file to import
  */
 function importDesignsFromJSON(file) {
@@ -343,25 +342,19 @@ function importDesignsFromJSON(file) {
         return;
       }
 
-      // Merge by name: append a number if the name already exists
       var existing = getSavedDesigns();
-      var nameMap = {};
-      existing.forEach(function(d, i) { nameMap[d.name.toLowerCase()] = i; });
 
-      incoming.forEach(function(d) {
-        var originalName = d.name;
-        var key = originalName.toLowerCase();
-        var counter = 1;
-        
-        // If the name is already taken, keep incrementing a number until we find a free slot
-        while (key in nameMap) {
-          d.name = originalName + ' (' + counter + ')';
-          key = d.name.toLowerCase();
-          counter++;
+      // Overwrite existing designs with the same name
+      incoming.forEach(function(newDesign) {
+        var existingIdx = existing.findIndex(function(d) {
+          return d.name.toLowerCase() === newDesign.name.toLowerCase();
+        });
+
+        if (existingIdx >= 0) {
+          existing[existingIdx] = newDesign;
+        } else {
+          existing.push(newDesign);
         }
-        
-        existing.push(d);
-        nameMap[key] = existing.length - 1;
       });
 
       // Enforce the same limit of 5 designs after importing
