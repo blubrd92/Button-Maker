@@ -68,18 +68,20 @@ function serializeDesign(design) {
       };
     }),
     imageElements: design.imageElements.map(function(img) {
-      return {
-        dataUrl: img.dataUrl,
-        x: img.x,
-        y: img.y,
-        width: img.width,
-        height: img.height,
-        naturalWidth: img.naturalWidth,
-        naturalHeight: img.naturalHeight,
-        baseWidth: img.baseWidth,
-        baseHeight: img.baseHeight,
-        imageScale: img.imageScale || 1.0
-      };
+      return (typeof serializeImageElement === 'function')
+        ? serializeImageElement(img)
+        : {
+            dataUrl: img.dataUrl,
+            x: img.x,
+            y: img.y,
+            width: img.width,
+            height: img.height,
+            naturalWidth: img.naturalWidth,
+            naturalHeight: img.naturalHeight,
+            baseWidth: img.baseWidth,
+            baseHeight: img.baseHeight,
+            imageScale: img.imageScale || 1.0
+          };
     }),
     libraryInfoText: design.libraryInfoText,
     libraryInfoColor: design.libraryInfoColor
@@ -91,7 +93,11 @@ function serializeDesign(design) {
  * Reconstructs Image objects and template draw functions.
  * @param {Object} data - Saved design data
  */
-function deserializeDesign(data) {
+function deserializeDesign(data, imageAssets) {
+  if (typeof restoreSerializedImageAssets === 'function') {
+    restoreSerializedImageAssets(imageAssets || null);
+  }
+
   currentDesign.templateId = data.templateId;
   currentDesign.backgroundColor = data.backgroundColor;
   currentDesign.gradient = data.gradient || null;
@@ -137,32 +143,26 @@ function deserializeDesign(data) {
     }
   } else {
     (data.imageElements || []).forEach(function(imgData) {
-      var img = new Image();
-      var element = Object.assign({}, imgData, { imgObj: img });
-      
-      // Ensure cover-fill fields exist (for designs saved before this feature)
-      if (!element.baseWidth || !element.baseHeight) {
-        var cover = computeCoverFillSize(
-          element.naturalWidth || 1,
-          element.naturalHeight || 1
-        );
-        element.baseWidth = cover.width;
-        element.baseHeight = cover.height;
-      }
-      if (!element.imageScale) {
-        element.imageScale = 1.0;
-      }
-      
-      // Push element BEFORE setting src
+      var element = (typeof hydrateImageElement === 'function')
+        ? hydrateImageElement(imgData)
+        : Object.assign({}, imgData);
+
       currentDesign.imageElements.push(element);
-      
-      img.onload = attemptRender;
-      img.onerror = function() {
-        console.warn('Button Maker: An image failed to load from the save file.');
+
+      if (!element.imgObj) {
         attemptRender();
-      };
-      
-      img.src = imgData.dataUrl;
+        return;
+      }
+
+      if (element.imgObj.complete && element.imgObj.naturalWidth) {
+        attemptRender();
+      } else {
+        element.imgObj.addEventListener('load', attemptRender, { once: true });
+        element.imgObj.addEventListener('error', function() {
+          console.warn('Button Maker: An image failed to load from the save file.');
+          attemptRender();
+        }, { once: true });
+      }
     });
   }
 
@@ -213,6 +213,12 @@ function deserializeDesign(data) {
 function quickSave() {
   var masterData = serializeDesign(currentDesign);
   var slotsData = (typeof getSheetSlots === 'function') ? getSheetSlots() : [];
+  if (typeof normalizeSlotDataImageAssets === 'function') {
+    normalizeSlotDataImageAssets(slotsData);
+  }
+  var assetsData = (typeof buildSerializedImageAssetBundle === 'function')
+    ? buildSerializedImageAssetBundle(currentDesign, slotsData)
+    : null;
   var name = (typeof sheetName === 'string' && sheetName.trim())
     ? sheetName.trim()
     : 'Untitled';
@@ -222,7 +228,8 @@ function quickSave() {
     savedAt: new Date().toISOString(),
     buttonSize: CONFIG.currentButtonSize,
     master: masterData,
-    slots: slotsData
+    slots: slotsData,
+    assets: assetsData
   };
 
   // Save to localStorage
@@ -338,7 +345,8 @@ function importDesignsFromJSON(file) {
           savedAt: d.savedAt || new Date().toISOString(),
           buttonSize: d.buttonSize || '1.5',
           master: d.master || {},
-          slots: Array.isArray(d.slots) ? d.slots : []
+          slots: Array.isArray(d.slots) ? d.slots : [],
+          assets: d.assets || null
         };
       });
 
@@ -380,7 +388,7 @@ function importDesignsFromJSON(file) {
       if (typeof sheetName !== 'undefined') {
         sheetName = first.name || '';
       }
-      deserializeDesign(first.master);
+      deserializeDesign(first.master, first.assets || null);
       if (typeof setSheetSlots === 'function' && first.slots) {
         setSheetSlots(first.slots);
       }
@@ -436,6 +444,12 @@ function autoSaveState() {
       slots: (typeof getSheetSlots === 'function') ? getSheetSlots() : [],
       mode: currentMode
     };
+    if (typeof normalizeSlotDataImageAssets === 'function') {
+      normalizeSlotDataImageAssets(state.slots);
+    }
+    if (typeof buildSerializedImageAssetBundle === 'function') {
+      state.assets = buildSerializedImageAssetBundle(currentDesign, state.slots);
+    }
     localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(state));
   } catch (e) {
     // Storage full or unavailable
@@ -464,7 +478,7 @@ function autoRestoreState() {
       if (nameInput) nameInput.value = sheetName;
     }
 
-    deserializeDesign(state.master);
+    deserializeDesign(state.master, state.assets || null);
 
     if (typeof setSheetSlots === 'function' && state.slots) {
       setSheetSlots(state.slots);

@@ -58,18 +58,20 @@ function buildFullOverrideFromDesign(design) {
     gradient: design.gradient ? JSON.parse(JSON.stringify(design.gradient)) : null,
     textElements: design.textElements.map(function(t) { return Object.assign({}, t); }),
     imageElements: design.imageElements.map(function(img) {
-      return {
-        dataUrl: img.dataUrl,
-        x: img.x,
-        y: img.y,
-        width: img.width,
-        height: img.height,
-        naturalWidth: img.naturalWidth,
-        naturalHeight: img.naturalHeight,
-        baseWidth: img.baseWidth,
-        baseHeight: img.baseHeight,
-        imageScale: img.imageScale || 1.0
-      };
+      return (typeof serializeImageElement === 'function')
+        ? serializeImageElement(img)
+        : {
+            dataUrl: img.dataUrl,
+            x: img.x,
+            y: img.y,
+            width: img.width,
+            height: img.height,
+            naturalWidth: img.naturalWidth,
+            naturalHeight: img.naturalHeight,
+            baseWidth: img.baseWidth,
+            baseHeight: img.baseHeight,
+            imageScale: img.imageScale || 1.0
+          };
     }),
     libraryInfoText: design.libraryInfoText,
     libraryInfoColor: design.libraryInfoColor
@@ -106,62 +108,6 @@ function syncSidebarToDesign(design) {
       });
     }
   }
-}
-
-
-function cloneDesignForPromotion(design) {
-  return {
-    templateId: design.templateId != null ? design.templateId : null,
-    backgroundColor: design.backgroundColor,
-    templateDraw: null,
-    gradient: design.gradient ? JSON.parse(JSON.stringify(design.gradient)) : null,
-    textElements: (design.textElements || []).map(function(t) { return Object.assign({}, t); }),
-    imageElements: (design.imageElements || []).map(function(img) {
-      var element = Object.assign({}, img);
-      if (!element.imgObj && element.dataUrl) {
-        element.imgObj = getOrCreateCachedImage(element.dataUrl);
-      }
-      return element;
-    }),
-    libraryInfoText: design.libraryInfoText,
-    libraryInfoColor: design.libraryInfoColor
-  };
-}
-
-function normalizePromotedMainDesign(design) {
-  if (design.gradient) {
-    design.templateId = null;
-    if (typeof buildGradientDrawFunction === 'function') {
-      design.templateDraw = buildGradientDrawFunction(design.gradient);
-    } else {
-      design.templateDraw = null;
-    }
-  } else if (design.templateId) {
-    if (typeof getTemplateById === 'function') {
-      var template = getTemplateById(design.templateId);
-      design.templateDraw = template ? template.draw : null;
-    } else {
-      design.templateDraw = null;
-    }
-  } else {
-    design.templateId = null;
-    design.templateDraw = null;
-  }
-
-  return design;
-}
-
-function applyPromotedMainDesign(design) {
-  var normalized = normalizePromotedMainDesign(cloneDesignForPromotion(design));
-
-  currentDesign.templateId = normalized.templateId;
-  currentDesign.backgroundColor = normalized.backgroundColor;
-  currentDesign.templateDraw = normalized.templateDraw;
-  currentDesign.gradient = normalized.gradient;
-  currentDesign.textElements = normalized.textElements;
-  currentDesign.imageElements = normalized.imageElements;
-  currentDesign.libraryInfoText = normalized.libraryInfoText;
-  currentDesign.libraryInfoColor = normalized.libraryInfoColor;
 }
 
 // --- Slot management ---
@@ -243,12 +189,14 @@ function getSheetSlots() {
  * Set sheet slots from saved data (for load).
  */
 function setSheetSlots(slots) {
-  sheetSlots = slots.map(s => ({
-    slotIndex: s.slotIndex,
-    row: s.row,
-    col: s.col,
-    overrides: { ...s.overrides }
-  }));
+  sheetSlots = slots.map(function(s) {
+    return {
+      slotIndex: s.slotIndex,
+      row: s.row,
+      col: s.col,
+      overrides: JSON.parse(JSON.stringify(s.overrides || {}))
+    };
+  });
 }
 
 // --- Sheet view rendering ---
@@ -351,18 +299,43 @@ function renderSheetView() {
 
   controlsDiv.querySelector('#btn-make-main').addEventListener('click', function() {
     if (selectedSlots.length !== 1) return;
-
     var sourceIdx = selectedSlots[0];
-    if (!slotHasOverrides(sourceIdx)) return;
+    var overrides = getSlotOverrides(sourceIdx);
 
-    applyPromotedMainDesign(getEffectiveDesignForSlot(sourceIdx));
+    if (Object.keys(overrides).length === 0) return;
+
+    var effectiveDesign = getEffectiveDesignForSlot(sourceIdx);
+
+    currentDesign.templateId = effectiveDesign.templateId || null;
+    currentDesign.backgroundColor = effectiveDesign.backgroundColor;
+    currentDesign.gradient = effectiveDesign.gradient ? JSON.parse(JSON.stringify(effectiveDesign.gradient)) : null;
+    currentDesign.textElements = effectiveDesign.textElements.map(function(t) { return Object.assign({}, t); });
+    currentDesign.imageElements = (effectiveDesign.imageElements || []).map(function(imgData) {
+      return (typeof hydrateImageElement === 'function')
+        ? hydrateImageElement(imgData)
+        : Object.assign({}, imgData);
+    });
+    currentDesign.libraryInfoText = effectiveDesign.libraryInfoText;
+    currentDesign.libraryInfoColor = effectiveDesign.libraryInfoColor;
+
+    if (currentDesign.gradient && typeof buildGradientDrawFunction === 'function') {
+      currentDesign.templateId = null;
+      currentDesign.templateDraw = buildGradientDrawFunction(currentDesign.gradient);
+    } else if (currentDesign.templateId && typeof getTemplateById === 'function') {
+      var t = getTemplateById(currentDesign.templateId);
+      currentDesign.templateDraw = t ? t.draw : null;
+    } else {
+      currentDesign.templateId = null;
+      currentDesign.templateDraw = null;
+      currentDesign.gradient = null;
+    }
+
     setSlotOverrides(sourceIdx, {});
-
     refreshSheetThumbnails();
     updateSheetSelectionUI();
     updateSheetOverridePanel();
+
     syncSidebarToDesign(currentDesign);
-    renderDesignCanvas();
   });
 
   controlsDiv.querySelector('#btn-edit-selected').addEventListener('click', function() {
@@ -377,9 +350,8 @@ function renderSheetView() {
 
   controlsDiv.querySelector('#btn-copy-design').addEventListener('click', function() {
     if (selectedSlots.length !== 1) return;
-    var overrides = getSlotOverrides(selectedSlots[0]);
-    // Store a deep copy of the overrides
-    _copiedDesign = JSON.parse(JSON.stringify(overrides));
+    var fullDesign = getEffectiveDesignForSlot(selectedSlots[0]);
+    _copiedDesign = buildFullOverrideFromDesign(fullDesign);
     updateSheetSelectionUI();
   });
 
@@ -549,7 +521,6 @@ function renderSheetView() {
   updateSheetSelectionUI();
   updateSheetOverridePanel();
 }
-
 
 /**
  * Render a single button thumbnail for the sheet view.
@@ -867,11 +838,9 @@ function editSlotInDesignMode(slotIndex) {
   }
   if (overrides.imageElements !== undefined) {
     currentDesign.imageElements = overrides.imageElements.map(function(img) {
-      var el = Object.assign({}, img);
-      if (!el.imgObj && el.dataUrl) {
-        el.imgObj = getOrCreateCachedImage(el.dataUrl);
-      }
-      return el;
+      return (typeof hydrateImageElement === 'function')
+        ? hydrateImageElement(img)
+        : Object.assign({}, img);
     });
   }
 
@@ -1016,42 +985,24 @@ function finishSlotEdit() {
     });
   }
 
-  // Image elements - compare by dataUrl, position, scale
-  var mainImgs = _mainDesignBackup.imageElements;
-  var currentImgs = currentDesign.imageElements;
-  var imagesChanged = (mainImgs.length !== currentImgs.length);
-  if (!imagesChanged) {
-    for (var i = 0; i < currentImgs.length; i++) {
-      if (currentImgs[i].dataUrl !== mainImgs[i].dataUrl ||
-          currentImgs[i].x !== mainImgs[i].x ||
-          currentImgs[i].y !== mainImgs[i].y ||
-          currentImgs[i].imageScale !== mainImgs[i].imageScale) {
-        imagesChanged = true;
-        break;
-      }
-    }
-  }
-  if (imagesChanged) {
-    overrides.imageElements = currentImgs.map(function(img) {
-      return {
-        dataUrl: img.dataUrl,
-        x: img.x,
-        y: img.y,
-        width: img.width,
-        height: img.height,
-        naturalWidth: img.naturalWidth,
-        naturalHeight: img.naturalHeight,
-        baseWidth: img.baseWidth,
-        baseHeight: img.baseHeight,
-        imageScale: img.imageScale || 1.0
-      };
+  // Image elements - compare normalized serialized payloads
+  var mainImgsJson = JSON.stringify((_mainDesignBackup.imageElements || []).map(function(img) {
+    return (typeof serializeImageElement === 'function') ? serializeImageElement(img) : img;
+  }));
+  var currentImgsJson = JSON.stringify((currentDesign.imageElements || []).map(function(img) {
+    return (typeof serializeImageElement === 'function') ? serializeImageElement(img) : img;
+  }));
+  if (mainImgsJson !== currentImgsJson) {
+    overrides.imageElements = (currentDesign.imageElements || []).map(function(img) {
+      return (typeof serializeImageElement === 'function') ? serializeImageElement(img) : img;
     });
   }
 
+  var selectionToRestore = [slotIndex];
+
   // Save overrides - if editing a group, apply to all slots in the group
-  var restoredSelection;
   if (_editingGroup) {
-    restoredSelection = _editingGroup.slots.slice();
+    selectionToRestore = _editingGroup.slots.slice();
     _editingGroup.slots.forEach(function(idx) {
       // Set the overrides directly, replacing any existing ones instead of merging
       if (Object.keys(overrides).length === 0) {
@@ -1062,7 +1013,6 @@ function finishSlotEdit() {
     });
     _editingGroup = null;
   } else {
-    restoredSelection = [slotIndex];
     setSlotOverrides(slotIndex, overrides);
   }
 
@@ -1087,13 +1037,14 @@ function finishSlotEdit() {
   removeSlotEditBanner();
 
   // Switch back to sheet mode
-  selectedSlots = restoredSelection;
+  selectedSlots = selectionToRestore;
   currentMode = 'sheet';
   document.getElementById('btn-sheet-mode').classList.add('active');
   document.getElementById('btn-design-mode').classList.remove('active');
   document.getElementById('design-canvas-wrapper').classList.add('hidden');
   document.getElementById('sheet-view').classList.remove('hidden');
   renderSheetView();
+  updateSheetOverridePanel();
 }
 
 function initSheetMode() {
