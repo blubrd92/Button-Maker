@@ -184,8 +184,8 @@ function renderSheetView() {
     '<button class="btn btn-small" id="btn-apply-row" style="display:none;">Apply to Row</button>' +
     '<button class="btn btn-small" id="btn-make-main" style="display:none;">Make Main Design</button>' +
     '<button class="btn btn-small" id="btn-edit-selected" style="display:none;">Edit in Design</button>' +
-    '<button class="btn btn-small" id="btn-copy-design" style="display:none;">Copy Design</button>' +
-    '<button class="btn btn-small" id="btn-paste-design" style="display:none;">Paste Design</button>' +
+    '<button class="btn btn-small" id="btn-copy-design" style="display:none;">Copy</button>' +
+    '<button class="btn btn-small" id="btn-paste-design" style="display:none;">Paste</button>' +
     '<button class="btn btn-small" id="btn-clear-selection" style="display:none;">Clear Selection</button>';
 
   // Wire up the new controls (use querySelector on controlsDiv since it's not in the DOM yet)
