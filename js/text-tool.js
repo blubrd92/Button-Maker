@@ -319,7 +319,7 @@ function renderLibraryInfoTextWithDesign(ctx, cx, cy, safeRadius, scale, design,
  * @param {boolean} isPrint - render at print DPI
  */
 function renderLibraryInfoTextInternal(ctx, cx, cy, safeRadius, scale, text, color, isPrint) {
-  // Font size: 4.3pt at print size -> convert to current scale pixels.
+  // Font size: 4.5pt at print size -> convert to current scale pixels.
   // Points are 1/72 inch; multiply by scale (px/inch) to get pixels.
   var fontSizePt = CONFIG.DEFAULTS.libraryInfoFontSize;
   var fontSizePx = fontSizePt * (scale / 72);
