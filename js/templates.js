@@ -291,10 +291,21 @@ function applyTemplate(templateId) {
   currentDesign.templateId = templateId;
   currentDesign.backgroundColor = template.backgroundColor;
   currentDesign.templateDraw = template.draw;
+  // Clear gradient so it doesn't override the template on save/load
+  currentDesign.gradient = null;
 
   // Update UI
   document.getElementById('bg-color-picker').value = template.backgroundColor;
   updateBackgroundSwatches(template.backgroundColor);
+
+  // Sync gradient UI: uncheck toggle and hide controls
+  var gradToggle = document.getElementById('toggle-gradient');
+  if (gradToggle) gradToggle.checked = false;
+  var gradControls = document.getElementById('gradient-controls');
+  if (gradControls) gradControls.classList.add('hidden');
+  if (typeof clearGradientPresetHighlight === 'function') {
+    clearGradientPresetHighlight();
+  }
 
   // Highlight selected template card
   document.querySelectorAll('.template-card').forEach(card => {

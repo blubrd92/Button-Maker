@@ -137,7 +137,9 @@ function renderDesignCanvas() {
   renderLibraryInfoText(ctx, cx, cy, safeRadius, scale);
 
   // ── 6. Guide circles ──
-  drawGuideCircles(ctx, cx, cy, cutRadius, faceRadius, safeRadius);
+  if (CONFIG.guidesVisible) {
+    drawGuideCircles(ctx, cx, cy, cutRadius, faceRadius, safeRadius);
+  }
 
   // ── 7. Selection highlight ──
   drawSelectionHighlight(ctx, cx, cy, scale);

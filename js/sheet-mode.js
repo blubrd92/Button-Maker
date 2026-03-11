@@ -141,7 +141,7 @@ function renderSheetView() {
   var container = document.getElementById('sheet-view');
   var layout = getCurrentLayout();
   var btnSize = getCurrentButtonSize();
-  var gutters = computeSheetGutters(CONFIG.currentLayout);
+  var gutters = computeSheetGutters();
   initSheetSlots();
 
   container.innerHTML = '';

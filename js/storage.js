@@ -193,7 +193,6 @@ function quickSave() {
     name: name,
     savedAt: new Date().toISOString(),
     buttonSize: CONFIG.currentButtonSize,
-    layout: CONFIG.currentLayout,
     master: masterData,
     slots: slotsData
   };
@@ -303,7 +302,6 @@ function importDesignsFromJSON(file) {
           name: d.name.trim(),
           savedAt: d.savedAt || new Date().toISOString(),
           buttonSize: d.buttonSize || '1.5',
-          layout: d.layout || '15',
           master: d.master || {},
           slots: Array.isArray(d.slots) ? d.slots : []
         };
@@ -334,13 +332,11 @@ function importDesignsFromJSON(file) {
       // Load the first imported design
       var first = incoming[0];
       CONFIG.currentButtonSize = first.buttonSize || '1.5';
-      
+
       var sizeSelect = document.getElementById('button-size-select');
       if (sizeSelect) {
         sizeSelect.value = CONFIG.currentButtonSize;
       }
-
-      CONFIG.currentLayout = first.layout || '15';
       if (typeof sheetName !== 'undefined') {
         sheetName = first.name || '';
       }
@@ -396,7 +392,6 @@ function autoSaveState() {
       savedAt: new Date().toISOString(),
       master: serializeDesign(currentDesign),
       buttonSize: CONFIG.currentButtonSize,
-      layout: CONFIG.currentLayout,
       sheetName: (typeof sheetName === 'string') ? sheetName : '',
       slots: (typeof getSheetSlots === 'function') ? getSheetSlots() : [],
       mode: currentMode
@@ -418,13 +413,11 @@ function autoRestoreState() {
     if (!state || !state.master) return false;
 
     CONFIG.currentButtonSize = state.buttonSize || '1.5';
-    
+
     var sizeSelect = document.getElementById('button-size-select');
     if (sizeSelect) {
       sizeSelect.value = CONFIG.currentButtonSize;
     }
-
-    CONFIG.currentLayout = state.layout || '15';
     if (typeof sheetName !== 'undefined') {
       sheetName = state.sheetName || '';
       var nameInput = document.getElementById('sheet-name-input');
