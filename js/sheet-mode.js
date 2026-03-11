@@ -538,6 +538,7 @@ function renderSheetView() {
 
   // Initial UI sync
   updateSheetSelectionUI();
+  updateSheetOverridePanel();
 }
 
 /**
@@ -729,9 +730,9 @@ function updateSheetSelectionUI() {
 }
 
 function updateSheetOverridePanel() {
-  if (selectedSlots.length === 1) {
+  if (selectedSlots.length > 0) {
     syncSidebarToDesign(getEffectiveDesignForSlot(selectedSlots[0]));
-  } else if (selectedSlots.length === 0) {
+  } else {
     syncSidebarToDesign(currentDesign);
   }
 }
@@ -1037,8 +1038,11 @@ function finishSlotEdit() {
     });
   }
 
+  var selectionToRestore = [slotIndex];
+
   // Save overrides - if editing a group, apply to all slots in the group
   if (_editingGroup) {
+    selectionToRestore = _editingGroup.slots.slice();
     _editingGroup.slots.forEach(function(idx) {
       // Set the overrides directly, replacing any existing ones instead of merging
       if (Object.keys(overrides).length === 0) {
@@ -1073,13 +1077,14 @@ function finishSlotEdit() {
   removeSlotEditBanner();
 
   // Switch back to sheet mode
-  selectedSlots = [slotIndex];
+  selectedSlots = selectionToRestore;
   currentMode = 'sheet';
   document.getElementById('btn-sheet-mode').classList.add('active');
   document.getElementById('btn-design-mode').classList.remove('active');
   document.getElementById('design-canvas-wrapper').classList.add('hidden');
   document.getElementById('sheet-view').classList.remove('hidden');
   renderSheetView();
+  updateSheetOverridePanel();
 }
 
 function initSheetMode() {
