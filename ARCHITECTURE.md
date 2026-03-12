@@ -2,162 +2,279 @@
 
 ## Project Summary
 
-Button Maker is a static web application for designing and printing 1.5" pinback buttons. Staff design a button in a canvas editor, optionally customize individual buttons on a print sheet, and export a tiled PDF for printing and cutting. No server, no build step — vanilla JS + HTML5 Canvas, hosted on GitHub Pages.
+Button Maker is a static web application for designing and printing pinback button sheets.
+
+It is built for library staff, but open to all, and is designed around a practical production workflow: create a main button design in Design Mode, customize specific buttons in Sheet Mode when needed, and export a print-ready PDF for printing and cutting.
+
+The app currently supports **1.5"** and **1.25"** buttons. Layouts are tied to button size, and additional sizes can be added later through configuration. The project uses vanilla JavaScript and HTML5 Canvas, with no backend and no build step.
+
+---
+
+## Core Workflow
+
+The app has two connected editing modes:
+
+### Design Mode
+Design Mode is where the user creates the **main/default design** for the sheet. This includes:
+- uploaded image placement and scaling
+- background color or gradient
+- brand text and brand text color
+
+### Sheet Mode
+Sheet Mode shows the printable sheet layout and allows the user to:
+- preview the full page
+- select individual buttons
+- multi-select buttons
+- apply custom overrides to selected buttons
+- apply a design across a row or column
+- copy and paste button designs
+- reset customized buttons back to the main design
+- promote a customized button back into the main design
+
+This creates a **main-design-plus-overrides** workflow rather than separate fully independent button files.
+
+---
 
 ## File Map
 
 | File | Purpose | Key Dependencies |
-|------|---------|-----------------|
-| `index.html` | App shell — layout skeleton, all UI controls, notification area, script loading order | All CSS/JS files |
-| `css/styles.css` | All styles — layout, components, notifications, sheet mode | None |
-| `js/config.js` | Central configuration — button sizes, colors, fonts, layout math, helper functions | None |
-| `js/templates.js` | Template definitions (solid, pattern, gradient) and picker UI | config.js |
-| `js/canvas.js` | Design canvas rendering, guide circles, mouse interaction, shared `renderButtonDesign()` | config.js, templates.js |
-| `js/text-tool.js` | Text element CRUD, font/size/color/alignment, curved text, library info footer text | config.js, canvas.js |
-| `js/image-tool.js` | Image upload (PNG/JPG/SVG), cover-fill sizing, scale slider, drag-to-reposition, image cache | config.js, canvas.js |
-| `js/storage.js` | Save/load via `.buttons` files and localStorage — serialization, auto-save session recovery | config.js, canvas.js, templates.js |
-| `js/pdf-export.js` | PDF generation — 300 DPI offscreen rendering, tiling (15/20), cut guides | config.js, canvas.js, jsPDF |
-| `js/sheet-mode.js` | Sheet grid view, per-button overrides, row/col/multi-select, slot editing, reset, badges | config.js, canvas.js, pdf-export.js |
-| `js/app.js` | App initialization, notification system, gradient presets, top-level event wiring, mode management | All modules |
-| `docs/BUTTON-SPECS.md` | Physical button dimension reference with zone diagrams | N/A (docs) |
+|------|---------|------------------|
+| `index.html` | App shell, visible controls, mode toggles, file actions, size selector, notification area | All CSS/JS files |
+| `css/styles.css` | Layout, controls, notifications, Design Mode and Sheet Mode styling | None |
+| `js/config.js` | Central configuration for button sizes, layouts, guides, fonts, palette, defaults, page math | None |
+| `js/templates.js` | Template definitions and related helpers | `config.js` |
+| `js/canvas.js` | Main design state, canvas rendering, guide circles, shared button renderer | `config.js`, `templates.js`, `text-tool.js` |
+| `js/text-tool.js` | Text-related rendering utilities, especially curved brand text rendering | `config.js`, `canvas.js` |
+| `js/image-tool.js` | Image upload, image scaling, drag-to-reposition behavior, image state helpers | `config.js`, `canvas.js` |
+| `js/storage.js` | Save/load logic for `.buttons` files and local autosave/session recovery | `config.js`, `canvas.js`, `sheet-mode.js` |
+| `js/pdf-export.js` | PDF generation, offscreen high-resolution rendering, sheet export pipeline, override merge | `config.js`, `canvas.js`, `sheet-mode.js`, jsPDF |
+| `js/sheet-mode.js` | Sheet preview, selection logic, per-button overrides, row/column tools, copy/paste, sheet naming | `config.js`, `canvas.js`, `pdf-export.js` |
+| `js/app.js` | App initialization, mode management, zoom state, notifications, top-level event wiring | All modules |
+| `docs/BUTTON-SPECS.md` | Physical button measurements and print-zone reference | Docs only |
+
+---
 
 ## Script Loading Order
 
-Scripts are loaded in `index.html` in dependency order:
-1. `config.js` — no dependencies, defines CONFIG and helper functions
-2. `templates.js` — uses CONFIG
-3. `canvas.js` — uses CONFIG, defines `currentDesign` and `renderButtonDesign()`
-4. `text-tool.js` — uses CONFIG, currentDesign, renderDesignCanvas
-5. `image-tool.js` — uses CONFIG, currentDesign, renderDesignCanvas
-6. `storage.js` — uses all of the above, plus `showNotification()` from app.js (loaded later but called asynchronously from FileReader callbacks)
-7. `pdf-export.js` — uses CONFIG, renderButtonDesign, jsPDF
-8. `sheet-mode.js` — uses CONFIG, renderButtonDesign, cloneDesignForRender
-9. `app.js` — defines notification system, gradient presets, initializes everything, wires events
+Scripts are loaded in dependency order from `index.html`:
 
-## Data Flow
+1. `config.js`
+2. `templates.js`
+3. `canvas.js`
+4. `text-tool.js`
+5. `image-tool.js`
+6. `storage.js`
+7. `pdf-export.js`
+8. `sheet-mode.js`
+9. `app.js`
 
+This order matters because the app uses shared globals rather than a module bundler.
+
+---
+
+## State and Data Flow
+
+```text
+User Input
+   ↓
+currentDesign (main design state)
+   ↓
+renderDesignCanvas()
+   ↓
+renderButtonDesign()
+   ├── Design canvas preview
+   ├── Sheet Mode thumbnails
+   └── PDF export rendering
 ```
-User Input → currentDesign (in-memory state, canvas.js:31)
-                    ↓
-            renderDesignCanvas() → Editing Canvas (visible on screen)
-                    ↓
-            renderButtonDesign() → Shared render for any canvas context
-                    ↓                    ↓
-            PDF Export              Sheet Mode Thumbnails
-            (offscreen 300 DPI      (small canvases with
-             canvas → jsPDF)         master + overrides)
-```
 
-1. **User edits** (text, images, background, templates) modify `currentDesign` in `canvas.js:31`
-2. **`renderDesignCanvas()`** (`canvas.js:69`) draws the current state to the visible editing canvas
-3. **`renderButtonDesign()`** (`canvas.js:187`) is the shared function that draws a design to any context
-4. **PDF export** (`pdf-export.js:34`) creates an offscreen canvas per button at 300 DPI, renders via `renderButtonDesign()`, places as image in jsPDF
-5. **Sheet mode** (`sheet-mode.js:240`) clones `currentDesign` via `cloneDesignForRender()`, applies slot overrides, renders thumbnails
+### Main design state
+The main/default design lives in `currentDesign` and acts as the source of truth for Design Mode. The app initializes the design canvas first, then restores autosaved state if available, or falls back to the blank template.
 
-## Master/Override Data Model
+### Shared rendering
+`renderButtonDesign()` is the shared renderer used across:
+- the visible design canvas
+- Sheet Mode thumbnails
+- PDF export
 
-```javascript
-// Master design (canvas.js — currentDesign)
-{
-  templateId: "blank",           // template key or null
-  backgroundColor: "#FFFFFF",    // hex color
-  templateDraw: function,        // template's draw(ctx,cx,cy,r) or null
-  gradient: {                    // null if no gradient active
-    color1, color2,              // hex colors for 2-stop gradients
-    stops: [{offset, color}],    // multi-stop array (null = use color1/color2)
-    direction: "top-bottom",     // "top-bottom"|"bottom-top"|"left-right"|"right-left"|"radial"
-    preset: "rainbow"            // preset key or null
-  },
-  textElements: [{               // array, see text-tool.js for schema
-    text, fontFamily, fontSize, color, bold, italic,
-    align, x, y, curved, curveRadius
-  }],
-  imageElements: [{              // at most one element (single-image model)
-    dataUrl,                     // base64 data URL (serializable)
-    imgObj,                      // DOM Image object (NOT serialized, reconstructed on load)
-    x, y,                        // position in inches relative to center
-    width, height,               // current display size in inches (baseWidth × imageScale)
-    naturalWidth, naturalHeight, // original image pixel dimensions
-    baseWidth, baseHeight,       // cover-fill baseline size (scale=1, fills safe zone)
-    imageScale                   // multiplier >= 1.0 over cover-fill size
-  }],
-  libraryInfoText: "",           // curved footer text content
-  libraryInfoColor: "#666666"    // independent color for footer
-}
+That shared renderer is what keeps Design Mode, Sheet Mode, and exported output visually aligned. Sheet export begins by cloning the master design and applying any slot overrides before rendering each button.
 
-// Sheet slot (sheet-mode.js — sheetSlots[])
+---
+
+## Master / Override Model
+
+Button Maker uses a **master design + per-slot overrides** architecture.
+
+### Master design
+The master design is the main design created in Design Mode.
+
+Typical properties include:
+- `templateId`
+- `backgroundColor`
+- `gradient`
+- `textElements`
+- `imageElements`
+- `libraryInfoText`
+- `libraryInfoColor`
+
+### Sheet slots
+Each sheet slot can store an `overrides` object containing only the properties that differ from the master design.
+
+Example:
+
+```js
 {
   slotIndex: 0,
   row: 0,
   col: 0,
   overrides: {
-    // ONLY properties that differ from master
-    // e.g. { backgroundColor: '#ff0000', libraryInfoText: 'Custom' }
-    // Supported override keys: backgroundColor, gradient, templateId,
-    // textElements, imageElements, libraryInfoText, libraryInfoColor
+    backgroundColor: "#ff0000",
+    libraryInfoText: "Custom text"
   }
 }
 ```
 
-**Inheritance rule**: if `overrides` is empty `{}`, the slot renders identically to master. Only explicitly set override properties replace master values. `applyOverridesToDesign()` in `pdf-export.js` handles the merge.
+### Inheritance rule
+If a slot’s `overrides` object is empty, it renders exactly like the master design. Only explicitly overridden properties replace the master values. During export, the app clones the master design and merges overrides into that clone before rendering.
+
+---
+
+## Button Sizes and Layouts
+
+Button and page layout behavior is controlled centrally in `js/config.js`.
+
+### Supported button sizes
+- **1.5"**
+  - cut diameter: `1.837"`
+  - face diameter: `1.5"`
+  - safe diameter: `1.35"`
+- **1.25"**
+  - cut diameter: `1.629"`
+  - face diameter: `1.3"`
+  - safe diameter: `1.15"`
+
+### Current sheet layouts
+- **1.5"** → 4 columns × 5 rows = **20 buttons**
+- **1.25"** → 4 columns × 6 rows = **24 buttons**
+
+### Page settings
+- US Letter page size
+- `0.3"` page margins
+- `300 DPI` print rendering
+- `72 points per inch` for jsPDF conversion
+
+These values are defined in `CONFIG`, so additional sizes and layouts can be added without changing the overall app structure.
+
+---
+
+## Rendering Responsibilities
+
+### `canvas.js`
+Handles the visible design canvas and shared rendering behavior. This is where the main design is drawn and where the guide circles are rendered.
+
+### `image-tool.js`
+Owns image-specific editing behavior:
+- file upload
+- sizing/scaling
+- drag-to-reposition
+- image element management
+
+### `text-tool.js`
+Still provides text-related rendering utilities, especially the curved brand text used on buttons, even though the older broader text UI is not the current focus of the visible interface. The current UI clearly exposes Brand Text controls.
+
+### `sheet-mode.js`
+Builds the full sheet preview and selection system. It also owns tools such as:
+- row/column application
+- copy/paste
+- reset to main
+- make main design
+- sheet naming
+- multi-selection and selection UI hints
+
+### `pdf-export.js`
+Creates print-ready output by rendering each button to an offscreen canvas at print resolution and placing those renders into a PDF. It also merges slot overrides into cloned designs before export.
+
+---
+
+## Save / Load System
+
+The app uses two persistence layers:
+
+### 1. `.buttons` files
+This is the main save/load format for user projects.
+
+### 2. `localStorage`
+The app also performs best-effort local autosave for session recovery. On startup, it attempts to restore:
+- the current button size
+- the main design
+- sheet slots
+- sheet name
+- the most recent mode (`design` or `sheet`)
+
+---
+
+## Notifications
+
+The app uses a simple toast-style notification system defined in `app.js`.
+
+It supports:
+- `error`
+- `success`
+- `info`
+
+Notifications are shown in the `notification-area` element and auto-hide after a short timeout.
+
+---
 
 ## Key Constants
 
-| Constant | Location | Value | Purpose |
-|----------|----------|-------|---------|
-| `DPI` | config.js | 300 | Print resolution |
-| `CANVAS_DISPLAY_DIAMETER` | config.js | 500 | Editing canvas pixel size |
-| `BUTTON_SIZES["1.5"]` | config.js | cut=1.837", face=1.5", safe=1.35" | Button dimensions |
-| `PAGE.margin` | config.js | 0.25" | PDF page margins (all sides) |
-| `PDF.pointsPerInch` | config.js | 72 | jsPDF unit conversion |
-| `STORAGE_KEY` | storage.js | "buttonmaker_designs" | localStorage key |
-| `AUTOSAVE_KEY` | storage.js | "buttonmaker_autosave" | Auto-save session recovery key |
-| `NOTIFICATION_DURATION_MS` | app.js | 3000 | Toast notification auto-hide timeout |
-| `GRADIENT_PRESETS` | app.js | Object with 10 presets | Named gradient presets (rainbow, pride flags, etc.) |
+| Constant / Setting | Location | Purpose |
+|--------------------|----------|---------|
+| `CONFIG.DPI` | `js/config.js` | Print rendering resolution |
+| `CONFIG.CANVAS_DISPLAY_DIAMETER` | `js/config.js` | On-screen design canvas size |
+| `CONFIG.BUTTON_SIZES` | `js/config.js` | Supported button dimensions |
+| `CONFIG.SHEET_LAYOUTS` | `js/config.js` | Layout per button size |
+| `CONFIG.PAGE` | `js/config.js` | Paper dimensions and margins |
+| `CONFIG.GUIDES` | `js/config.js` | Cut, edge, and safe-zone guide styles |
+| `CONFIG.DEFAULTS` | `js/config.js` | Base default design settings |
+| `CONFIG.PDF.pointsPerInch` | `js/config.js` | jsPDF unit conversion |
+| `NOTIFICATION_DURATION_MS` | `js/app.js` | Toast auto-hide timing |
 
-## Where to Find Things
+---
+
+## Where to Change Things
 
 | Task | Location |
 |------|----------|
-| Change the font list | `CONFIG.FONTS` array in `js/config.js` |
-| Add a new template | Add object to `TEMPLATES` array in `js/templates.js` |
-| Add a new button size | Add entry to `CONFIG.BUTTON_SIZES` in `js/config.js` |
-| Change color swatches | `CONFIG.COLOR_PALETTE` in `js/config.js` |
-| Modify PDF tiling layout | `CONFIG.SHEET_LAYOUTS` in `js/config.js` |
-| Change guide circle styles | `CONFIG.GUIDES` in `js/config.js` |
-| Modify canvas interaction | Mouse handlers in `js/canvas.js` |
-| Change save/load data format | `serializeDesign()` / `deserializeDesign()` in `js/storage.js` |
-| Change library info font size | `CONFIG.DEFAULTS.libraryInfoFontSize` in `js/config.js` |
-| Add a new overridable property | Update `applyOverridesToDesign()` in `js/pdf-export.js` and `finishSlotEdit()` in `js/sheet-mode.js` |
-| Add/modify gradient presets | `GRADIENT_PRESETS` object in `js/app.js` |
-| Modify notification behavior | `showNotification()` / `hideNotification()` in `js/app.js`, CSS in `css/styles.css` |
+| Add a new button size | `CONFIG.BUTTON_SIZES` in `js/config.js` |
+| Add a new sheet layout | `CONFIG.SHEET_LAYOUTS` in `js/config.js` |
+| Change page margins or page size math | `CONFIG.PAGE` in `js/config.js` |
+| Adjust guide circle styling | `CONFIG.GUIDES` in `js/config.js` |
+| Change brand text defaults | `CONFIG.DEFAULTS` in `js/config.js` |
+| Modify image editing behavior | `js/image-tool.js` |
+| Modify sheet selection and slot tools | `js/sheet-mode.js` |
+| Change save/load behavior | `js/storage.js` |
+| Modify export rendering or PDF placement | `js/pdf-export.js` |
+| Change top-level app startup or notifications | `js/app.js` |
 
-## Notification System
-
-Toast notifications slide down from the top of the viewport, matching the Booklist Maker's notification styling. Three types:
-- **error** (default) — red background (`--danger-color`)
-- **success** — green background (`--success-color`)
-- **info** — blue background (`--primary-color`)
-
-Auto-hides after 3 seconds. Used for file import success/failure messages and sheet mode feedback.
-
-Functions: `showNotification(message, type, autoHide)` and `hideNotification()` in `js/app.js`. HTML element: `<div id="notification-area">` in `index.html`.
-
-## Save/Load System
-
-Two-tier persistence:
-1. **`.buttons` file export/import** — primary save mechanism. `quickSave()` serializes current design + sheet slots and downloads a `.buttons` JSON file. `quickLoad()` opens a file picker to import.
-2. **localStorage** — best-effort cache. `quickSave()` also writes to localStorage but wraps in try/catch (large base64 images can exceed quota). Auto-save on `beforeunload` for session recovery.
-
-Key functions in `storage.js`:
-- `quickSave()` → serializes, saves to localStorage (best-effort), downloads `.buttons` file via `exportDesignsFromArray()`
-- `quickLoad()` → triggers file picker → `importDesignsFromJSON()` → parses, merges by name, loads first design
-- `autoSaveState()` / `autoRestoreState()` → session recovery on page reload
+---
 
 ## External Dependencies
 
-| Library | Version | Loaded Via | Purpose |
-|---------|---------|-----------|---------|
-| jsPDF | 2.5.2 | Local (`lib/`) with CDN fallback | PDF generation |
-| Google Fonts | N/A | CDN (index.html) | 9 font families for text tool |
-| Font Awesome | 6.4.0 | CDN (index.html) | UI icons |
+| Library | Loaded Via | Purpose |
+|---------|------------|---------|
+| jsPDF | Local `lib/` with fallback | PDF generation |
+| Google Fonts | CDN | Fonts used by the app |
+| Font Awesome | CDN | UI icons |
+
+---
+
+## Architecture Notes
+
+This project intentionally keeps the stack simple:
+- static files only
+- no backend
+- no build tooling
+- shared global state
+- shared renderer across editing, preview, and export
+
+That simplicity makes the app easy to host and easy to inspect, but it also means script order and cross-file conventions matter a lot.
