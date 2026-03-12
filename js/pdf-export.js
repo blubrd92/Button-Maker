@@ -169,9 +169,18 @@ function applyOverridesToDesign(design, overrides) {
     }
   }
   if (overrides.gradient !== undefined) {
-    design.gradient = overrides.gradient;
-    if (overrides.gradient && typeof buildGradientDrawFunction === 'function') {
-      design.templateDraw = buildGradientDrawFunction(overrides.gradient);
+    design.gradient = overrides.gradient
+      ? JSON.parse(JSON.stringify(overrides.gradient))
+      : null;
+
+    if (design.gradient && typeof buildGradientDrawFunction === 'function') {
+      design.templateDraw = buildGradientDrawFunction(design.gradient);
+      design.templateId = null;
+    } else {
+      // Gradient explicitly disabled for this slot: do not inherit prior
+      // template/gradient draw state from the master design clone.
+      design.templateDraw = null;
+      design.templateId = null;
     }
   }
   if (overrides.templateId !== undefined) {
