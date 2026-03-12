@@ -96,9 +96,14 @@ function initTopLevelControls() {
     sizeSelect.addEventListener('change', function(e) {
       CONFIG.currentButtonSize = e.target.value;
       
-      // Force existing images to adapt to the new size geometry
+      // Force all existing images to adapt to the new size geometry:
+      // - master design images
+      // - custom slot override images
       if (typeof recalculateImageBaseDimensions === 'function') {
         recalculateImageBaseDimensions();
+      }
+      if (typeof recalculateOverrideImageBaseDimensions === 'function') {
+        recalculateOverrideImageBaseDimensions();
       }
       
       if (currentMode === 'sheet') {

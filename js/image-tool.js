@@ -106,6 +106,28 @@ function getOrCreateCachedImage(dataUrl) {
   return img;
 }
 
+function refreshImageElementGeometryForCurrentSize(element) {
+  if (!element) return element;
+
+  if (typeof element.x !== 'number') element.x = 0;
+  if (typeof element.y !== 'number') element.y = 0;
+
+  if (!element.imageScale) {
+    element.imageScale = 1.0;
+  }
+
+  if (element.naturalWidth && element.naturalHeight) {
+    var cover = computeCoverFillSize(element.naturalWidth, element.naturalHeight);
+    element.baseWidth = cover.width;
+    element.baseHeight = cover.height;
+    element.width = element.baseWidth * element.imageScale;
+    element.height = element.baseHeight * element.imageScale;
+    constrainImagePosition(element);
+  }
+
+  return element;
+}
+
 function hydrateImageElement(imgData) {
   var element = Object.assign({}, imgData || {});
 
@@ -116,15 +138,10 @@ function hydrateImageElement(imgData) {
     });
   }
 
-  if ((!element.baseWidth || !element.baseHeight) && element.naturalWidth && element.naturalHeight) {
-    var cover = computeCoverFillSize(element.naturalWidth, element.naturalHeight);
-    element.baseWidth = cover.width;
-    element.baseHeight = cover.height;
-  }
-
-  if (!element.imageScale) {
-    element.imageScale = 1.0;
-  }
+  // Always recompute geometry from the current button size.
+  // This prevents stale dimensions from surviving size switches,
+  // saved-file loads, copy/paste, and slot override hydration.
+  refreshImageElementGeometryForCurrentSize(element);
 
   var dataUrl = getImageDataUrlForElement(element);
   if (dataUrl) {
@@ -299,13 +316,32 @@ function recalculateImageBaseDimensions() {
   if (!currentDesign || !currentDesign.imageElements || currentDesign.imageElements.length === 0) return;
 
   currentDesign.imageElements.forEach(function(imgEl) {
-    var cover = computeCoverFillSize(imgEl.naturalWidth, imgEl.naturalHeight);
-    imgEl.baseWidth = cover.width;
-    imgEl.baseHeight = cover.height;
-    imgEl.width = imgEl.baseWidth * (imgEl.imageScale || 1.0);
-    imgEl.height = imgEl.baseHeight * (imgEl.imageScale || 1.0);
-    constrainImagePosition(imgEl);
+    refreshImageElementGeometryForCurrentSize(imgEl);
   });
+}
+
+function recalculateOverrideImageBaseDimensions() {
+  if (typeof getSheetSlots !== 'function' || typeof setSheetSlots !== 'function') return;
+
+  var slots = getSheetSlots();
+  if (!slots || slots.length === 0) return;
+
+  var changed = false;
+
+  slots.forEach(function(slot) {
+    if (!slot || !slot.overrides || !Array.isArray(slot.overrides.imageElements)) return;
+
+    slot.overrides.imageElements = slot.overrides.imageElements.map(function(imgEl) {
+      var updated = Object.assign({}, imgEl || {});
+      refreshImageElementGeometryForCurrentSize(updated);
+      changed = true;
+      return updated;
+    });
+  });
+
+  if (changed) {
+    setSheetSlots(slots);
+  }
 }
 
 function handleImageUpload(file) {
