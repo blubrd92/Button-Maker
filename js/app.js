@@ -147,6 +147,9 @@ function initTopLevelControls() {
     } else if (currentMode === 'sheet' && selectedSlots.length > 0) {
       applyOverrideToSelectedSlots('libraryInfoText', e.target.value);
     } else {
+      if (currentMode === 'sheet') {
+        preserveBrandTextOnCustomSlots();
+      }
       currentDesign.libraryInfoText = e.target.value;
       renderDesignCanvas();
       if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
@@ -161,6 +164,9 @@ function initTopLevelControls() {
     } else if (currentMode === 'sheet' && selectedSlots.length > 0) {
       applyOverrideToSelectedSlots('libraryInfoColor', e.target.value);
     } else {
+      if (currentMode === 'sheet') {
+        preserveBrandTextOnCustomSlots();
+      }
       currentDesign.libraryInfoColor = e.target.value;
       renderDesignCanvas();
       if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
@@ -316,6 +322,51 @@ function clearBrandTextOverridesForAllSlots() {
   });
 }
 
+function preserveBrandTextOnCustomSlots() {
+  if (typeof sheetSlots === 'undefined' || !Array.isArray(sheetSlots)) return;
+  sheetSlots.forEach(function(slot, slotIndex) {
+    if (!slot || !slot.overrides) return;
+    if (Object.keys(slot.overrides).length === 0) return;
+
+    var effectiveDesign = (typeof getEffectiveDesignForSlot === 'function')
+      ? getEffectiveDesignForSlot(slotIndex)
+      : currentDesign;
+
+    if (slot.overrides.libraryInfoText === undefined) {
+      slot.overrides.libraryInfoText = effectiveDesign.libraryInfoText;
+    }
+    if (slot.overrides.libraryInfoColor === undefined) {
+      slot.overrides.libraryInfoColor = effectiveDesign.libraryInfoColor;
+    }
+  });
+}
+
+function preserveBackgroundOnCustomSlots() {
+  if (typeof sheetSlots === 'undefined' || !Array.isArray(sheetSlots)) return;
+  sheetSlots.forEach(function(slot, slotIndex) {
+    if (!slot || !slot.overrides) return;
+    if (Object.keys(slot.overrides).length === 0) return;
+
+    var effectiveDesign = (typeof getEffectiveDesignForSlot === 'function')
+      ? getEffectiveDesignForSlot(slotIndex)
+      : currentDesign;
+
+    if (effectiveDesign.gradient) {
+      slot.overrides.backgroundColor = effectiveDesign.backgroundColor;
+      slot.overrides.gradient = JSON.parse(JSON.stringify(effectiveDesign.gradient));
+      slot.overrides.templateId = null;
+    } else if (effectiveDesign.templateId) {
+      slot.overrides.backgroundColor = effectiveDesign.backgroundColor;
+      slot.overrides.gradient = null;
+      slot.overrides.templateId = effectiveDesign.templateId;
+    } else {
+      slot.overrides.backgroundColor = effectiveDesign.backgroundColor;
+      slot.overrides.gradient = null;
+      slot.overrides.templateId = null;
+    }
+  });
+}
+
 function refreshAfterGlobalSectionApply() {
   renderDesignCanvas();
   if (typeof refreshSheetThumbnails === 'function') {
@@ -382,6 +433,10 @@ function applyGradientFromUI() {
   var color1 = document.getElementById('bg-color-picker').value;
   var color2 = document.getElementById('bg-gradient-color2').value;
   var direction = document.getElementById('gradient-direction').value;
+
+  if (currentMode === 'sheet' && selectedSlots.length === 0 && !shouldApplyBackgroundToAllButtons()) {
+    preserveBackgroundOnCustomSlots();
+  }
 
   currentDesign.gradient = {
     color1: color1,
@@ -464,6 +519,9 @@ function applyGradientPreset(presetName) {
   } else if (currentMode === 'sheet' && selectedSlots.length > 0) {
     applyOverrideToSelectedSlots('gradient', grad);
   } else {
+    if (currentMode === 'sheet') {
+      preserveBackgroundOnCustomSlots();
+    }
     currentDesign.gradient = grad;
     currentDesign.templateDraw = buildGradientDrawFunction(currentDesign.gradient);
     currentDesign.templateId = null;
@@ -795,6 +853,9 @@ function handleBackgroundColorChange(color) {
       applyGradientOverrideToSelectedSlots();
     }
   } else {
+    if (currentMode === 'sheet') {
+      preserveBackgroundOnCustomSlots();
+    }
     setBackgroundColor(color);
     if (document.getElementById('toggle-gradient').checked) {
       applyGradientFromUI();
