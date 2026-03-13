@@ -19,7 +19,7 @@ const CONFIG = {
       label: '1"',
       cutDiameter: 1.313,     // inches
       faceDiameter: 1.0,      // inches
-      safeDiameter: 0.90,     // inches
+      safeDiameter: 0.875,     // inches
       primary: false
     },
     "1.25": {
@@ -38,7 +38,7 @@ const CONFIG = {
     },
     "1.75": {
       label: '1.75"',
-      cutDiameter: 2.087,     // inches
+      cutDiameter: 2.088,     // inches
       faceDiameter: 1.75,     // inches
       safeDiameter: 1.575,    // inches
       primary: false
@@ -52,9 +52,9 @@ const CONFIG = {
     },
     "3": {
       label: '3"',
-      cutDiameter: 3.500,     // inches
+      cutDiameter: 3.451,     // inches
       faceDiameter: 3.0,      // inches
-      safeDiameter: 2.70,     // inches
+      safeDiameter: 2.8,     // inches
       primary: false
     }
   },
