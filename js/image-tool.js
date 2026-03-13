@@ -425,6 +425,9 @@ function showImageControls(index) {
   var imgEl = currentDesign.imageElements[index];
   if (!imgEl) return;
 
+  // Only show image controls in Design Mode
+  if (typeof currentMode !== 'undefined' && currentMode !== 'design') return;
+
   var controls = document.getElementById('image-controls');
   controls.classList.remove('hidden');
 
