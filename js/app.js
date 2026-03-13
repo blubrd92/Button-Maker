@@ -360,7 +360,7 @@ function preserveBackgroundOnCustomSlots() {
       slot.overrides.backgroundColor = effectiveDesign.backgroundColor;
       slot.overrides.gradient = JSON.parse(JSON.stringify(effectiveDesign.gradient));
       slot.overrides.templateId = null;
-    } else if (effectiveDesign.templateId) {
+    } else if (effectiveDesign.templateId && effectiveDesign.templateId !== 'blank') {
       slot.overrides.backgroundColor = effectiveDesign.backgroundColor;
       slot.overrides.gradient = null;
       slot.overrides.templateId = effectiveDesign.templateId;
@@ -856,6 +856,16 @@ function handleBackgroundColorChange(color) {
     applyOverrideToSelectedSlots('backgroundColor', color);
     if (document.getElementById('toggle-gradient').checked) {
       applyGradientOverrideToSelectedSlots();
+    } else {
+      // Clear stale gradient/template overrides so solid color isn't masked
+      selectedSlots.forEach(function(slotIndex) {
+        var slot = sheetSlots[slotIndex];
+        if (slot && slot.overrides) {
+          delete slot.overrides.gradient;
+          delete slot.overrides.templateId;
+        }
+      });
+      refreshSheetThumbnails();
     }
   } else {
     if (currentMode === 'sheet') {
