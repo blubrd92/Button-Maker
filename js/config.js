@@ -105,7 +105,7 @@ const CONFIG = {
       description: "2 columns x 2 rows",
       cols: 2,
       rows: 2,
-      maxRowGutter: 0.25
+      equalRowSpacing: true
     }
   },
 
@@ -221,7 +221,13 @@ function computeSheetGutters() {
     columnInset = (usableWidth - gridWidth) / 2;
     columnGutter = layout.maxColumnGutter;
   }
-  if (layout.maxRowGutter && rowGutter > layout.maxRowGutter) {
+  if (layout.equalRowSpacing) {
+    // Equal gaps above, between, and below rows
+    var totalRowSpace = usableHeight - layout.rows * size.cutDiameter;
+    var gap = totalRowSpace / (layout.rows + 1);
+    rowGutter = gap;
+    rowInset = gap;
+  } else if (layout.maxRowGutter && rowGutter > layout.maxRowGutter) {
     var gridHeight = layout.rows * size.cutDiameter + (layout.rows - 1) * layout.maxRowGutter;
     rowInset = (usableHeight - gridHeight) / 2;
     rowGutter = layout.maxRowGutter;
