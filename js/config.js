@@ -105,7 +105,6 @@ const CONFIG = {
       description: "2 columns x 2 rows",
       cols: 2,
       rows: 2,
-      maxColumnGutter: 0.25,
       maxRowGutter: 0.25
     }
   },
