@@ -185,8 +185,15 @@ function applyOverridesToDesign(design, overrides) {
   }
   if (overrides.templateId !== undefined) {
     design.templateId = overrides.templateId;
-    const template = getTemplateById(overrides.templateId);
-    design.templateDraw = template ? template.draw : null;
+    // "blank" is the default solid-fill state, not a visual template.
+    // Its draw function fills white regardless of backgroundColor,
+    // so skip restoring it to let backgroundColor render correctly.
+    if (overrides.templateId && overrides.templateId !== 'blank') {
+      const template = getTemplateById(overrides.templateId);
+      design.templateDraw = template ? template.draw : null;
+    } else {
+      design.templateDraw = null;
+    }
   }
   if (overrides.textElements !== undefined) {
     design.textElements = overrides.textElements.map(t => ({ ...t }));

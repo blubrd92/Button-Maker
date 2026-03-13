@@ -230,8 +230,16 @@ function initTopLevelControls() {
         clearGradientPresetHighlight();
         applyBackgroundSettingsToAllButtons();
       } else if (currentMode === 'sheet' && selectedSlots.length > 0) {
-        applyOverrideToSelectedSlots('gradient', null);
         applyOverrideToSelectedSlots('backgroundColor', document.getElementById('bg-color-picker').value);
+        // Clear gradient and template overrides so solid color isn't masked
+        selectedSlots.forEach(function(slotIndex) {
+          var slot = sheetSlots[slotIndex];
+          if (slot && slot.overrides) {
+            delete slot.overrides.gradient;
+            delete slot.overrides.templateId;
+          }
+        });
+        refreshSheetThumbnails();
       } else {
         currentDesign.gradient = null;
         currentDesign.templateDraw = null;
