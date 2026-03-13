@@ -50,6 +50,7 @@ function generatePDF(options) {
   var columnGutter = gutters.columnGutter;
   var rowGutter = gutters.rowGutter;
   var columnInset = gutters.columnInset || 0;
+  var rowInset = gutters.rowInset || 0;
 
   var totalButtons = layout.cols * layout.rows;
   var buttonDesigns = getButtonDesignsForExport(totalButtons);
@@ -84,7 +85,7 @@ function generatePDF(options) {
         });
 
         var cellX = CONFIG.PAGE.margin + columnInset + col * (btnSize.cutDiameter + columnGutter);
-        var cellY = CONFIG.PAGE.margin + row * (btnSize.cutDiameter + rowGutter);
+        var cellY = CONFIG.PAGE.margin + rowInset + row * (btnSize.cutDiameter + rowGutter);
 
         var imgData = offCanvas.toDataURL('image/png');
         doc.addImage(imgData, 'PNG', cellX, cellY, btnSize.cutDiameter, btnSize.cutDiameter);

@@ -105,7 +105,8 @@ const CONFIG = {
       description: "2 columns x 2 rows",
       cols: 2,
       rows: 2,
-      maxColumnGutter: 0.25
+      maxColumnGutter: 0.25,
+      maxRowGutter: 0.25
     }
   },
 
@@ -210,16 +211,22 @@ function computeSheetGutters() {
   const usableWidth = CONFIG.PAGE.width - 2 * CONFIG.PAGE.margin;
   const usableHeight = CONFIG.PAGE.height - 2 * CONFIG.PAGE.margin;
   
-  const rowGutter = (usableHeight - layout.rows * size.cutDiameter) / (layout.rows - 1);
+  var rowGutter = (usableHeight - layout.rows * size.cutDiameter) / (layout.rows - 1);
   var columnGutter = (usableWidth - layout.cols * size.cutDiameter) / (layout.cols - 1);
   var columnInset = 0;
+  var rowInset = 0;
 
-  // Cap column gutter and center the grid with remaining space
+  // Cap gutters and center the grid with remaining space
   if (layout.maxColumnGutter && columnGutter > layout.maxColumnGutter) {
     var gridWidth = layout.cols * size.cutDiameter + (layout.cols - 1) * layout.maxColumnGutter;
     columnInset = (usableWidth - gridWidth) / 2;
     columnGutter = layout.maxColumnGutter;
   }
+  if (layout.maxRowGutter && rowGutter > layout.maxRowGutter) {
+    var gridHeight = layout.rows * size.cutDiameter + (layout.rows - 1) * layout.maxRowGutter;
+    rowInset = (usableHeight - gridHeight) / 2;
+    rowGutter = layout.maxRowGutter;
+  }
 
-  return { columnGutter, rowGutter, columnInset, usableWidth, usableHeight };
+  return { columnGutter, rowGutter, columnInset, rowInset, usableWidth, usableHeight };
 }
