@@ -308,7 +308,7 @@ function exportDesignsFromArray(designs) {
   var baseName = (typeof sheetName === 'string' && sheetName.trim())
     ? sheetName.trim()
     : 'buttonmaker-designs';
-  a.download = CONFIG.currentButtonSize + ' - ' + baseName + '.buttons';
+  a.download = CONFIG.currentButtonSize + 'in - ' + baseName + '.buttons';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
