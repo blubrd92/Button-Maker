@@ -15,6 +15,13 @@ const CONFIG = {
 
   // Button size definitions
   BUTTON_SIZES: {
+    "1": {
+      label: '1"',
+      cutDiameter: 1.313,     // inches
+      faceDiameter: 1.0,      // inches
+      safeDiameter: 0.90,     // inches
+      primary: false
+    },
     "1.25": {
       label: '1.25"',
       cutDiameter: 1.629,     // inches
@@ -34,6 +41,13 @@ const CONFIG = {
       cutDiameter: 2.087,     // inches
       faceDiameter: 1.75,     // inches
       safeDiameter: 1.575,    // inches
+      primary: false
+    },
+    "2.25": {
+      label: '2.25"',
+      cutDiameter: 2.625,     // inches
+      faceDiameter: 2.25,     // inches
+      safeDiameter: 2.025,    // inches
       primary: false
     },
     "3": {
@@ -56,6 +70,12 @@ const CONFIG = {
 
   // Sheet tiling layouts mapped directly to button size
   SHEET_LAYOUTS: {
+    "1": {
+      label: "Standard (35)",
+      description: "5 columns x 7 rows",
+      cols: 5,
+      rows: 7
+    },
     "1.25": {
       label: "Standard (24)",
       description: "4 columns x 6 rows",
@@ -73,6 +93,12 @@ const CONFIG = {
       description: "3 columns x 4 rows",
       cols: 3,
       rows: 4
+    },
+    "2.25": {
+      label: "Standard (9)",
+      description: "3 columns x 3 rows",
+      cols: 3,
+      rows: 3
     },
     "3": {
       label: "Standard (4)",
