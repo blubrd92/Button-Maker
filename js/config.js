@@ -78,7 +78,8 @@ const CONFIG = {
       label: "Standard (4)",
       description: "2 columns x 2 rows",
       cols: 2,
-      rows: 2
+      rows: 2,
+      maxColumnGutter: 0.25
     }
   },
 
@@ -184,8 +185,15 @@ function computeSheetGutters() {
   const usableHeight = CONFIG.PAGE.height - 2 * CONFIG.PAGE.margin;
   
   const rowGutter = (usableHeight - layout.rows * size.cutDiameter) / (layout.rows - 1);
-  const columnGutter = (usableWidth - layout.cols * size.cutDiameter) / (layout.cols - 1);
-  const columnInset = 0;
+  var columnGutter = (usableWidth - layout.cols * size.cutDiameter) / (layout.cols - 1);
+  var columnInset = 0;
+
+  // Cap column gutter and center the grid with remaining space
+  if (layout.maxColumnGutter && columnGutter > layout.maxColumnGutter) {
+    var gridWidth = layout.cols * size.cutDiameter + (layout.cols - 1) * layout.maxColumnGutter;
+    columnInset = (usableWidth - gridWidth) / 2;
+    columnGutter = layout.maxColumnGutter;
+  }
 
   return { columnGutter, rowGutter, columnInset, usableWidth, usableHeight };
 }
