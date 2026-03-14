@@ -48,9 +48,26 @@ Each size has: `cutDiameter`, `faceDiameter`, `safeDiameter`. Face is ~= nominal
 
 1. config.js → 2. templates.js → 3. canvas.js → 4. text-tool.js → 5. image-tool.js → 6. idb-storage.js → 7. storage.js → 8. pdf-export.js → 9. sheet-mode.js → 10. app.js
 
-## How to test changes
+## Automated validation
 
-This project has no automated test suite. All testing is manual in-browser. Here's what to verify:
+Run `node validate.js` before committing. It checks 120+ things:
+
+1. **CONFIG consistency** — every `BUTTON_SIZES` key has a matching `SHEET_LAYOUTS` entry and vice versa
+2. **HTML sync** — `<option>` values in the size selector match CONFIG keys
+3. **Script loading order** — `<script>` tags in `index.html` match the required dependency order
+4. **File existence** — all expected JS, CSS, doc, and config files exist
+5. **Global definitions** — critical cross-file functions (`renderButtonDesign`, `initApp`, etc.) are defined in their expected files
+6. **Quick Reference table** — cut diameters in the HTML table match CONFIG values
+7. **Config sanity** — face < cut, safe < face, safe/face ratio ~90%, layouts fit on US Letter
+8. **Doc accuracy** — ARCHITECTURE.md, README.md, and BUTTON-SPECS.md reference all current button sizes
+
+Exit code 0 = all checks pass. Exit code 1 = at least one failure. Warnings (yellow) are informational and don't cause failure.
+
+**When to run**: After any change to `js/config.js`, `index.html` (size selector or Quick Reference table), script loading order, or documentation files.
+
+## How to test changes (manual, in-browser)
+
+This project has no automated browser test suite. All UI/rendering testing is manual. Here's what to verify:
 
 ### After any change — basic smoke test
 1. Open `index.html` in a browser (or refresh)
