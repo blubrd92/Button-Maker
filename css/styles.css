@@ -944,32 +944,16 @@ input[type="checkbox"], input[type="radio"] {
 }
 
 .quick-ref-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
-}
-
-.quick-ref-header h3 {
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--text-color);
-  margin: 0;
+  margin: 0 0 14px 0;
 }
 
-.quick-ref-close {
-  background: none;
-  border: none;
-  font-size: 1.3rem;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 0 4px;
-  line-height: 1;
-  transition: color var(--transition-fast);
-}
-
-.quick-ref-close:hover {
-  color: var(--text-color);
+.quick-ref-footer {
+  display: flex;
+  justify-content: center;
+  margin-top: 14px;
 }
 
 .quick-ref-table {
