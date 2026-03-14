@@ -1,6 +1,6 @@
 # Button Specifications Reference
 
-Physical button dimensions for Tecre-style pinback button machines.
+Physical button dimensions for Tecre-style and Badge-a-Minit (BAM) pinback button machines.
 
 ## Understanding Button Zones
 
@@ -36,37 +36,64 @@ A pinback button is made from a flat printed circle of paper that gets folded ov
 
 ### Wrap Zone
 
-The ring between the button face (1.5") and the cut circle (1.837") is called the **wrap zone**. This paper folds over the metal button edge and tucks behind it. It is NOT visible on the finished button.
+The ring between the button face and the cut circle is called the **wrap zone**. This paper folds over the metal button edge and tucks behind it. It is NOT visible on the finished button.
 
 - **Do**: Extend backgrounds (color, patterns, gradients) into the wrap zone
 - **Don't**: Put text, logos, or important graphics in the wrap zone
 
-## 1.5" Button (Tecre Standard)
+## All Supported Button Sizes
 
-| Zone | Diameter (inches) | Radius (inches) | Purpose |
-|------|-------------------|------------------|---------|
-| Cut Circle | 1.837 | 0.9185 | Paper cut boundary |
-| Button Face | 1.500 | 0.7500 | Visible button front |
-| Safe Zone | 1.350 | 0.6750 | Safe area for content |
+Dimensions are for **Tecre**-style machines unless noted. The 2.375" size is the **Badge-a-Minit (BAM)** standard.
 
-These dimensions are for the **Tecre** button-making machine, the most common brand in library and educational settings.
+| Size | Cut Circle | Face Diameter | Safe Zone | Notes |
+|------|-----------|---------------|-----------|-------|
+| 1" | 1.313" | 1.0" | 0.875" | |
+| 1.25" | 1.629" | 1.3" | 1.15" | |
+| 1.5" | 1.837" | 1.5" | 1.35" | Default size, most common |
+| 1.75" | 2.088" | 1.75" | 1.575" | |
+| 2" | 2.415" | 2.0" | 1.8" | |
+| 2.25" | 2.625" | 2.25" | 2.025" | |
+| 2.375" | 2.747" | 2.375" | 2.138" | Badge-a-Minit (BAM) |
+| 2.5" | 2.920" | 2.5" | 2.25" | |
+| 3" | 3.451" | 3.0" | 2.8" | |
+
+### Diameter relationships
+
+- **faceDiameter** generally matches the nominal button size (e.g., a 2" button has a 2.0" face)
+- **safeDiameter** is approximately 90% of faceDiameter
+- **cutDiameter** includes the wrap zone needed for assembly
+
+### 1.25" note
+
+The 1.25" button uses a faceDiameter of 1.3" (slightly larger than the nominal size) to better fit brand text between the safe zone and the face edge.
 
 ## Adding New Button Sizes
 
 To add a new button size:
 
 1. Add an entry to `BUTTON_SIZES` in `js/config.js`
-2. Each entry needs: `cutDiameter`, `faceDiameter`, `safeDiameter` (all in inches)
-3. The tiling layout (rows/columns per sheet) may need adjustment in `SHEET_LAYOUTS`
-4. Example for a hypothetical 2.25" button:
+2. Each entry needs: `label`, `cutDiameter`, `faceDiameter`, `safeDiameter`, `primary` (all diameters in inches)
+3. Add a matching entry to `SHEET_LAYOUTS` with `label`, `description`, `cols`, `rows`
+4. Add an `<option>` element to the `#button-size-select` dropdown in `index.html`
+
+Example:
 
 ```javascript
-"2.25": {
-  label: '2.25"',
-  cutDiameter: 2.625,
-  faceDiameter: 2.25,
-  safeDiameter: 2.0,
+// In BUTTON_SIZES:
+"2.75": {
+  label: '2.75"',
+  cutDiameter: 3.170,
+  faceDiameter: 2.75,
+  safeDiameter: 2.475,
   primary: false
+}
+
+// In SHEET_LAYOUTS:
+"2.75": {
+  label: "Standard (4)",
+  description: "2 columns x 2 rows",
+  cols: 2,
+  rows: 2
 }
 ```
 
@@ -77,3 +104,4 @@ The PDF export must render buttons at **exactly** the cut circle diameter. This 
 - If the printed circle is even slightly off, the cut won't align
 - All print rendering uses 300 DPI for crisp output
 - jsPDF works in points (72 per inch) — use `inchesToPoints()` for conversion
+- Users should print at **Default** or **Actual size** scale (no fit-to-page)

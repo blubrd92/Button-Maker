@@ -6,7 +6,7 @@ Button Maker is a static web application for designing and printing pinback butt
 
 It is built for library staff, but open to all, and is designed around a practical production workflow: create a main button design in Design Mode, customize specific buttons in Sheet Mode when needed, and export a print-ready PDF for printing and cutting.
 
-The app currently supports **1.5"** and **1.25"** buttons. Layouts are tied to button size, and additional sizes can be added later through configuration. The project uses vanilla JavaScript and HTML5 Canvas, with no backend and no build step.
+The app supports nine button sizes from **1"** to **3"**, including the **2.375" Badge-a-Minit (BAM)** size. Layouts are tied to button size via configuration. The project uses vanilla JavaScript and HTML5 Canvas, with no backend and no build step.
 
 ---
 
@@ -46,7 +46,8 @@ This creates a **main-design-plus-overrides** workflow rather than separate full
 | `js/canvas.js` | Main design state, canvas rendering, guide circles, shared button renderer | `config.js`, `templates.js`, `text-tool.js` |
 | `js/text-tool.js` | Text-related rendering utilities, especially curved brand text rendering | `config.js`, `canvas.js` |
 | `js/image-tool.js` | Image upload, image scaling, drag-to-reposition behavior, image state helpers | `config.js`, `canvas.js` |
-| `js/storage.js` | Save/load logic for `.buttons` files and local autosave/session recovery | `config.js`, `canvas.js`, `sheet-mode.js` |
+| `js/idb-storage.js` | IndexedDB storage layer for large assets (images) that exceed localStorage limits | None |
+| `js/storage.js` | Save/load logic for `.buttons` files and local autosave/session recovery | `config.js`, `canvas.js`, `sheet-mode.js`, `idb-storage.js` |
 | `js/pdf-export.js` | PDF generation, offscreen high-resolution rendering, sheet export pipeline, override merge | `config.js`, `canvas.js`, `sheet-mode.js`, jsPDF |
 | `js/sheet-mode.js` | Sheet preview, selection logic, per-button overrides, row/column tools, copy/paste, sheet naming | `config.js`, `canvas.js`, `pdf-export.js` |
 | `js/app.js` | App initialization, mode management, zoom state, notifications, top-level event wiring | All modules |
@@ -63,10 +64,11 @@ Scripts are loaded in dependency order from `index.html`:
 3. `canvas.js`
 4. `text-tool.js`
 5. `image-tool.js`
-6. `storage.js`
-7. `pdf-export.js`
-8. `sheet-mode.js`
-9. `app.js`
+6. `idb-storage.js`
+7. `storage.js`
+8. `pdf-export.js`
+9. `sheet-mode.js`
+10. `app.js`
 
 This order matters because the app uses shared globals rather than a module bundler.
 
@@ -143,18 +145,32 @@ If a slot’s `overrides` object is empty, it renders exactly like the master de
 Button and page layout behavior is controlled centrally in `js/config.js`.
 
 ### Supported button sizes
-- **1.5"**
-  - cut diameter: `1.837"`
-  - face diameter: `1.5"`
-  - safe diameter: `1.35"`
-- **1.25"**
-  - cut diameter: `1.629"`
-  - face diameter: `1.3"`
-  - safe diameter: `1.15"`
+
+| Size | Cut Diameter | Face Diameter | Safe Diameter | Notes |
+|------|-------------|---------------|---------------|-------|
+| 1" | 1.313" | 1.0" | 0.875" | |
+| 1.25" | 1.629" | 1.3" | 1.15" | |
+| 1.5" | 1.837" | 1.5" | 1.35" | Default / primary |
+| 1.75" | 2.088" | 1.75" | 1.575" | |
+| 2" | 2.415" | 2.0" | 1.8" | |
+| 2.25" | 2.625" | 2.25" | 2.025" | |
+| 2.375" | 2.747" | 2.375" | 2.138" | Badge-a-Minit (BAM) |
+| 2.5" | 2.920" | 2.5" | 2.25" | |
+| 3" | 3.451" | 3.0" | 2.8" | |
 
 ### Current sheet layouts
-- **1.5"** → 4 columns × 5 rows = **20 buttons**
-- **1.25"** → 4 columns × 6 rows = **24 buttons**
+
+| Size | Layout | Buttons per sheet |
+|------|--------|-------------------|
+| 1" | 5 × 7 | 35 |
+| 1.25" | 4 × 6 | 24 |
+| 1.5" | 4 × 5 | 20 |
+| 1.75" | 3 × 4 | 12 |
+| 2" | 3 × 4 | 12 |
+| 2.25" | 3 × 3 | 9 |
+| 2.375" | 2 × 3 | 6 |
+| 2.5" | 2 × 3 | 6 |
+| 3" | 2 × 2 | 4 |
 
 ### Page settings
 - US Letter page size
