@@ -102,6 +102,23 @@ function initTopLevelControls() {
     });
   }
   
+  // Quick Reference modal
+  var refLink = document.getElementById('quick-ref-link');
+  var refOverlay = document.getElementById('quick-ref-overlay');
+  var refClose = document.getElementById('quick-ref-close');
+  if (refLink && refOverlay) {
+    refLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      refOverlay.classList.remove('hidden');
+    });
+    refClose.addEventListener('click', function() {
+      refOverlay.classList.add('hidden');
+    });
+    refOverlay.addEventListener('click', function(e) {
+      if (e.target === refOverlay) refOverlay.classList.add('hidden');
+    });
+  }
+
   // Button Size Selection
   var sizeSelect = document.getElementById('button-size-select');
   if (sizeSelect) {
