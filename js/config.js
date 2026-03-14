@@ -43,6 +43,13 @@ const CONFIG = {
       safeDiameter: 1.575,    // inches
       primary: false
     },
+    "2": {
+      label: '2"',
+      cutDiameter: 2.415,     // inches
+      faceDiameter: 2.0,      // inches
+      safeDiameter: 1.8,      // inches
+      primary: false
+    },
     "2.25": {
       label: '2.25"',
       cutDiameter: 2.625,     // inches
@@ -89,6 +96,12 @@ const CONFIG = {
       rows: 5
     },
     "1.75": {
+      label: "Standard (12)",
+      description: "3 columns x 4 rows",
+      cols: 3,
+      rows: 4
+    },
+    "2": {
       label: "Standard (12)",
       description: "3 columns x 4 rows",
       cols: 3,
