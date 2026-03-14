@@ -948,6 +948,7 @@ input[type="checkbox"], input[type="radio"] {
   font-weight: 700;
   color: var(--text-color);
   margin: 0 0 14px 0;
+  text-align: center;
 }
 
 .quick-ref-footer {
