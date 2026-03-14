@@ -60,8 +60,8 @@ const CONFIG = {
     "2.375": {
       label: '2.375"',
       cutDiameter: 2.747,     // inches (Badge-a-Minit size)
-      faceDiameter: 2.187,    // inches
-      safeDiameter: 1.97,     // inches
+      faceDiameter: 2.375,    // inches
+      safeDiameter: 2.138,    // inches
       primary: false
     },
     "2.5": {
