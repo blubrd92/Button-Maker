@@ -66,14 +66,26 @@ function initApp() {
   initTopLevelControls();
 
   // 7. Restore auto-saved session, or apply default template
-  var restored = autoRestoreState();
-  if (!restored) {
-    applyTemplate('blank');
+  var restoreResult = autoRestoreState();
+  if (restoreResult && typeof restoreResult.then === 'function') {
+    // async path (IndexedDB)
+    restoreResult.then(function(restored) {
+      if (!restored) {
+        applyTemplate('blank');
+      } else {
+        renderDesignCanvas();
+      }
+      console.log('Button Maker initialized.');
+    });
   } else {
-    renderDesignCanvas();
+    // sync fallback (no IndexedDB)
+    if (!restoreResult) {
+      applyTemplate('blank');
+    } else {
+      renderDesignCanvas();
+    }
+    console.log('Button Maker initialized.');
   }
-
-  console.log('Button Maker initialized.');
 }
 
 /**
@@ -294,8 +306,7 @@ function initTopLevelControls() {
   // Reset button
   document.getElementById('btn-reset').addEventListener('click', function() {
     if (!confirm('Reset to defaults? This will clear the current design and all saved designs from browser storage.')) return;
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem('buttonmaker_autosave'); 
+    clearAllStorage();
     resetDesignToDefaults();
     sheetSlots = [];
     selectedSlots = [];

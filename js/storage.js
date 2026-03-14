@@ -1,46 +1,27 @@
 /**
  * storage.js
  *
- * Manages saving and loading button designs to/from localStorage and files.
+ * Manages saving and loading button designs to/from IndexedDB, localStorage,
+ * and .buttons files.
  *
- * Responsibilities:
- * - Serializing design state (master + per-button overrides) to JSON
- * - Saving/loading designs via .buttons files (export/import)
- * - Quick save to localStorage with auto-generated name
- * - Quick load from localStorage (most recent) or file picker
+ * Storage strategy:
+ * - IndexedDB (primary): large capacity (~50MB+), async API
+ * - localStorage (fallback): used for beforeunload sync saves and when
+ *   IndexedDB is unavailable
+ * - .buttons file download: always exported on Save as the authoritative copy
  *
  * Depends on:
+ * - idb-storage.js (IndexedDB wrapper — must be loaded first)
  * - config.js (for default values)
  * - canvas.js (currentDesign, renderDesignCanvas)
  * - templates.js (getTemplateById to restore template draw functions)
  * - image-tool.js (reconstructing Image objects from dataUrls)
  */
 
-const STORAGE_KEY = 'buttonmaker_designs';
-const AUTOSAVE_KEY = 'buttonmaker_autosave';
-const MAX_HISTORY_SLOTS = 1;
-
-/**
- * Get all saved designs from localStorage.
- * @returns {Array} Array of saved design objects
- */
-function getSavedDesigns() {
-  try {
-    var data = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return (data && data.designs) ? data.designs : [];
-  } catch (e) {
-    console.warn('Failed to parse saved designs:', e);
-    return [];
-  }
-}
-
-/**
- * Save all designs to localStorage.
- * @param {Array} designs - Array of design objects
- */
-function saveDesignsToStorage(designs) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ designs: designs }));
-}
+var STORAGE_KEY = 'buttonmaker_designs';
+var AUTOSAVE_KEY = 'buttonmaker_autosave';
+var IDB_DESIGNS_KEY = 'designs';
+var IDB_AUTOSAVE_KEY = 'autosave';
 
 /**
  * Serialize a design object for storage (strips non-serializable data).
@@ -128,7 +109,7 @@ function deserializeDesign(data, imageAssets) {
     // Only render the canvas when all images have either loaded or failed
     if (loadedImages === totalImages) {
       if (typeof renderDesignCanvas === 'function') renderDesignCanvas();
-      
+
       if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
         refreshSheetThumbnails();
       }
@@ -206,11 +187,13 @@ function deserializeDesign(data, imageAssets) {
   if (typeof hideImageControls === 'function') hideImageControls();
 }
 
+// ─── Build save payload ──────────────────────────────────────────
+
 /**
- * Quick-save: saves current design to localStorage with a timestamp name,
- * then exports as .buttons file download.
+ * Build the full save payload from the current design state.
+ * @returns {Object} The serialized save object
  */
-function quickSave() {
+function buildSavePayload() {
   var masterData = serializeDesign(currentDesign);
   var slotsData = (typeof getSheetSlots === 'function') ? getSheetSlots() : [];
   if (typeof normalizeSlotDataImageAssets === 'function') {
@@ -223,7 +206,7 @@ function quickSave() {
     ? sheetName.trim()
     : 'Untitled';
 
-  var savedDesign = {
+  return {
     name: name,
     savedAt: new Date().toISOString(),
     buttonSize: CONFIG.currentButtonSize,
@@ -231,28 +214,34 @@ function quickSave() {
     slots: slotsData,
     assets: assetsData
   };
+}
 
-  // Clear old localStorage data before saving to free up quota
+// ─── Quick Save / Load ───────────────────────────────────────────
+
+/**
+ * Quick-save: saves current design to IndexedDB (with localStorage fallback),
+ * then exports as .buttons file download.
+ */
+function quickSave() {
+  var savedDesign = buildSavePayload();
+
+  // Save to IndexedDB (primary — large capacity)
+  if (typeof IDB !== 'undefined') {
+    IDB.set(IDB_DESIGNS_KEY, [savedDesign]).catch(function(err) {
+      console.warn('IndexedDB save failed:', err);
+    });
+  }
+
+  // Also try localStorage as a sync fallback (best-effort, may fail on quota)
   try {
     localStorage.removeItem(AUTOSAVE_KEY);
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ designs: [savedDesign] }));
   } catch (e) {
-    // Ignore removal errors
+    // Quota exceeded — that's fine, IndexedDB and the file download cover us
   }
 
-  // Save to localStorage (only keep the current design)
-  var designs = [savedDesign];
-
-  try {
-    saveDesignsToStorage(designs);
-  } catch (e) {
-    console.warn('localStorage save failed (quota?):', e);
-    if (typeof showNotification === 'function') {
-      showNotification('Browser memory full. Background save failed. Please rely on downloaded files.', 'error');
-    }
-  }
-
-  // Always export as .buttons file download, even if localStorage failed
+  // Always export as .buttons file download
   exportDesignsFromArray([savedDesign]);
 }
 
@@ -269,12 +258,34 @@ function quickLoad() {
  * Export all saved designs as a JSON file download.
  */
 function exportDesignsToJSON() {
-  var designs = getSavedDesigns();
-  if (designs.length === 0) {
-    if (typeof showNotification === 'function') showNotification('No designs to export. Save a design first.');
-    return;
+  // Try IndexedDB first, fall back to localStorage
+  if (typeof IDB !== 'undefined') {
+    IDB.get(IDB_DESIGNS_KEY).then(function(designs) {
+      if (designs && designs.length > 0) {
+        exportDesignsFromArray(designs);
+      } else {
+        exportDesignsFromLocalStorage();
+      }
+    }).catch(function() {
+      exportDesignsFromLocalStorage();
+    });
+  } else {
+    exportDesignsFromLocalStorage();
   }
-  exportDesignsFromArray(designs);
+}
+
+function exportDesignsFromLocalStorage() {
+  try {
+    var data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    var designs = (data && data.designs) ? data.designs : [];
+    if (designs.length === 0) {
+      if (typeof showNotification === 'function') showNotification('No designs to export. Save a design first.');
+      return;
+    }
+    exportDesignsFromArray(designs);
+  } catch (e) {
+    if (typeof showNotification === 'function') showNotification('No designs to export. Save a design first.');
+  }
 }
 
 /**
@@ -307,8 +318,8 @@ function exportDesignsFromArray(designs) {
 }
 
 /**
- * Import designs from a JSON file. Overwrites existing designs in history
- * if names match. After import, loads the first design.
+ * Import designs from a JSON file. After import, loads the first design.
+ * Saves to IndexedDB with localStorage fallback.
  * @param {File} file - The JSON file to import
  */
 function importDesignsFromJSON(file) {
@@ -346,27 +357,18 @@ function importDesignsFromJSON(file) {
         return;
       }
 
-      var existing = getSavedDesigns();
-
-      // Overwrite existing designs with the same name
-      incoming.forEach(function(newDesign) {
-        var existingIdx = existing.findIndex(function(d) {
-          return d.name.toLowerCase() === newDesign.name.toLowerCase();
+      // Save to IndexedDB (primary)
+      if (typeof IDB !== 'undefined') {
+        IDB.set(IDB_DESIGNS_KEY, incoming).catch(function(err) {
+          console.warn('IndexedDB save on import failed:', err);
         });
-
-        if (existingIdx >= 0) {
-          existing[existingIdx] = newDesign;
-        } else {
-          existing.push(newDesign);
-        }
-      });
-
-      // Enforce the history limit after importing
-      if (existing.length > MAX_HISTORY_SLOTS) {
-        existing = existing.slice(existing.length - MAX_HISTORY_SLOTS);
       }
 
-      saveDesignsToStorage(existing);
+      // Best-effort localStorage save
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ designs: incoming }));
+      } catch (ignored) {}
 
       // Load the first imported design
       var first = incoming[0];
@@ -383,7 +385,7 @@ function importDesignsFromJSON(file) {
       if (typeof setSheetSlots === 'function' && first.slots) {
         setSheetSlots(first.slots);
       }
-      
+
       // Force the active view over to sheet mode
       currentMode = 'sheet';
       var btnDesign = document.getElementById('btn-design-mode');
@@ -408,7 +410,7 @@ function importDesignsFromJSON(file) {
       }
 
       if (typeof showNotification === 'function') showNotification('Buttons loaded.', 'success');
-      
+
       // Force an auto-save right now so it survives an immediate window close
       autoSaveState();
     } catch (err) {
@@ -422,88 +424,146 @@ function importDesignsFromJSON(file) {
 // ─── Auto-save (session recovery) ────────────────────────────────
 
 /**
- * Auto-save current working state to localStorage.
- * Called on beforeunload and periodically.
+ * Auto-save current working state.
+ * Writes to IndexedDB (async, large capacity) and attempts localStorage
+ * as a synchronous fallback (important for beforeunload).
  */
 function autoSaveState() {
+  var state = {
+    savedAt: new Date().toISOString(),
+    master: serializeDesign(currentDesign),
+    buttonSize: CONFIG.currentButtonSize,
+    sheetName: (typeof sheetName === 'string') ? sheetName : '',
+    slots: (typeof getSheetSlots === 'function') ? getSheetSlots() : [],
+    mode: currentMode
+  };
+  if (typeof normalizeSlotDataImageAssets === 'function') {
+    normalizeSlotDataImageAssets(state.slots);
+  }
+  if (typeof buildSerializedImageAssetBundle === 'function') {
+    state.assets = buildSerializedImageAssetBundle(currentDesign, state.slots);
+  }
+
+  // Primary: IndexedDB (async, large capacity)
+  if (typeof IDB !== 'undefined') {
+    IDB.set(IDB_AUTOSAVE_KEY, state).catch(function(err) {
+      console.warn('IndexedDB autosave failed:', err);
+    });
+  }
+
+  // Fallback: localStorage (sync, works in beforeunload, but may fail on quota)
   try {
-    var state = {
-      savedAt: new Date().toISOString(),
-      master: serializeDesign(currentDesign),
-      buttonSize: CONFIG.currentButtonSize,
-      sheetName: (typeof sheetName === 'string') ? sheetName : '',
-      slots: (typeof getSheetSlots === 'function') ? getSheetSlots() : [],
-      mode: currentMode
-    };
-    if (typeof normalizeSlotDataImageAssets === 'function') {
-      normalizeSlotDataImageAssets(state.slots);
-    }
-    if (typeof buildSerializedImageAssetBundle === 'function') {
-      state.assets = buildSerializedImageAssetBundle(currentDesign, state.slots);
-    }
-    // Clear stale data before writing to free up quota
-    try { localStorage.removeItem(AUTOSAVE_KEY); } catch (ignored) {}
+    localStorage.removeItem(AUTOSAVE_KEY);
     localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(state));
   } catch (e) {
-    // Storage full or unavailable — the .buttons file download is the primary save
+    // Quota exceeded — IndexedDB has us covered
   }
 }
 
 /**
- * Restore auto-saved state if present. Returns true if restored.
+ * Restore auto-saved state if present.
+ * Checks IndexedDB first (more reliable for large data), then localStorage.
+ * Returns a Promise that resolves to true if restored, false otherwise.
  */
 function autoRestoreState() {
+  // Try IndexedDB first
+  if (typeof IDB !== 'undefined') {
+    return IDB.get(IDB_AUTOSAVE_KEY).then(function(state) {
+      if (state && state.master) {
+        applyRestoredState(state);
+        return true;
+      }
+      // IndexedDB had nothing — try localStorage
+      return restoreFromLocalStorage();
+    }).catch(function() {
+      // IndexedDB failed — try localStorage
+      return restoreFromLocalStorage();
+    });
+  }
+
+  // No IndexedDB — use localStorage synchronously wrapped in a resolved Promise
+  return Promise.resolve(restoreFromLocalStorage());
+}
+
+/**
+ * Attempt to restore state from localStorage (synchronous).
+ * @returns {boolean} true if restored, false otherwise
+ */
+function restoreFromLocalStorage() {
   try {
     var raw = localStorage.getItem(AUTOSAVE_KEY);
     if (!raw) return false;
     var state = JSON.parse(raw);
     if (!state || !state.master) return false;
-
-    CONFIG.currentButtonSize = state.buttonSize || '1.5';
-
-    var sizeSelect = document.getElementById('button-size-select');
-    if (sizeSelect) {
-      sizeSelect.value = CONFIG.currentButtonSize;
-    }
-    if (typeof sheetName !== 'undefined') {
-      sheetName = state.sheetName || '';
-      var nameInput = document.getElementById('sheet-name-input');
-      if (nameInput) nameInput.value = sheetName;
-    }
-
-    deserializeDesign(state.master, state.assets || null);
-
-    if (typeof setSheetSlots === 'function' && state.slots) {
-      setSheetSlots(state.slots);
-    }
-
-    // Force mode switch if they left off in Sheet view
-    if (state.mode === 'sheet') {
-      currentMode = 'sheet';
-      var btnDesign = document.getElementById('btn-design-mode');
-      var btnSheet = document.getElementById('btn-sheet-mode');
-      if (btnDesign) btnDesign.classList.remove('active');
-      if (btnSheet) btnSheet.classList.add('active');
-      
-      if (typeof renderSheetView === 'function') {
-        var wrapper = document.getElementById('design-canvas-wrapper');
-        var sheetView = document.getElementById('sheet-view');
-        if (wrapper) wrapper.classList.add('hidden');
-        if (sheetView) sheetView.classList.remove('hidden');
-        renderSheetView();
-        
-        if (typeof computeFitToScreenZoom === 'function' && typeof setCurrentZoom === 'function' && typeof applyZoom === 'function') {
-          setCurrentZoom(computeFitToScreenZoom());
-          applyZoom();
-        }
-      }
-    }
-
+    applyRestoredState(state);
     return true;
   } catch (e) {
-    console.warn('Auto-restore failed:', e);
+    console.warn('localStorage auto-restore failed:', e);
     return false;
   }
+}
+
+/**
+ * Apply a restored state object to the app.
+ * @param {Object} state - The auto-saved state to restore
+ */
+function applyRestoredState(state) {
+  CONFIG.currentButtonSize = state.buttonSize || '1.5';
+
+  var sizeSelect = document.getElementById('button-size-select');
+  if (sizeSelect) {
+    sizeSelect.value = CONFIG.currentButtonSize;
+  }
+  if (typeof sheetName !== 'undefined') {
+    sheetName = state.sheetName || '';
+    var nameInput = document.getElementById('sheet-name-input');
+    if (nameInput) nameInput.value = sheetName;
+  }
+
+  deserializeDesign(state.master, state.assets || null);
+
+  if (typeof setSheetSlots === 'function' && state.slots) {
+    setSheetSlots(state.slots);
+  }
+
+  // Force mode switch if they left off in Sheet view
+  if (state.mode === 'sheet') {
+    currentMode = 'sheet';
+    var btnDesign = document.getElementById('btn-design-mode');
+    var btnSheet = document.getElementById('btn-sheet-mode');
+    if (btnDesign) btnDesign.classList.remove('active');
+    if (btnSheet) btnSheet.classList.add('active');
+
+    if (typeof renderSheetView === 'function') {
+      var wrapper = document.getElementById('design-canvas-wrapper');
+      var sheetView = document.getElementById('sheet-view');
+      if (wrapper) wrapper.classList.add('hidden');
+      if (sheetView) sheetView.classList.remove('hidden');
+      renderSheetView();
+
+      if (typeof computeFitToScreenZoom === 'function' && typeof setCurrentZoom === 'function' && typeof applyZoom === 'function') {
+        setCurrentZoom(computeFitToScreenZoom());
+        applyZoom();
+      }
+    }
+  }
+}
+
+/**
+ * Clear all stored data from both IndexedDB and localStorage.
+ */
+function clearAllStorage() {
+  // Clear IndexedDB
+  if (typeof IDB !== 'undefined') {
+    IDB.clear().catch(function(err) {
+      console.warn('IndexedDB clear failed:', err);
+    });
+  }
+  // Clear localStorage
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(AUTOSAVE_KEY);
+  } catch (ignored) {}
 }
 
 /**
@@ -511,6 +571,13 @@ function autoRestoreState() {
  * Called once from app.js.
  */
 function initStorage() {
+  // Pre-open IndexedDB so it's ready when needed
+  if (typeof IDB !== 'undefined') {
+    IDB.open().catch(function(err) {
+      console.warn('IndexedDB not available, using localStorage only:', err);
+    });
+  }
+
   // Save button
   document.getElementById('btn-save').addEventListener('click', quickSave);
 
