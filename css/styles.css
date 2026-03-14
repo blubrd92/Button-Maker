@@ -964,7 +964,7 @@ input[type="checkbox"], input[type="radio"] {
 }
 
 .quick-ref-table th {
-  text-align: left;
+  text-align: center;
   font-weight: 700;
   font-size: 0.75rem;
   text-transform: uppercase;
@@ -975,6 +975,7 @@ input[type="checkbox"], input[type="radio"] {
 }
 
 .quick-ref-table td {
+  text-align: center;
   padding: 7px 12px;
   color: var(--text-color);
   border-bottom: 1px solid var(--border-light);
