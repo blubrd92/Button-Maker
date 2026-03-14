@@ -763,7 +763,7 @@ function showMainDesignBanner() {
   var banner = document.createElement('div');
   banner.id = 'main-design-banner';
   banner.innerHTML =
-    '<span>Editing <strong>Main Button Design</strong> - Changes apply to all buttons without custom designs</span>' +
+    '<span>Editing <strong>Main Design</strong> - Applies to all buttons without a custom design</span>' +
     '<button class="btn btn-small btn-primary" id="btn-go-to-sheet">Go to Sheet</button>';
   var canvasWrapper = document.getElementById('design-canvas-wrapper');
   canvasWrapper.insertBefore(banner, canvasWrapper.firstChild);
