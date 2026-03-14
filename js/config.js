@@ -58,7 +58,7 @@ const CONFIG = {
       primary: false
     },
     "2.25BAM": {
-      label: '2.25" BAM',
+      label: '2-3/8" BAM',
       cutDiameter: 2.747,     // inches - Badge-a-Minit proprietary size
       faceDiameter: 2.187,    // inches
       safeDiameter: 1.97,     // inches
