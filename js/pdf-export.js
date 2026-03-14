@@ -96,7 +96,8 @@ function generatePDF(options) {
     var baseName = (typeof sheetName === 'string' && sheetName.trim())
       ? sheetName.trim()
       : 'buttons';
-    var filename = CONFIG.currentButtonSize + 'in - ' + baseName + '.pdf';
+    var sizeSlug = CONFIG.currentButtonSize === '2.25BAM' ? '2-3_8in' : CONFIG.currentButtonSize + 'in';
+    var filename = sizeSlug + ' - ' + baseName + '.pdf';
     doc.save(filename);
 
   } catch (err) {
