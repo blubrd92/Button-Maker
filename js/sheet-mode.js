@@ -260,6 +260,7 @@ function renderSheetView() {
 
   // Wire up the new controls (use querySelector on controlsDiv since it's not in the DOM yet)
   controlsDiv.querySelector('#btn-sheet-reset').addEventListener('click', function() {
+    if (!confirm('Reset selected buttons to the main design?')) return;
     selectedSlots.forEach(function(idx) { resetSlotToMain(idx); });
     renderSheetView();
     updateSheetSelectionUI();
@@ -267,6 +268,7 @@ function renderSheetView() {
 
   controlsDiv.querySelector('#btn-apply-col').addEventListener('click', function() {
     if (selectedSlots.length !== 1) return;
+    if (!confirm('Apply this design to the entire column?')) return;
     var sourceIdx = selectedSlots[0];
     var sourceSlot = sheetSlots[sourceIdx];
     var layout = getCurrentLayout();
@@ -283,6 +285,7 @@ function renderSheetView() {
 
   controlsDiv.querySelector('#btn-apply-row').addEventListener('click', function() {
     if (selectedSlots.length !== 1) return;
+    if (!confirm('Apply this design to the entire row?')) return;
     var sourceIdx = selectedSlots[0];
     var sourceSlot = sheetSlots[sourceIdx];
     var layout = getCurrentLayout();
@@ -303,6 +306,7 @@ function renderSheetView() {
     var overrides = getSlotOverrides(sourceIdx);
 
     if (Object.keys(overrides).length === 0) return;
+    if (!confirm('Promote this button\'s design to the main design?')) return;
 
     var effectiveDesign = getEffectiveDesignForSlot(sourceIdx);
 
@@ -357,6 +361,7 @@ function renderSheetView() {
 
   controlsDiv.querySelector('#btn-paste-design').addEventListener('click', function() {
     if (!_copiedDesign || selectedSlots.length === 0) return;
+    if (!confirm('Paste over the selected button(s)?')) return;
     selectedSlots.forEach(function(idx) {
       // Replace target slot overrides entirely with the copied design
       setSlotOverrides(idx, JSON.parse(JSON.stringify(_copiedDesign)));
