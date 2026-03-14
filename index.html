@@ -70,6 +70,7 @@
             <option value="1.75">1.75" Button</option>
             <option value="2">2" Button</option>
             <option value="2.25">2.25" Button</option>
+            <option value="2.375">2.375" Button</option>
             <option value="2.5">2.5" Button</option>
             <option value="3">3" Button</option>
           </select>
@@ -81,6 +82,7 @@
         <p style="font-size: 14px; color: var(--text-light); line-height: 1.4; margin: 0;">
           <strong>Design</strong> sets the default style for every button on the sheet. Switch to <strong>Sheet</strong> to preview the print layout or select any button to customize it individually. Print the PDF at <strong>Default</strong> or <strong>Actual size</strong> scale for best results.
         </p>
+        <a href="#" id="quick-ref-link" class="quick-ref-link"><i class="fa-solid fa-ruler-combined"></i> Quick Reference</a>
       </div>
 
       <div class="sidebar-section" id="image-section">
@@ -191,11 +193,39 @@
 
   </main>
 
+  <!-- Quick Reference Modal -->
+  <div id="quick-ref-overlay" class="quick-ref-overlay hidden">
+    <div class="quick-ref-modal">
+      <h3 class="quick-ref-header">Cut Sizes by Button Size</h3>
+      <table class="quick-ref-table">
+        <thead>
+          <tr><th>Button</th><th>Cut Circle</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1"</td><td>1.313"</td></tr>
+          <tr><td>1.25"</td><td>1.629"</td></tr>
+          <tr><td>1.5"</td><td>1.837"</td></tr>
+          <tr><td>1.75"</td><td>2.088"</td></tr>
+          <tr><td>2"</td><td>2.415"</td></tr>
+          <tr><td>2.25"</td><td>2.625"</td></tr>
+          <tr><td>2.375"*</td><td>2.747"</td></tr>
+          <tr><td>2.5"</td><td>2.920"</td></tr>
+          <tr><td>3"</td><td>3.451"</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size: 12px; color: var(--text-light); margin: 6px 0 0; text-align: center;">* 2.25" BAM (Badge-a-Minit) size</p>
+      <div class="quick-ref-footer">
+        <button id="quick-ref-close" class="btn btn-small">Close</button>
+      </div>
+    </div>
+  </div>
+
   <script src="js/config.js"></script>
   <script src="js/templates.js"></script>
   <script src="js/canvas.js"></script>
   <script src="js/text-tool.js"></script>
   <script src="js/image-tool.js"></script>
+  <script src="js/idb-storage.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/pdf-export.js"></script>
   <script src="js/sheet-mode.js"></script>

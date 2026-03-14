@@ -260,6 +260,7 @@ function renderSheetView() {
 
   // Wire up the new controls (use querySelector on controlsDiv since it's not in the DOM yet)
   controlsDiv.querySelector('#btn-sheet-reset').addEventListener('click', function() {
+    if (!confirm('Reset selected buttons to the main design?')) return;
     selectedSlots.forEach(function(idx) { resetSlotToMain(idx); });
     renderSheetView();
     updateSheetSelectionUI();
@@ -267,6 +268,7 @@ function renderSheetView() {
 
   controlsDiv.querySelector('#btn-apply-col').addEventListener('click', function() {
     if (selectedSlots.length !== 1) return;
+    if (!confirm('Apply this design to the entire column?')) return;
     var sourceIdx = selectedSlots[0];
     var sourceSlot = sheetSlots[sourceIdx];
     var layout = getCurrentLayout();
@@ -283,6 +285,7 @@ function renderSheetView() {
 
   controlsDiv.querySelector('#btn-apply-row').addEventListener('click', function() {
     if (selectedSlots.length !== 1) return;
+    if (!confirm('Apply this design to the entire row?')) return;
     var sourceIdx = selectedSlots[0];
     var sourceSlot = sheetSlots[sourceIdx];
     var layout = getCurrentLayout();
@@ -303,6 +306,7 @@ function renderSheetView() {
     var overrides = getSlotOverrides(sourceIdx);
 
     if (Object.keys(overrides).length === 0) return;
+    if (!confirm('Promote this button\'s design to the main design?')) return;
 
     var effectiveDesign = getEffectiveDesignForSlot(sourceIdx);
 
@@ -357,6 +361,7 @@ function renderSheetView() {
 
   controlsDiv.querySelector('#btn-paste-design').addEventListener('click', function() {
     if (!_copiedDesign || selectedSlots.length === 0) return;
+    if (!confirm('Paste over the selected button(s)?')) return;
     selectedSlots.forEach(function(idx) {
       // Replace target slot overrides entirely with the copied design
       setSlotOverrides(idx, JSON.parse(JSON.stringify(_copiedDesign)));
@@ -758,9 +763,16 @@ function showMainDesignBanner() {
   var banner = document.createElement('div');
   banner.id = 'main-design-banner';
   banner.innerHTML =
-    '<span>Editing <strong>Main Button Design</strong> - Changes apply to all buttons without custom designs</span>';
+    '<span>Editing <strong>Main Design</strong> - Applies to all buttons without a unique design</span>' +
+    '<button class="btn btn-small btn-primary" id="btn-go-to-sheet">Go to Sheet</button>';
   var canvasWrapper = document.getElementById('design-canvas-wrapper');
   canvasWrapper.insertBefore(banner, canvasWrapper.firstChild);
+
+  document.getElementById('btn-go-to-sheet').addEventListener('click', function() {
+    document.getElementById('btn-sheet-mode').classList.add('active');
+    document.getElementById('btn-design-mode').classList.remove('active');
+    enterSheetMode();
+  });
 }
 
 function removeMainDesignBanner() {
