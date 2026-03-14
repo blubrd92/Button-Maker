@@ -18,7 +18,7 @@
 
 const STORAGE_KEY = 'buttonmaker_designs';
 const AUTOSAVE_KEY = 'buttonmaker_autosave';
-const MAX_HISTORY_SLOTS = 2;
+const MAX_HISTORY_SLOTS = 1;
 
 /**
  * Get all saved designs from localStorage.
@@ -232,25 +232,16 @@ function quickSave() {
     assets: assetsData
   };
 
-  // Save to localStorage
-  var designs = getSavedDesigns();
-  var existingIdx = -1;
-  for (var i = 0; i < designs.length; i++) {
-    if (designs[i].name.toLowerCase() === name.toLowerCase()) {
-      existingIdx = i;
-      break;
-    }
-  }
-  if (existingIdx >= 0) {
-    designs[existingIdx] = savedDesign;
-  } else {
-    designs.push(savedDesign);
+  // Clear old localStorage data before saving to free up quota
+  try {
+    localStorage.removeItem(AUTOSAVE_KEY);
+    localStorage.removeItem(STORAGE_KEY);
+  } catch (e) {
+    // Ignore removal errors
   }
 
-  // Enforce the maximum history limit
-  if (designs.length > MAX_HISTORY_SLOTS) {
-    designs = designs.slice(designs.length - MAX_HISTORY_SLOTS);
-  }
+  // Save to localStorage (only keep the current design)
+  var designs = [savedDesign];
 
   try {
     saveDesignsToStorage(designs);
@@ -450,9 +441,11 @@ function autoSaveState() {
     if (typeof buildSerializedImageAssetBundle === 'function') {
       state.assets = buildSerializedImageAssetBundle(currentDesign, state.slots);
     }
+    // Clear stale data before writing to free up quota
+    try { localStorage.removeItem(AUTOSAVE_KEY); } catch (ignored) {}
     localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(state));
   } catch (e) {
-    // Storage full or unavailable
+    // Storage full or unavailable — the .buttons file download is the primary save
   }
 }
 
