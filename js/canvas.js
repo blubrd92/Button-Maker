@@ -308,6 +308,7 @@ function handleCanvasMouseDown(e) {
       lastMouseDownHitElement = true;
       dragOffset.x = inchX - textEl.x;
       dragOffset.y = inchY - textEl.y;
+      canvas.style.cursor = 'grabbing';
       showTextControls(i);
       renderDesignCanvas();
       return;
@@ -323,6 +324,7 @@ function handleCanvasMouseDown(e) {
       lastMouseDownHitElement = true;
       dragOffset.x = inchX - imgEl.x;
       dragOffset.y = inchY - imgEl.y;
+      canvas.style.cursor = 'grabbing';
       showImageControls(j);
       renderDesignCanvas();
       return;
@@ -397,7 +399,22 @@ function handleCanvasMouseMove(e) {
     return;
   }
 
-  if (!isDragging || !selectedElement) return;
+  if (!isDragging || !selectedElement) {
+    // Update cursor to show grab hand when hovering over draggable elements
+    const inchX = (mouseX - cx) / scale;
+    const inchY = (mouseY - cy) / scale;
+    let hovering = false;
+    for (let i = currentDesign.textElements.length - 1; i >= 0; i--) {
+      if (isPointInTextElement(inchX, inchY, currentDesign.textElements[i])) { hovering = true; break; }
+    }
+    if (!hovering) {
+      for (let j = currentDesign.imageElements.length - 1; j >= 0; j--) {
+        if (isPointInImageElement(inchX, inchY, currentDesign.imageElements[j])) { hovering = true; break; }
+      }
+    }
+    canvas.style.cursor = hovering ? 'grab' : '';
+    return;
+  }
 
   const inchX = (mouseX - cx) / scale;
   const inchY = (mouseY - cy) / scale;
@@ -425,6 +442,7 @@ function handleCanvasMouseUp(e) {
   resizeCorner = null;
   resizeStartPos = null;
   resizeStartDims = null;
+  e.target.style.cursor = '';
 }
 
 // ─── Background color update ──────────────────────────────────────
