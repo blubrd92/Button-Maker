@@ -50,6 +50,7 @@ function generatePDF(options) {
   var columnGutter = gutters.columnGutter;
   var rowGutter = gutters.rowGutter;
   var columnInset = gutters.columnInset || 0;
+  var rowInset = gutters.rowInset || 0;
 
   var totalButtons = layout.cols * layout.rows;
   var buttonDesigns = getButtonDesignsForExport(totalButtons);
@@ -84,7 +85,7 @@ function generatePDF(options) {
         });
 
         var cellX = CONFIG.PAGE.margin + columnInset + col * (btnSize.cutDiameter + columnGutter);
-        var cellY = CONFIG.PAGE.margin + row * (btnSize.cutDiameter + rowGutter);
+        var cellY = CONFIG.PAGE.margin + rowInset + row * (btnSize.cutDiameter + rowGutter);
 
         var imgData = offCanvas.toDataURL('image/png');
         doc.addImage(imgData, 'PNG', cellX, cellY, btnSize.cutDiameter, btnSize.cutDiameter);
@@ -95,7 +96,7 @@ function generatePDF(options) {
     var baseName = (typeof sheetName === 'string' && sheetName.trim())
       ? sheetName.trim()
       : 'buttons';
-    var filename = CONFIG.currentButtonSize + ' - ' + baseName + '.pdf';
+    var filename = CONFIG.currentButtonSize + 'in - ' + baseName + '.pdf';
     doc.save(filename);
 
   } catch (err) {
@@ -169,15 +170,31 @@ function applyOverridesToDesign(design, overrides) {
     }
   }
   if (overrides.gradient !== undefined) {
-    design.gradient = overrides.gradient;
-    if (overrides.gradient && typeof buildGradientDrawFunction === 'function') {
-      design.templateDraw = buildGradientDrawFunction(overrides.gradient);
+    design.gradient = overrides.gradient
+      ? JSON.parse(JSON.stringify(overrides.gradient))
+      : null;
+
+    if (design.gradient && typeof buildGradientDrawFunction === 'function') {
+      design.templateDraw = buildGradientDrawFunction(design.gradient);
+      design.templateId = null;
+    } else {
+      // Gradient explicitly disabled for this slot: do not inherit prior
+      // template/gradient draw state from the master design clone.
+      design.templateDraw = null;
+      design.templateId = null;
     }
   }
   if (overrides.templateId !== undefined) {
     design.templateId = overrides.templateId;
-    const template = getTemplateById(overrides.templateId);
-    design.templateDraw = template ? template.draw : null;
+    // "blank" is the default solid-fill state, not a visual template.
+    // Its draw function fills white regardless of backgroundColor,
+    // so skip restoring it to let backgroundColor render correctly.
+    if (overrides.templateId && overrides.templateId !== 'blank') {
+      const template = getTemplateById(overrides.templateId);
+      design.templateDraw = template ? template.draw : null;
+    } else {
+      design.templateDraw = null;
+    }
   }
   if (overrides.textElements !== undefined) {
     design.textElements = overrides.textElements.map(t => ({ ...t }));

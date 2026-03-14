@@ -385,6 +385,7 @@ function renderSheetView() {
   var rowGutterPx = Math.round(gutters.rowGutter * pageScale);
   var marginPx = Math.round(CONFIG.PAGE.margin * pageScale);
   var colInsetPx = Math.round((gutters.columnInset || 0) * pageScale);
+  var rowInsetPx = Math.round((gutters.rowInset || 0) * pageScale);
 
   // -- Outer wrapper with headers --
   var outerWrapper = document.createElement('div');
@@ -440,7 +441,7 @@ function renderSheetView() {
   // Row headers column (positioned to align with button rows on the page)
   var rowHeaderCol = document.createElement('div');
   rowHeaderCol.className = 'sheet-row-headers';
-  rowHeaderCol.style.paddingTop = marginPx + 'px';
+  rowHeaderCol.style.paddingTop = (marginPx + rowInsetPx) + 'px';
   for (var row = 0; row < layout.rows; row++) {
     var rowHeader = document.createElement('div');
     rowHeader.className = 'sheet-header';
@@ -470,7 +471,7 @@ function renderSheetView() {
   var grid = document.createElement('div');
   grid.className = 'sheet-grid';
   grid.style.position = 'absolute';
-  grid.style.top = marginPx + 'px';
+  grid.style.top = (marginPx + rowInsetPx) + 'px';
   grid.style.left = (marginPx + colInsetPx) + 'px';
   grid.style.gridTemplateColumns = 'repeat(' + layout.cols + ', ' + thumbSize + 'px)';
   grid.style.gridTemplateRows = 'repeat(' + layout.rows + ', ' + thumbSize + 'px)';
@@ -771,6 +772,7 @@ function enterSheetMode() {
   removeMainDesignBanner();
   document.getElementById('design-canvas-wrapper').classList.add('hidden');
   document.getElementById('sheet-view').classList.remove('hidden');
+  if (typeof hideImageControls === 'function') hideImageControls();
   renderSheetView();
 }
 
@@ -779,6 +781,10 @@ function exitSheetMode() {
   document.getElementById('design-canvas-wrapper').classList.remove('hidden');
   selectedSlots = [];
   showMainDesignBanner();
+  // Re-show image controls if there's an image in Design Mode
+  if (currentDesign.imageElements && currentDesign.imageElements.length > 0) {
+    if (typeof showImageControls === 'function') showImageControls(0);
+  }
   renderDesignCanvas();
 }
 

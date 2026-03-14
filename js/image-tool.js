@@ -388,6 +388,16 @@ function handleImageUpload(file) {
   reader.readAsDataURL(file);
 }
 
+function preserveImageOnCustomSlots() {
+  if (typeof sheetSlots === 'undefined' || !Array.isArray(sheetSlots)) return;
+  sheetSlots.forEach(function(slot) {
+    if (!slot || !slot.overrides) return;
+    if (Object.keys(slot.overrides).length === 0) return;
+    if (slot.overrides.imageElements !== undefined) return;
+    slot.overrides.imageElements = [];
+  });
+}
+
 function processLoadedImage(dataUrl, img) {
   var imageElement = buildImageElement(dataUrl, img);
 
@@ -396,6 +406,8 @@ function processLoadedImage(dataUrl, img) {
     applyOverrideToSelectedSlots('imageElements', serialized);
     return;
   }
+
+  preserveImageOnCustomSlots();
 
   if (typeof currentMode !== 'undefined' && currentMode === 'sheet') {
     currentDesign.imageElements = [imageElement];
@@ -424,6 +436,9 @@ function deleteSelectedImage() {
 function showImageControls(index) {
   var imgEl = currentDesign.imageElements[index];
   if (!imgEl) return;
+
+  // Only show image controls in Design Mode
+  if (typeof currentMode !== 'undefined' && currentMode !== 'design') return;
 
   var controls = document.getElementById('image-controls');
   controls.classList.remove('hidden');
