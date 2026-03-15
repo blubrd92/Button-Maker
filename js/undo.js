@@ -5,11 +5,12 @@
  *
  * Approach:
  *   - Snapshots capture serialized master design + slot overrides + sheet name
+ *   - currentDesign is ALWAYS the main design (never swapped during slot editing)
+ *   - During slot editing, _slotEditDesign holds the in-progress merged design;
+ *     snapshots diff it against currentDesign to compute the editing slot's overrides
  *   - Image assets stay in the global registry (additive, never cleared by undo)
  *   - Restore rebuilds runtime objects (templateDraw, gradient draw, imgObj)
- *     from serialized data without touching the asset registry
  *   - Coalescing prevents rapid-fire snapshots from the same control
- *   - Slot editing mode is exited (discarded) before undo/redo
  */
 
 var _undoStack = [];
@@ -23,18 +24,8 @@ var UNDO_COALESCE_MS = 1000;
 // ─── Snapshot capture ────────────────────────────────────────────
 
 function _captureSnapshot() {
-  // During slot editing, currentDesign holds the slot's merged design, not the
-  // real main design.  Use _mainDesignBackup as master and diff the current
-  // edits into overrides for the editing slot so the snapshot is accurate.
-  var inSlotEdit = (typeof _editingSlotIndex !== 'undefined' && _editingSlotIndex !== null &&
-                    typeof _mainDesignBackup !== 'undefined' && _mainDesignBackup);
-
-  var master;
-  if (inSlotEdit) {
-    master = serializeDesign(_mainDesignBackup);
-  } else {
-    master = serializeDesign(currentDesign);
-  }
+  // currentDesign is always the main design — serialize it directly
+  var master = serializeDesign(currentDesign);
 
   // Strip the gradient draw function — JSON can't serialize it
   if (master.gradient && typeof master.gradient.draw === 'function') {
@@ -50,9 +41,9 @@ function _captureSnapshot() {
   for (var i = 0; i < rawSlots.length; i++) {
     var slot = rawSlots[i];
     var o;
-    if (inSlotEdit && slot.slotIndex === _editingSlotIndex) {
-      // Compute overrides from current edits vs the main backup
-      o = _diffSlotOverrides(_mainDesignBackup, currentDesign);
+    if (_slotEditDesign && slot.slotIndex === _editingSlotIndex) {
+      // Compute overrides from in-progress edits vs main design
+      o = _computeOverrides(currentDesign, _slotEditDesign);
     } else {
       o = _serializeOverrides(slot.overrides);
     }
@@ -62,60 +53,6 @@ function _captureSnapshot() {
   var name = (typeof sheetName !== 'undefined') ? sheetName : '';
 
   return JSON.stringify({ master: master, slots: slots, sheetName: name });
-}
-
-/**
- * Compute sparse overrides by diffing currentEdits against the main backup.
- * Mirrors the diffing logic in finishSlotEdit().
- */
-function _diffSlotOverrides(backup, edited) {
-  var overrides = {};
-
-  if (edited.backgroundColor !== backup.backgroundColor) {
-    overrides.backgroundColor = edited.backgroundColor;
-  }
-  if (edited.libraryInfoText !== backup.libraryInfoText) {
-    overrides.libraryInfoText = edited.libraryInfoText;
-  }
-  if (edited.libraryInfoColor !== backup.libraryInfoColor) {
-    overrides.libraryInfoColor = edited.libraryInfoColor;
-  }
-
-  // Gradient
-  var mainGradJson = backup.gradient ? JSON.stringify(backup.gradient) : null;
-  var editedGradJson = edited.gradient ? JSON.stringify(edited.gradient) : null;
-  if (mainGradJson !== editedGradJson) {
-    overrides.gradient = edited.gradient ? JSON.parse(editedGradJson) : null;
-  }
-
-  // Template
-  if (edited.templateId !== backup.templateId) {
-    overrides.templateId = edited.templateId;
-  }
-
-  // Text elements
-  var serText = function(t) {
-    return { text: t.text, fontFamily: t.fontFamily, fontSize: t.fontSize, color: t.color,
-      bold: t.bold, italic: t.italic, align: t.align, x: t.x, y: t.y,
-      curved: t.curved, curveRadius: t.curveRadius };
-  };
-  var mainTextsJson = JSON.stringify(backup.textElements.map(serText));
-  var editedTextsJson = JSON.stringify(edited.textElements.map(serText));
-  if (mainTextsJson !== editedTextsJson) {
-    overrides.textElements = edited.textElements.map(serText);
-  }
-
-  // Image elements
-  var serImg = function(img) {
-    return (typeof serializeImageElement === 'function') ? serializeImageElement(img) : img;
-  };
-  var mainImgsJson = JSON.stringify((backup.imageElements || []).map(serImg));
-  var editedImgsJson = JSON.stringify((edited.imageElements || []).map(serImg));
-  if (mainImgsJson !== editedImgsJson) {
-    overrides.imageElements = (edited.imageElements || []).map(serImg);
-  }
-
-  return overrides;
 }
 
 function _serializeOverrides(overrides) {
@@ -281,21 +218,22 @@ function pushUndo(group) {
 function undo() {
   if (_undoStack.length === 0) return;
 
-  // If in slot/group editing mode, stay in that context after undo
+  // Save slot editing context so we can re-enter after restore
   var slotCtx = _saveSlotEditContext();
 
-  // Save current state to redo stack (captures correct main via backup detection)
+  // Save current state to redo stack
   var current = _captureSnapshot();
   _redoStack.push(current);
 
-  // Exit slot editing so _restoreSnapshot writes to the real main design
-  _exitSlotEditIfActive();
+  // Clear slot edit state before restoring so _restoreSnapshot writes
+  // to currentDesign cleanly (no stale _slotEditDesign interfering)
+  _clearSlotEditState();
 
   // Restore previous state
   var previous = _undoStack.pop();
   _restoreSnapshot(previous);
 
-  // Re-enter slot editing if we were in it, so user stays in context
+  // Re-enter slot editing if we were in it
   _resumeSlotEditContext(slotCtx);
 
   _lastPushGroup = null;
@@ -308,15 +246,15 @@ function undo() {
 function redo() {
   if (_redoStack.length === 0) return;
 
-  // If in slot/group editing mode, stay in that context after redo
+  // Save slot editing context
   var slotCtx = _saveSlotEditContext();
 
   // Save current state to undo stack
   var current = _captureSnapshot();
   _undoStack.push(current);
 
-  // Exit slot editing so _restoreSnapshot writes to the real main design
-  _exitSlotEditIfActive();
+  // Clear slot edit state before restoring
+  _clearSlotEditState();
 
   // Restore next state
   var next = _redoStack.pop();
@@ -360,40 +298,29 @@ function _saveSlotEditContext() {
 }
 
 /**
+ * Clear slot edit state without saving overrides.
+ * Called before _restoreSnapshot so the restore writes to a clean state.
+ */
+function _clearSlotEditState() {
+  _slotEditDesign = null;
+  _editingSlotIndex = null;
+  if (typeof _editingGroup !== 'undefined') _editingGroup = null;
+  if (typeof removeSlotEditBanner === 'function') removeSlotEditBanner();
+}
+
+/**
  * Re-enter slot/group editing after undo/redo restored the snapshot.
  * The restored snapshot has the correct main design and slot overrides,
- * so editSlotInDesignMode will merge them properly.
+ * so editSlotInDesignMode will rebuild _slotEditDesign properly.
  */
 function _resumeSlotEditContext(ctx) {
   if (!ctx) return;
-  // Restore group state before entering slot edit (editSlotInDesignMode
-  // doesn't set _editingGroup — that's done by the caller)
+  // Restore group state before entering slot edit
   if (ctx.group && typeof _editingGroup !== 'undefined') {
     _editingGroup = ctx.group;
   }
   if (typeof editSlotInDesignMode === 'function') {
     editSlotInDesignMode(ctx.slotIndex);
-  }
-}
-
-function _exitSlotEditIfActive() {
-  // If the user is editing a slot in design mode, discard and exit
-  if (typeof _editingSlotIndex !== 'undefined' && _editingSlotIndex !== null &&
-      typeof _mainDesignBackup !== 'undefined' && _mainDesignBackup) {
-    // Restore main design without saving overrides
-    currentDesign.templateId = _mainDesignBackup.templateId;
-    currentDesign.backgroundColor = _mainDesignBackup.backgroundColor;
-    currentDesign.templateDraw = _mainDesignBackup.templateDraw;
-    currentDesign.gradient = _mainDesignBackup.gradient;
-    currentDesign.textElements = _mainDesignBackup.textElements.slice();
-    currentDesign.imageElements = _mainDesignBackup.imageElements.slice();
-    currentDesign.libraryInfoText = _mainDesignBackup.libraryInfoText;
-    currentDesign.libraryInfoColor = _mainDesignBackup.libraryInfoColor;
-
-    _editingSlotIndex = null;
-    _mainDesignBackup = null;
-    if (typeof _editingGroup !== 'undefined') _editingGroup = null;
-    if (typeof removeSlotEditBanner === 'function') removeSlotEditBanner();
   }
 }
 

@@ -75,6 +75,10 @@ function serializeDesign(design) {
  * @param {Object} data - Saved design data
  */
 function deserializeDesign(data, imageAssets) {
+  // Clear slot edit state — loading replaces everything
+  if (typeof _slotEditDesign !== 'undefined') _slotEditDesign = null;
+  if (typeof _editingSlotIndex !== 'undefined') _editingSlotIndex = null;
+
   if (typeof restoreSerializedImageAssets === 'function') {
     restoreSerializedImageAssets(imageAssets || null);
   }
@@ -196,6 +200,20 @@ function deserializeDesign(data, imageAssets) {
 function buildSavePayload() {
   var masterData = serializeDesign(currentDesign);
   var slotsData = (typeof getSheetSlots === 'function') ? getSheetSlots() : [];
+
+  // If the user saves while editing a slot, include in-progress overrides
+  if (typeof _slotEditDesign !== 'undefined' && _slotEditDesign &&
+      typeof _editingSlotIndex !== 'undefined' && _editingSlotIndex !== null &&
+      typeof _computeOverrides === 'function') {
+    var editOverrides = _computeOverrides(currentDesign, _slotEditDesign);
+    for (var i = 0; i < slotsData.length; i++) {
+      if (slotsData[i].slotIndex === _editingSlotIndex) {
+        slotsData[i].overrides = editOverrides;
+        break;
+      }
+    }
+  }
+
   if (typeof normalizeSlotDataImageAssets === 'function') {
     normalizeSlotDataImageAssets(slotsData);
   }
@@ -430,17 +448,33 @@ function importDesignsFromJSON(file) {
  * as a synchronous fallback (important for beforeunload).
  */
 function autoSaveState() {
+  var slots = (typeof getSheetSlots === 'function') ? getSheetSlots() : [];
+
+  // Include in-progress slot overrides if editing a slot
+  if (typeof _slotEditDesign !== 'undefined' && _slotEditDesign &&
+      typeof _editingSlotIndex !== 'undefined' && _editingSlotIndex !== null &&
+      typeof _computeOverrides === 'function') {
+    var editOverrides = _computeOverrides(currentDesign, _slotEditDesign);
+    for (var i = 0; i < slots.length; i++) {
+      if (slots[i].slotIndex === _editingSlotIndex) {
+        slots[i].overrides = editOverrides;
+        break;
+      }
+    }
+  }
+
+  if (typeof normalizeSlotDataImageAssets === 'function') {
+    normalizeSlotDataImageAssets(slots);
+  }
+
   var state = {
     savedAt: new Date().toISOString(),
     master: serializeDesign(currentDesign),
     buttonSize: CONFIG.currentButtonSize,
     sheetName: (typeof sheetName === 'string') ? sheetName : '',
-    slots: (typeof getSheetSlots === 'function') ? getSheetSlots() : [],
+    slots: slots,
     mode: currentMode
   };
-  if (typeof normalizeSlotDataImageAssets === 'function') {
-    normalizeSlotDataImageAssets(state.slots);
-  }
   if (typeof buildSerializedImageAssetBundle === 'function') {
     state.assets = buildSerializedImageAssetBundle(currentDesign, state.slots);
   }
