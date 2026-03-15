@@ -250,20 +250,21 @@ CONFIG = {
   CANVAS_DISPLAY_DIAMETER: 500,
 
   BUTTON_SIZES: {
-    "1.5": {
-      label: '1.5"',
-      cutDiameter: 1.837,
-      faceDiameter: 1.5,
-      safeDiameter: 1.35,
-      primary: true
-    },
-    "1.25": {
-      label: '1.25"',
-      cutDiameter: 1.629,
-      faceDiameter: 1.3,
-      safeDiameter: 1.15,
-      primary: false
-    }
+    // 9 sizes from 1" to 3", keyed by nominal button size string
+    // Each has: label, cutDiameter, faceDiameter, safeDiameter, primary
+    // faceDiameter generally matches the button size
+    // safeDiameter is ~90% of faceDiameter
+    // Only one size has primary: true (currently "1.5")
+    // The "2.375" entry is the Badge-a-Minit (BAM) size
+    "1":     { label: '1"',     cutDiameter: 1.313, faceDiameter: 1.0,   safeDiameter: 0.875, primary: false },
+    "1.25":  { label: '1.25"',  cutDiameter: 1.629, faceDiameter: 1.3,   safeDiameter: 1.15,  primary: false },
+    "1.5":   { label: '1.5"',   cutDiameter: 1.837, faceDiameter: 1.5,   safeDiameter: 1.35,  primary: true  },
+    "1.75":  { label: '1.75"',  cutDiameter: 2.088, faceDiameter: 1.75,  safeDiameter: 1.575, primary: false },
+    "2":     { label: '2"',     cutDiameter: 2.415, faceDiameter: 2.0,   safeDiameter: 1.8,   primary: false },
+    "2.25":  { label: '2.25"',  cutDiameter: 2.625, faceDiameter: 2.25,  safeDiameter: 2.025, primary: false },
+    "2.375": { label: '2.375"', cutDiameter: 2.747, faceDiameter: 2.375, safeDiameter: 2.138, primary: false },
+    "2.5":   { label: '2.5"',   cutDiameter: 2.920, faceDiameter: 2.5,   safeDiameter: 2.25,  primary: false },
+    "3":     { label: '3"',     cutDiameter: 3.451, faceDiameter: 3.0,   safeDiameter: 2.8,   primary: false }
   },
 
   currentButtonSize: "1.5",
@@ -275,18 +276,17 @@ CONFIG = {
   },
 
   SHEET_LAYOUTS: {
-    "1.5": {
-      label: "Standard (20)",
-      description: "4 columns x 5 rows",
-      cols: 4,
-      rows: 5
-    },
-    "1.25": {
-      label: "Standard (24)",
-      description: "4 columns x 6 rows",
-      cols: 4,
-      rows: 6
-    }
+    // Keyed by button size string, matching BUTTON_SIZES keys
+    // Some layouts support optional: maxColumnGutter, maxRowGutter, equalRowSpacing
+    "1":     { label: "Standard (35)", description: "5 columns x 7 rows", cols: 5, rows: 7 },
+    "1.25":  { label: "Standard (24)", description: "4 columns x 6 rows", cols: 4, rows: 6 },
+    "1.5":   { label: "Standard (20)", description: "4 columns x 5 rows", cols: 4, rows: 5 },
+    "1.75":  { label: "Standard (12)", description: "3 columns x 4 rows", cols: 3, rows: 4 },
+    "2":     { label: "Standard (12)", description: "3 columns x 4 rows", cols: 3, rows: 4 },
+    "2.25":  { label: "Standard (9)",  description: "3 columns x 3 rows", cols: 3, rows: 3 },
+    "2.375": { label: "Standard (6)",  description: "2 columns x 3 rows", cols: 2, rows: 3 },
+    "2.5":   { label: "Standard (6)",  description: "2 columns x 3 rows", cols: 2, rows: 3 },
+    "3":     { label: "Standard (4)",  description: "2 columns x 2 rows", cols: 2, rows: 2, equalRowSpacing: true }
   },
 
   GUIDES: {
@@ -878,15 +878,18 @@ cellX = PAGE.margin + columnInset + col × (cutDiameter + columnGutter)
 cellY = PAGE.margin + row × (cutDiameter + rowGutter)
 ```
 
-### Current reference values
+### Layout options
+
+Layout entries can include optional spacing controls:
+- `maxColumnGutter` — caps horizontal gutter and centers the grid
+- `maxRowGutter` — caps vertical gutter and centers the grid
+- `equalRowSpacing` — distributes equal gaps above, between, and below rows (used by the 3" layout)
+
+### Example reference values
 
 For **1.5"** buttons (`cutDiameter = 1.837`, layout `4 × 5`):
 - `columnGutter ≈ 0.184"`
 - `rowGutter ≈ 0.304"`
-
-For **1.25"** buttons (`cutDiameter = 1.629`, layout `4 × 6`):
-- `columnGutter ≈ 0.461"`
-- `rowGutter ≈ 0.125"`
 
 ### Rule
 

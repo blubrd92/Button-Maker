@@ -4,7 +4,7 @@ Button Maker is a browser-based tool for designing and printing pinback button s
 
 Built for library staff, but open to all, it is designed for fast, practical production work: create a main button design, customize selected buttons when needed, and export a print-ready PDF sheet for cutting and assembly.
 
-The app currently supports **1.5"** and **1.25"** buttons, and more sizes can be added in the future.
+The app supports nine button sizes from **1"** to **3"**, including the **2.375" Badge-a-Minit (BAM)** size.
 
 ## Quick Start
 
@@ -17,7 +17,7 @@ The app currently supports **1.5"** and **1.25"** buttons, and more sizes can be
 
 ## Features
 
-- Supports **1.5"** and **1.25"** button sizes
+- Supports **nine button sizes**: 1", 1.25", 1.5", 1.75", 2", 2.25", 2.375" (BAM), 2.5", 3"
 - Static web app with no build step
 - **Design** mode for creating the default button style
 - **Sheet** mode for previewing the print layout and customizing individual buttons
@@ -33,8 +33,17 @@ The app currently supports **1.5"** and **1.25"** buttons, and more sizes can be
 
 ## Supported Layouts
 
-- **1.5" buttons**: 20 per sheet
-- **1.25" buttons**: 24 per sheet
+| Size | Layout | Buttons/Sheet |
+|------|--------|---------------|
+| 1" | 5 × 7 | 35 |
+| 1.25" | 4 × 6 | 24 |
+| 1.5" | 4 × 5 | 20 |
+| 1.75" | 3 × 4 | 12 |
+| 2" | 3 × 4 | 12 |
+| 2.25" | 3 × 3 | 9 |
+| 2.375" (BAM) | 2 × 3 | 6 |
+| 2.5" | 2 × 3 | 6 |
+| 3" | 2 × 2 | 4 |
 
 ## Workflow
 
@@ -66,6 +75,7 @@ Button-Maker/
 │   ├── canvas.js
 │   ├── image-tool.js
 │   ├── text-tool.js
+│   ├── idb-storage.js
 │   ├── storage.js
 │   ├── pdf-export.js
 │   ├── sheet-mode.js
