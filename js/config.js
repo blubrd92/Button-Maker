@@ -189,14 +189,14 @@ const CONFIG = {
   COLOR_PALETTE: [
     "#FFFFFF",   // White
     "#1A202C",   // Rich Black
-    "#2B6CB0",   // Marin Blue
     "#C53030",   // Crimson Red
-    "#2F855A",   // Forest Green
-    "#D69E2E",   // Warm Amber
-    "#6B46C1",   // Royal Purple
-    "#D53F8C",   // Vibrant Pink
     "#C05621",   // Burnt Orange
-    "#63B3ED"    // Sky Blue
+    "#D69E2E",   // Warm Amber
+    "#2F855A",   // Forest Green
+    "#2B6CB0",   // Marin Blue
+    "#63B3ED",   // Sky Blue
+    "#6B46C1",   // Royal Purple
+    "#D53F8C"    // Vibrant Pink
   ],
 
   // Default design values
