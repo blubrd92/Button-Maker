@@ -223,10 +223,6 @@ function undo() {
 
   _lastPushGroup = null;
   _updateUndoRedoButtons();
-
-  if (typeof showNotification === 'function') {
-    showNotification('Undo', 'info');
-  }
 }
 
 /**
@@ -248,10 +244,6 @@ function redo() {
 
   _lastPushGroup = null;
   _updateUndoRedoButtons();
-
-  if (typeof showNotification === 'function') {
-    showNotification('Redo', 'info');
-  }
 }
 
 function canUndo() { return _undoStack.length > 0; }
