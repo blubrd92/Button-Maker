@@ -474,15 +474,16 @@ body {
 /* Color Swatches */
 
 .color-swatches {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: repeat(5, 36px);
+  gap: 8px;
+  justify-content: center;
   margin-bottom: 12px;
 }
 
 .color-swatch {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   border: 2px solid var(--border-color);
   cursor: pointer;
