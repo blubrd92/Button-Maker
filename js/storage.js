@@ -409,6 +409,7 @@ function importDesignsFromJSON(file) {
         applyZoom();
       }
 
+      if (typeof clearUndoHistory === 'function') clearUndoHistory();
       if (typeof showNotification === 'function') showNotification('Buttons loaded.', 'success');
 
       // Force an auto-save right now so it survives an immediate window close

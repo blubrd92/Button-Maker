@@ -160,6 +160,7 @@ function initTopLevelControls() {
     }
 
     swatch.addEventListener('click', function() {
+      if (typeof pushUndo === 'function') pushUndo('bg-color');
       clearGradientPresetHighlight();
       document.getElementById('bg-color-picker').value = color;
       handleBackgroundColorChange(color);
@@ -170,12 +171,14 @@ function initTopLevelControls() {
 
   // Background custom color picker
   document.getElementById('bg-color-picker').addEventListener('input', function(e) {
+    if (typeof pushUndo === 'function') pushUndo('bg-color-picker');
     clearGradientPresetHighlight();
     handleBackgroundColorChange(e.target.value);
   });
 
   // Brand text 
   document.getElementById('library-info-input').addEventListener('input', function(e) {
+    if (typeof pushUndo === 'function') pushUndo('brand-text');
     if (shouldApplyBrandTextToAllButtons()) {
       applyBrandTextSettingsToAllButtons();
     } else if (currentMode === 'sheet' && selectedSlots.length > 0) {
@@ -193,6 +196,7 @@ function initTopLevelControls() {
   });
 
   document.getElementById('library-info-color').addEventListener('input', function(e) {
+    if (typeof pushUndo === 'function') pushUndo('brand-text-color');
     if (shouldApplyBrandTextToAllButtons()) {
       applyBrandTextSettingsToAllButtons();
     } else if (currentMode === 'sheet' && selectedSlots.length > 0) {
@@ -244,6 +248,7 @@ function initTopLevelControls() {
   // Gradient toggle
   renderGradientPresets();
   document.getElementById('toggle-gradient').addEventListener('change', function(e) {
+    if (typeof pushUndo === 'function') pushUndo();
     var gradientControls = document.getElementById('gradient-controls');
     gradientControls.classList.toggle('hidden', !e.target.checked);
     if (e.target.checked) {
@@ -279,6 +284,7 @@ function initTopLevelControls() {
   });
 
   document.getElementById('bg-gradient-color2').addEventListener('input', function() {
+    if (typeof pushUndo === 'function') pushUndo('gradient-color2');
     if (document.getElementById('toggle-gradient').checked) {
       clearGradientPresetHighlight();
       if (shouldApplyBackgroundToAllButtons()) {
@@ -292,6 +298,7 @@ function initTopLevelControls() {
   });
 
   document.getElementById('gradient-direction').addEventListener('change', function() {
+    if (typeof pushUndo === 'function') pushUndo();
     if (document.getElementById('toggle-gradient').checked) {
       if (shouldApplyBackgroundToAllButtons()) {
         applyBackgroundSettingsToAllButtons();
@@ -317,12 +324,32 @@ function initTopLevelControls() {
     }
   });
 
+  // Undo/redo buttons and keyboard shortcuts
+  var undoBtn = document.getElementById('btn-undo');
+  var redoBtn = document.getElementById('btn-redo');
+  if (undoBtn) undoBtn.addEventListener('click', function() { undo(); });
+  if (redoBtn) redoBtn.addEventListener('click', function() { redo(); });
+  document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') {
+      e.preventDefault();
+      undo();
+    } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z') {
+      e.preventDefault();
+      redo();
+    } else if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+      e.preventDefault();
+      redo();
+    }
+  });
+
   // Zoom controls
   initZoomControls();
 
   // Reset button
   document.getElementById('btn-reset').addEventListener('click', function() {
     if (!confirm('Reset to defaults? This will clear the current design and all saved designs from browser storage.')) return;
+    if (typeof pushUndo === 'function') pushUndo();
     clearAllStorage();
     resetDesignToDefaults();
     sheetSlots = [];
@@ -531,6 +558,7 @@ function applyGradientOverrideToSelectedSlots() {
 function applyGradientPreset(presetName) {
   var preset = GRADIENT_PRESETS[presetName];
   if (!preset) return;
+  if (typeof pushUndo === 'function') pushUndo();
 
   var direction = document.getElementById('gradient-direction').value;
 

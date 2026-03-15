@@ -287,6 +287,8 @@ function applyTemplate(templateId) {
   const template = TEMPLATES.find(t => t.id === templateId);
   if (!template) return;
 
+  if (typeof pushUndo === 'function') pushUndo();
+
   // Update the current design state
   currentDesign.templateId = templateId;
   currentDesign.backgroundColor = template.backgroundColor;

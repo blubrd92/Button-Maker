@@ -399,6 +399,7 @@ function preserveImageOnCustomSlots() {
 }
 
 function processLoadedImage(dataUrl, img) {
+  if (typeof pushUndo === 'function') pushUndo();
   var imageElement = buildImageElement(dataUrl, img);
 
   if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof selectedSlots !== 'undefined' && selectedSlots.length > 0) {
@@ -427,6 +428,7 @@ function processLoadedImage(dataUrl, img) {
 }
 
 function deleteSelectedImage() {
+  if (typeof pushUndo === 'function') pushUndo();
   currentDesign.imageElements = [];
   selectedElement = null;
   hideImageControls();
@@ -586,6 +588,7 @@ function initImageTool() {
   document.getElementById('btn-delete-image').addEventListener('click', deleteSelectedImage);
 
   document.getElementById('image-scale').addEventListener('input', function(e) {
+    if (typeof pushUndo === 'function') pushUndo('image-scale');
     var val = parseInt(e.target.value, 10);
     var display = document.getElementById('image-scale-display');
     if (display) display.textContent = val + '%';

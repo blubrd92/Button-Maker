@@ -289,6 +289,7 @@ function handleCanvasMouseDown(e) {
     if (selImg) {
       var handle = getResizeHandle(mouseX, mouseY, selImg, cx, cy, scale);
       if (handle) {
+        if (typeof pushUndo === 'function') pushUndo();
         isResizing = true;
         resizeCorner = handle;
         resizeStartPos = { x: mouseX, y: mouseY };
@@ -303,6 +304,7 @@ function handleCanvasMouseDown(e) {
   for (var i = currentDesign.textElements.length - 1; i >= 0; i--) {
     var textEl = currentDesign.textElements[i];
     if (isPointInTextElement(inchX, inchY, textEl)) {
+      if (typeof pushUndo === 'function') pushUndo();
       selectedElement = { type: 'text', index: i };
       isDragging = true;
       lastMouseDownHitElement = true;
@@ -319,6 +321,7 @@ function handleCanvasMouseDown(e) {
   for (var j = currentDesign.imageElements.length - 1; j >= 0; j--) {
     var imgEl = currentDesign.imageElements[j];
     if (isPointInImageElement(inchX, inchY, imgEl)) {
+      if (typeof pushUndo === 'function') pushUndo();
       selectedElement = { type: 'image', index: j };
       isDragging = true;
       lastMouseDownHitElement = true;

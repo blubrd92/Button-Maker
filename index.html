@@ -78,6 +78,14 @@
             <button class="mode-btn active" data-mode="design" id="btn-design-mode">Design</button>
             <button class="mode-btn" data-mode="sheet" id="btn-sheet-mode">Sheet</button>
           </div>
+          <div style="display: flex; gap: 2px; margin-left: 6px;">
+            <button id="btn-undo" class="btn btn-small" title="Undo (Ctrl+Z)" disabled style="padding: 4px 8px; min-width: 0;">
+              <i class="fa-solid fa-rotate-left"></i>
+            </button>
+            <button id="btn-redo" class="btn btn-small" title="Redo (Ctrl+Y)" disabled style="padding: 4px 8px; min-width: 0;">
+              <i class="fa-solid fa-rotate-right"></i>
+            </button>
+          </div>
         </div>
         <p style="font-size: 14px; color: var(--text-light); line-height: 1.4; margin: 0;">
           <strong>Design</strong> sets the default style for every button on the sheet. Switch to <strong>Sheet</strong> to preview the print layout or select any button to customize it individually. Print the PDF at <strong>Default</strong> or <strong>Actual size</strong> scale for best results.
@@ -229,6 +237,7 @@
   <script src="js/storage.js"></script>
   <script src="js/pdf-export.js"></script>
   <script src="js/sheet-mode.js"></script>
+  <script src="js/undo.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

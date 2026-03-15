@@ -168,6 +168,7 @@ function slotHasOverrides(slotIndex) {
  * Reset a slot to match the main design (clear all overrides).
  */
 function resetSlotToMain(slotIndex) {
+  if (typeof pushUndo === 'function') pushUndo();
   if (sheetSlots[slotIndex]) {
     sheetSlots[slotIndex].overrides = {};
   }
@@ -307,6 +308,7 @@ function renderSheetView() {
 
     if (Object.keys(overrides).length === 0) return;
     if (!confirm('Promote this button\'s design to the main design?')) return;
+    if (typeof pushUndo === 'function') pushUndo();
 
     var effectiveDesign = getEffectiveDesignForSlot(sourceIdx);
 
@@ -362,6 +364,7 @@ function renderSheetView() {
   controlsDiv.querySelector('#btn-paste-design').addEventListener('click', function() {
     if (!_copiedDesign || selectedSlots.length === 0) return;
     if (!confirm('Paste over the selected button(s)?')) return;
+    if (typeof pushUndo === 'function') pushUndo();
     selectedSlots.forEach(function(idx) {
       // Replace target slot overrides entirely with the copied design
       setSlotOverrides(idx, JSON.parse(JSON.stringify(_copiedDesign)));
@@ -725,6 +728,7 @@ function updateSheetOverridePanel() {
 }
 
 function applyOverrideToSelectedSlots(property, value) {
+  if (typeof pushUndo === 'function') pushUndo('slot-override');
   selectedSlots.forEach(function(slotIndex) {
     var slot = sheetSlots[slotIndex];
     if (slot) {
@@ -957,6 +961,7 @@ function finishSlotEdit() {
     removeSlotEditBanner();
     return;
   }
+  if (typeof pushUndo === 'function') pushUndo();
 
   var slotIndex = _editingSlotIndex;
   var overrides = {};
