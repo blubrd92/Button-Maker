@@ -213,9 +213,9 @@ function _restoreSnapshot(json) {
 
     // --- Re-render ---
     if (typeof renderDesignCanvas === 'function') renderDesignCanvas();
-    if (typeof currentMode !== 'undefined' && currentMode === 'sheet' &&
-        typeof refreshSheetThumbnails === 'function') {
-      refreshSheetThumbnails();
+    if (typeof currentMode !== 'undefined' && currentMode === 'sheet') {
+      if (typeof refreshSheetThumbnails === 'function') refreshSheetThumbnails();
+      if (typeof updateSheetSelectionUI === 'function') updateSheetSelectionUI();
     }
   } finally {
     _isUndoRestoring = false;
@@ -281,16 +281,22 @@ function pushUndo(group) {
 function undo() {
   if (_undoStack.length === 0) return;
 
-  // Exit slot editing mode if active (discard changes)
-  _exitSlotEditIfActive();
+  // If in slot/group editing mode, stay in that context after undo
+  var slotCtx = _saveSlotEditContext();
 
-  // Save current state to redo stack
+  // Save current state to redo stack (captures correct main via backup detection)
   var current = _captureSnapshot();
   _redoStack.push(current);
+
+  // Exit slot editing so _restoreSnapshot writes to the real main design
+  _exitSlotEditIfActive();
 
   // Restore previous state
   var previous = _undoStack.pop();
   _restoreSnapshot(previous);
+
+  // Re-enter slot editing if we were in it, so user stays in context
+  _resumeSlotEditContext(slotCtx);
 
   _lastPushGroup = null;
   _updateUndoRedoButtons();
@@ -302,16 +308,22 @@ function undo() {
 function redo() {
   if (_redoStack.length === 0) return;
 
-  // Exit slot editing mode if active
-  _exitSlotEditIfActive();
+  // If in slot/group editing mode, stay in that context after redo
+  var slotCtx = _saveSlotEditContext();
 
   // Save current state to undo stack
   var current = _captureSnapshot();
   _undoStack.push(current);
 
+  // Exit slot editing so _restoreSnapshot writes to the real main design
+  _exitSlotEditIfActive();
+
   // Restore next state
   var next = _redoStack.pop();
   _restoreSnapshot(next);
+
+  // Re-enter slot editing if we were in it
+  _resumeSlotEditContext(slotCtx);
 
   _lastPushGroup = null;
   _updateUndoRedoButtons();
@@ -333,6 +345,36 @@ function clearUndoHistory() {
 }
 
 // ─── Internal helpers ────────────────────────────────────────────
+
+/**
+ * Save the current slot/group editing context so we can re-enter after undo/redo.
+ * Returns null if not in slot editing mode.
+ */
+function _saveSlotEditContext() {
+  if (typeof _editingSlotIndex === 'undefined' || _editingSlotIndex === null) return null;
+  return {
+    slotIndex: _editingSlotIndex,
+    group: (typeof _editingGroup !== 'undefined' && _editingGroup)
+      ? JSON.parse(JSON.stringify(_editingGroup)) : null
+  };
+}
+
+/**
+ * Re-enter slot/group editing after undo/redo restored the snapshot.
+ * The restored snapshot has the correct main design and slot overrides,
+ * so editSlotInDesignMode will merge them properly.
+ */
+function _resumeSlotEditContext(ctx) {
+  if (!ctx) return;
+  // Restore group state before entering slot edit (editSlotInDesignMode
+  // doesn't set _editingGroup — that's done by the caller)
+  if (ctx.group && typeof _editingGroup !== 'undefined') {
+    _editingGroup = ctx.group;
+  }
+  if (typeof editSlotInDesignMode === 'function') {
+    editSlotInDesignMode(ctx.slotIndex);
+  }
+}
 
 function _exitSlotEditIfActive() {
   // If the user is editing a slot in design mode, discard and exit
