@@ -728,7 +728,8 @@ function updateSheetOverridePanel() {
 }
 
 function applyOverrideToSelectedSlots(property, value) {
-  if (typeof pushUndo === 'function') pushUndo('slot-override');
+  // Note: callers are responsible for calling pushUndo() before this function.
+  // Do NOT add pushUndo here — it would create duplicate undo snapshots.
   selectedSlots.forEach(function(slotIndex) {
     var slot = sheetSlots[slotIndex];
     if (slot) {
