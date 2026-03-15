@@ -195,6 +195,40 @@ function initTopLevelControls() {
     }
   });
 
+  // Brand text color swatches
+  var brandSwatchContainer = document.getElementById('brand-text-color-swatches');
+  CONFIG.COLOR_PALETTE.forEach(function(color) {
+    var swatch = document.createElement('div');
+    swatch.className = 'color-swatch';
+    swatch.style.backgroundColor = color;
+    swatch.dataset.color = color;
+
+    if (color === '#FFFFFF') {
+      swatch.style.borderColor = '#ccc';
+    }
+
+    swatch.addEventListener('click', function() {
+      if (typeof pushUndo === 'function') pushUndo('brand-text-color');
+      document.getElementById('library-info-color').value = color;
+      if (shouldApplyBrandTextToAllButtons()) {
+        applyBrandTextSettingsToAllButtons();
+      } else if (currentMode === 'sheet' && selectedSlots.length > 0) {
+        applyOverrideToSelectedSlots('libraryInfoColor', color);
+      } else {
+        if (currentMode === 'sheet') {
+          preserveBrandTextOnCustomSlots();
+        }
+        currentDesign.libraryInfoColor = color;
+        renderDesignCanvas();
+        if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
+          refreshSheetThumbnails();
+        }
+      }
+    });
+
+    brandSwatchContainer.appendChild(swatch);
+  });
+
   document.getElementById('library-info-color').addEventListener('input', function(e) {
     if (typeof pushUndo === 'function') pushUndo('brand-text-color');
     if (shouldApplyBrandTextToAllButtons()) {
