@@ -199,6 +199,9 @@ function pushUndo(group) {
   _lastPushTime = now;
 
   _updateUndoRedoButtons();
+
+  // Flag for periodic autosave
+  if (typeof window._markAutosaveDirty === 'function') window._markAutosaveDirty();
 }
 
 /**

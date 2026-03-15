@@ -195,8 +195,8 @@ const CONFIG = {
     "#D69E2E",   // Warm Amber
     "#6B46C1",   // Royal Purple
     "#D53F8C",   // Vibrant Pink
-    "#2C7A7B",   // Deep Teal
-    "#718096"    // Neutral Slate
+    "#C05621",   // Burnt Orange
+    "#63B3ED"    // Sky Blue
   ],
 
   // Default design values

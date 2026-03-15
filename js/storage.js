@@ -595,4 +595,21 @@ function initStorage() {
 
   // Auto-save on window close / navigate away
   window.addEventListener('beforeunload', autoSaveState);
+
+  // Periodic autosave — saves every 30 seconds after a change.
+  // Covers browser crashes and force-quits where beforeunload never fires.
+  var _autosaveDirty = false;
+  var _originalPushUndo = (typeof pushUndo === 'function') ? pushUndo : null;
+
+  setInterval(function() {
+    if (_autosaveDirty) {
+      _autosaveDirty = false;
+      autoSaveState();
+    }
+  }, 30000);
+
+  // Mark dirty whenever the design changes (pushUndo is called before every mutation)
+  if (_originalPushUndo) {
+    window._markAutosaveDirty = function() { _autosaveDirty = true; };
+  }
 }
