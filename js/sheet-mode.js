@@ -187,6 +187,8 @@ function getSheetSlots() {
 
 /**
  * Set sheet slots from saved data (for load).
+ * Uses a deep clone that preserves imgObj references (HTMLImageElement)
+ * which JSON.parse/stringify would strip.
  */
 function setSheetSlots(slots) {
   sheetSlots = slots.map(function(s) {
@@ -194,9 +196,39 @@ function setSheetSlots(slots) {
       slotIndex: s.slotIndex,
       row: s.row,
       col: s.col,
-      overrides: JSON.parse(JSON.stringify(s.overrides || {}))
+      overrides: _cloneOverrides(s.overrides || {})
     };
   });
+}
+
+function _cloneOverrides(overrides) {
+  var result = {};
+  for (var key in overrides) {
+    if (key === 'imageElements' && Array.isArray(overrides[key])) {
+      result.imageElements = overrides[key].map(function(img) {
+        var copy = {};
+        for (var k in img) {
+          copy[k] = img[k]; // preserves imgObj reference
+        }
+        return copy;
+      });
+    } else if (key === 'gradient' && overrides[key] && typeof overrides[key] === 'object') {
+      var g = {};
+      for (var gk in overrides[key]) {
+        if (gk !== 'draw') g[gk] = overrides[key][gk];
+      }
+      result[key] = JSON.parse(JSON.stringify(g));
+    } else if (key === 'textElements' && Array.isArray(overrides[key])) {
+      result.textElements = overrides[key].map(function(t) {
+        return Object.assign({}, t);
+      });
+    } else {
+      result[key] = (typeof overrides[key] === 'object' && overrides[key] !== null)
+        ? JSON.parse(JSON.stringify(overrides[key]))
+        : overrides[key];
+    }
+  }
+  return result;
 }
 
 // --- Sheet view rendering ---
