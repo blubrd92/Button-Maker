@@ -343,8 +343,8 @@ function _exitSlotEditIfActive() {
     currentDesign.backgroundColor = _mainDesignBackup.backgroundColor;
     currentDesign.templateDraw = _mainDesignBackup.templateDraw;
     currentDesign.gradient = _mainDesignBackup.gradient;
-    currentDesign.textElements = _mainDesignBackup.textElements;
-    currentDesign.imageElements = _mainDesignBackup.imageElements;
+    currentDesign.textElements = _mainDesignBackup.textElements.slice();
+    currentDesign.imageElements = _mainDesignBackup.imageElements.slice();
     currentDesign.libraryInfoText = _mainDesignBackup.libraryInfoText;
     currentDesign.libraryInfoColor = _mainDesignBackup.libraryInfoColor;
 

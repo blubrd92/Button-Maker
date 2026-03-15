@@ -168,7 +168,6 @@ function slotHasOverrides(slotIndex) {
  * Reset a slot to match the main design (clear all overrides).
  */
 function resetSlotToMain(slotIndex) {
-  if (typeof pushUndo === 'function') pushUndo();
   if (sheetSlots[slotIndex]) {
     sheetSlots[slotIndex].overrides = {};
   }
@@ -262,6 +261,7 @@ function renderSheetView() {
   // Wire up the new controls (use querySelector on controlsDiv since it's not in the DOM yet)
   controlsDiv.querySelector('#btn-sheet-reset').addEventListener('click', function() {
     if (!confirm('Reset selected buttons to the main design?')) return;
+    if (typeof pushUndo === 'function') pushUndo();
     selectedSlots.forEach(function(idx) { resetSlotToMain(idx); });
     renderSheetView();
     updateSheetSelectionUI();
@@ -270,6 +270,7 @@ function renderSheetView() {
   controlsDiv.querySelector('#btn-apply-col').addEventListener('click', function() {
     if (selectedSlots.length !== 1) return;
     if (!confirm('Apply this design to the entire column?')) return;
+    if (typeof pushUndo === 'function') pushUndo();
     var sourceIdx = selectedSlots[0];
     var sourceSlot = sheetSlots[sourceIdx];
     var layout = getCurrentLayout();
@@ -287,6 +288,7 @@ function renderSheetView() {
   controlsDiv.querySelector('#btn-apply-row').addEventListener('click', function() {
     if (selectedSlots.length !== 1) return;
     if (!confirm('Apply this design to the entire row?')) return;
+    if (typeof pushUndo === 'function') pushUndo();
     var sourceIdx = selectedSlots[0];
     var sourceSlot = sheetSlots[sourceIdx];
     var layout = getCurrentLayout();

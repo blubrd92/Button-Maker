@@ -263,6 +263,10 @@ let dragOffset = { x: 0, y: 0 };
 // Set to true on mousedown if an element was hit, so the click handler knows
 let lastMouseDownHitElement = false;
 
+// Track whether undo has been pushed for the current drag/resize gesture.
+// Set to false on mousedown, flipped to true on first mousemove that mutates.
+let _dragUndoPushed = false;
+
 /**
  * Handle mouse down on the canvas: select or start dragging an element.
  */
@@ -289,7 +293,7 @@ function handleCanvasMouseDown(e) {
     if (selImg) {
       var handle = getResizeHandle(mouseX, mouseY, selImg, cx, cy, scale);
       if (handle) {
-        if (typeof pushUndo === 'function') pushUndo();
+        _dragUndoPushed = false;
         isResizing = true;
         resizeCorner = handle;
         resizeStartPos = { x: mouseX, y: mouseY };
@@ -304,7 +308,7 @@ function handleCanvasMouseDown(e) {
   for (var i = currentDesign.textElements.length - 1; i >= 0; i--) {
     var textEl = currentDesign.textElements[i];
     if (isPointInTextElement(inchX, inchY, textEl)) {
-      if (typeof pushUndo === 'function') pushUndo();
+      _dragUndoPushed = false;
       selectedElement = { type: 'text', index: i };
       isDragging = true;
       lastMouseDownHitElement = true;
@@ -321,7 +325,7 @@ function handleCanvasMouseDown(e) {
   for (var j = currentDesign.imageElements.length - 1; j >= 0; j--) {
     var imgEl = currentDesign.imageElements[j];
     if (isPointInImageElement(inchX, inchY, imgEl)) {
-      if (typeof pushUndo === 'function') pushUndo();
+      _dragUndoPushed = false;
       selectedElement = { type: 'image', index: j };
       isDragging = true;
       lastMouseDownHitElement = true;
@@ -359,6 +363,10 @@ function handleCanvasMouseMove(e) {
 
   // Handle resize dragging
   if (isResizing && selectedElement && selectedElement.type === 'image') {
+    if (!_dragUndoPushed) {
+      if (typeof pushUndo === 'function') pushUndo();
+      _dragUndoPushed = true;
+    }
     const imgEl = currentDesign.imageElements[selectedElement.index];
     const dx = (mouseX - resizeStartPos.x) / scale;
     const dy = (mouseY - resizeStartPos.y) / scale;
@@ -417,6 +425,12 @@ function handleCanvasMouseMove(e) {
     }
     canvas.style.cursor = hovering ? 'grab' : '';
     return;
+  }
+
+  // Push undo once on first drag move
+  if (!_dragUndoPushed) {
+    if (typeof pushUndo === 'function') pushUndo();
+    _dragUndoPushed = true;
   }
 
   const inchX = (mouseX - cx) / scale;
