@@ -231,6 +231,65 @@ function _cloneOverrides(overrides) {
   return result;
 }
 
+/**
+ * Compute sparse overrides by diffing an edited design against the main design.
+ * Only properties that differ from main are included in the result.
+ * Shared by finishSlotEdit() and undo's _captureSnapshot().
+ *
+ * @param {Object} mainDesign - The main/master design
+ * @param {Object} editedDesign - The edited design to diff
+ * @returns {Object} Sparse overrides object
+ */
+function _computeOverrides(mainDesign, editedDesign) {
+  var overrides = {};
+
+  if (editedDesign.backgroundColor !== mainDesign.backgroundColor) {
+    overrides.backgroundColor = editedDesign.backgroundColor;
+  }
+  if (editedDesign.libraryInfoText !== mainDesign.libraryInfoText) {
+    overrides.libraryInfoText = editedDesign.libraryInfoText;
+  }
+  if (editedDesign.libraryInfoColor !== mainDesign.libraryInfoColor) {
+    overrides.libraryInfoColor = editedDesign.libraryInfoColor;
+  }
+
+  // Gradient
+  var mainGradJson = mainDesign.gradient ? JSON.stringify(mainDesign.gradient) : null;
+  var editedGradJson = editedDesign.gradient ? JSON.stringify(editedDesign.gradient) : null;
+  if (mainGradJson !== editedGradJson) {
+    overrides.gradient = editedDesign.gradient ? JSON.parse(editedGradJson) : null;
+  }
+
+  // Template
+  if (editedDesign.templateId !== mainDesign.templateId) {
+    overrides.templateId = editedDesign.templateId;
+  }
+
+  // Text elements
+  var serText = function(t) {
+    return { text: t.text, fontFamily: t.fontFamily, fontSize: t.fontSize, color: t.color,
+      bold: t.bold, italic: t.italic, align: t.align, x: t.x, y: t.y,
+      curved: t.curved, curveRadius: t.curveRadius };
+  };
+  var mainTextsJson = JSON.stringify(mainDesign.textElements.map(serText));
+  var editedTextsJson = JSON.stringify(editedDesign.textElements.map(serText));
+  if (mainTextsJson !== editedTextsJson) {
+    overrides.textElements = editedDesign.textElements.map(serText);
+  }
+
+  // Image elements
+  var serImg = function(img) {
+    return (typeof serializeImageElement === 'function') ? serializeImageElement(img) : img;
+  };
+  var mainImgsJson = JSON.stringify((mainDesign.imageElements || []).map(serImg));
+  var editedImgsJson = JSON.stringify((editedDesign.imageElements || []).map(serImg));
+  if (mainImgsJson !== editedImgsJson) {
+    overrides.imageElements = (editedDesign.imageElements || []).map(serImg);
+  }
+
+  return overrides;
+}
+
 // --- Sheet view rendering ---
 
 /**
@@ -841,64 +900,36 @@ function exitSheetMode() {
 
 // --- Per-button editing in design view ---
 
-// When editing a specific slot, store the original main design so we can
-// compute what changed when returning to sheet mode.
+// When editing a specific slot, _slotEditDesign holds the merged design.
+// currentDesign always stays as the main design (never swapped).
 var _editingSlotIndex = null;
-var _mainDesignBackup = null;
 
 /**
  * Switch to design mode to edit a specific button slot.
- * Loads the slot's merged design (main + overrides) into the design canvas.
- * A "Back to Sheet" banner appears so the user can return and save changes.
+ * Builds _slotEditDesign (main + overrides) for the design canvas.
+ * currentDesign is never touched. A "Back to Sheet" banner appears
+ * so the user can return and save changes.
  */
 function editSlotInDesignMode(slotIndex) {
   _editingSlotIndex = slotIndex;
 
-  // Back up the main design
-  _mainDesignBackup = {
-    templateId: currentDesign.templateId,
-    backgroundColor: currentDesign.backgroundColor,
-    templateDraw: currentDesign.templateDraw,
-    gradient: currentDesign.gradient ? JSON.parse(JSON.stringify(currentDesign.gradient)) : null,
-    textElements: currentDesign.textElements.map(function(t) { return Object.assign({}, t); }),
-    imageElements: currentDesign.imageElements.map(function(img) { return Object.assign({}, img); }),
-    libraryInfoText: currentDesign.libraryInfoText,
-    libraryInfoColor: currentDesign.libraryInfoColor
-  };
+  // Build the merged design for editing (clone main + apply overrides)
+  _slotEditDesign = cloneDesignForRender(currentDesign);
+  // Reconstruct runtime draw functions on the clone
+  if (_slotEditDesign.gradient && typeof buildGradientDrawFunction === 'function') {
+    _slotEditDesign.templateDraw = buildGradientDrawFunction(_slotEditDesign.gradient);
+  } else if (_slotEditDesign.templateId) {
+    var baseTmpl = getTemplateById(_slotEditDesign.templateId);
+    _slotEditDesign.templateDraw = baseTmpl ? baseTmpl.draw : null;
+  }
+  // Hydrate image elements so imgObj is available
+  _slotEditDesign.imageElements = currentDesign.imageElements.map(function(img) {
+    return Object.assign({}, img);
+  });
 
-  // Merge main + overrides into currentDesign
   var overrides = getSlotOverrides(slotIndex);
-  if (overrides.backgroundColor !== undefined) {
-    currentDesign.backgroundColor = overrides.backgroundColor;
-    currentDesign.templateDraw = null;
-    currentDesign.templateId = null;
-  }
-  if (overrides.gradient !== undefined) {
-    currentDesign.gradient = overrides.gradient;
-    if (overrides.gradient && typeof buildGradientDrawFunction === 'function') {
-      currentDesign.templateDraw = buildGradientDrawFunction(overrides.gradient);
-    }
-  }
-  if (overrides.libraryInfoText !== undefined) {
-    currentDesign.libraryInfoText = overrides.libraryInfoText;
-  }
-  if (overrides.libraryInfoColor !== undefined) {
-    currentDesign.libraryInfoColor = overrides.libraryInfoColor;
-  }
-  if (overrides.templateId !== undefined) {
-    currentDesign.templateId = overrides.templateId;
-    var tmpl = getTemplateById(overrides.templateId);
-    currentDesign.templateDraw = tmpl ? tmpl.draw : null;
-  }
-  if (overrides.textElements !== undefined) {
-    currentDesign.textElements = overrides.textElements.map(function(t) { return Object.assign({}, t); });
-  }
-  if (overrides.imageElements !== undefined) {
-    currentDesign.imageElements = overrides.imageElements.map(function(img) {
-      return (typeof hydrateImageElement === 'function')
-        ? hydrateImageElement(img)
-        : Object.assign({}, img);
-    });
+  if (Object.keys(overrides).length > 0) {
+    applyOverridesToDesign(_slotEditDesign, overrides);
   }
 
   // Switch to design mode visually
@@ -908,11 +939,11 @@ function editSlotInDesignMode(slotIndex) {
   document.getElementById('design-canvas-wrapper').classList.remove('hidden');
   document.getElementById('sheet-view').classList.add('hidden');
 
-  // Sync sidebar controls
-  syncSidebarToDesign(currentDesign);
+  // Sync sidebar controls to the slot's merged design
+  syncSidebarToDesign(_slotEditDesign);
 
   // Show image controls if there's an image
-  if (currentDesign.imageElements.length > 0) {
+  if (_slotEditDesign.imageElements.length > 0) {
     selectedElement = { type: 'image', index: 0 };
     showImageControls(0);
   }
