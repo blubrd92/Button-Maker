@@ -23,7 +23,18 @@ var UNDO_COALESCE_MS = 1000;
 // ─── Snapshot capture ────────────────────────────────────────────
 
 function _captureSnapshot() {
-  var master = serializeDesign(currentDesign);
+  // During slot editing, currentDesign holds the slot's merged design, not the
+  // real main design.  Use _mainDesignBackup as master and diff the current
+  // edits into overrides for the editing slot so the snapshot is accurate.
+  var inSlotEdit = (typeof _editingSlotIndex !== 'undefined' && _editingSlotIndex !== null &&
+                    typeof _mainDesignBackup !== 'undefined' && _mainDesignBackup);
+
+  var master;
+  if (inSlotEdit) {
+    master = serializeDesign(_mainDesignBackup);
+  } else {
+    master = serializeDesign(currentDesign);
+  }
 
   // Strip the gradient draw function — JSON can't serialize it
   if (master.gradient && typeof master.gradient.draw === 'function') {
@@ -38,13 +49,73 @@ function _captureSnapshot() {
   var slots = [];
   for (var i = 0; i < rawSlots.length; i++) {
     var slot = rawSlots[i];
-    var o = _serializeOverrides(slot.overrides);
+    var o;
+    if (inSlotEdit && slot.slotIndex === _editingSlotIndex) {
+      // Compute overrides from current edits vs the main backup
+      o = _diffSlotOverrides(_mainDesignBackup, currentDesign);
+    } else {
+      o = _serializeOverrides(slot.overrides);
+    }
     slots.push({ slotIndex: slot.slotIndex, row: slot.row, col: slot.col, overrides: o });
   }
 
   var name = (typeof sheetName !== 'undefined') ? sheetName : '';
 
   return JSON.stringify({ master: master, slots: slots, sheetName: name });
+}
+
+/**
+ * Compute sparse overrides by diffing currentEdits against the main backup.
+ * Mirrors the diffing logic in finishSlotEdit().
+ */
+function _diffSlotOverrides(backup, edited) {
+  var overrides = {};
+
+  if (edited.backgroundColor !== backup.backgroundColor) {
+    overrides.backgroundColor = edited.backgroundColor;
+  }
+  if (edited.libraryInfoText !== backup.libraryInfoText) {
+    overrides.libraryInfoText = edited.libraryInfoText;
+  }
+  if (edited.libraryInfoColor !== backup.libraryInfoColor) {
+    overrides.libraryInfoColor = edited.libraryInfoColor;
+  }
+
+  // Gradient
+  var mainGradJson = backup.gradient ? JSON.stringify(backup.gradient) : null;
+  var editedGradJson = edited.gradient ? JSON.stringify(edited.gradient) : null;
+  if (mainGradJson !== editedGradJson) {
+    overrides.gradient = edited.gradient ? JSON.parse(editedGradJson) : null;
+  }
+
+  // Template
+  if (edited.templateId !== backup.templateId) {
+    overrides.templateId = edited.templateId;
+  }
+
+  // Text elements
+  var serText = function(t) {
+    return { text: t.text, fontFamily: t.fontFamily, fontSize: t.fontSize, color: t.color,
+      bold: t.bold, italic: t.italic, align: t.align, x: t.x, y: t.y,
+      curved: t.curved, curveRadius: t.curveRadius };
+  };
+  var mainTextsJson = JSON.stringify(backup.textElements.map(serText));
+  var editedTextsJson = JSON.stringify(edited.textElements.map(serText));
+  if (mainTextsJson !== editedTextsJson) {
+    overrides.textElements = edited.textElements.map(serText);
+  }
+
+  // Image elements
+  var serImg = function(img) {
+    return (typeof serializeImageElement === 'function') ? serializeImageElement(img) : img;
+  };
+  var mainImgsJson = JSON.stringify((backup.imageElements || []).map(serImg));
+  var editedImgsJson = JSON.stringify((edited.imageElements || []).map(serImg));
+  if (mainImgsJson !== editedImgsJson) {
+    overrides.imageElements = (edited.imageElements || []).map(serImg);
+  }
+
+  return overrides;
 }
 
 function _serializeOverrides(overrides) {
