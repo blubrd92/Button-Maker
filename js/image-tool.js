@@ -421,7 +421,7 @@ function processLoadedImage(dataUrl, img) {
     return;
   }
 
-  currentDesign.imageElements = [imageElement];
+  getActiveDesign().imageElements = [imageElement];
   selectedElement = { type: 'image', index: 0 };
   showImageControls(0);
   renderDesignCanvas();
@@ -429,14 +429,14 @@ function processLoadedImage(dataUrl, img) {
 
 function deleteSelectedImage() {
   if (typeof pushUndo === 'function') pushUndo();
-  currentDesign.imageElements = [];
+  getActiveDesign().imageElements = [];
   selectedElement = null;
   hideImageControls();
   renderDesignCanvas();
 }
 
 function showImageControls(index) {
-  var imgEl = currentDesign.imageElements[index];
+  var imgEl = getActiveDesign().imageElements[index];
   if (!imgEl) return;
 
   // Only show image controls in Design Mode
@@ -460,8 +460,9 @@ function hideImageControls() {
 }
 
 function applyImageScale(scalePercent) {
-  if (currentDesign.imageElements.length === 0) return;
-  var imgEl = currentDesign.imageElements[0];
+  var activeDesign = getActiveDesign();
+  if (activeDesign.imageElements.length === 0) return;
+  var imgEl = activeDesign.imageElements[0];
   var s = Math.max(1.0, scalePercent / 100);
   imgEl.imageScale = s;
   imgEl.width = imgEl.baseWidth * s;
@@ -486,7 +487,7 @@ function constrainImagePosition(imgEl) {
 // ─── Rendering ────────────────────────────────────────────────────
 
 function renderImagePlaceholder(ctx, cx, cy, scale) {
-  if (currentDesign.imageElements.length > 0) return;
+  if (getActiveDesign().imageElements.length > 0) return;
   ctx.save();
   ctx.fillStyle = 'rgba(0,0,0,0.25)';
   ctx.font = '14px Roboto, sans-serif';
@@ -498,7 +499,8 @@ function renderImagePlaceholder(ctx, cx, cy, scale) {
 
 function renderImageElements(ctx, cx, cy, scale) {
   renderImagePlaceholder(ctx, cx, cy, scale);
-  if (currentDesign.imageElements.length === 0) return;
+  var activeDesign = getActiveDesign();
+  if (activeDesign.imageElements.length === 0) return;
 
   var btnSize = getCurrentButtonSize();
   var safeRadius = (btnSize.safeDiameter / 2) * scale;
@@ -506,7 +508,7 @@ function renderImageElements(ctx, cx, cy, scale) {
   ctx.beginPath();
   ctx.arc(cx, cy, safeRadius, 0, Math.PI * 2);
   ctx.clip();
-  currentDesign.imageElements.forEach(function(imgEl) {
+  activeDesign.imageElements.forEach(function(imgEl) {
     renderSingleImageElement(ctx, cx, cy, scale, imgEl);
   });
   ctx.restore();

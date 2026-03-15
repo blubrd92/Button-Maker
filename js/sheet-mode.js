@@ -1019,73 +1019,23 @@ function removeSlotEditBanner() {
 }
 
 /**
- * Finish editing a slot: compute what changed vs the main backup,
- * store as overrides, restore main, and return to sheet mode.
+ * Finish editing a slot: diff _slotEditDesign vs currentDesign to compute
+ * overrides, store them, clear _slotEditDesign, and return to sheet mode.
+ * currentDesign is never touched — it stays as the main design throughout.
  */
 function finishSlotEdit() {
-  if (_editingSlotIndex === null || !_mainDesignBackup) {
+  if (_editingSlotIndex === null || !_slotEditDesign) {
     removeSlotEditBanner();
+    _slotEditDesign = null;
+    _editingSlotIndex = null;
     return;
   }
   if (typeof pushUndo === 'function') pushUndo();
 
   var slotIndex = _editingSlotIndex;
-  var overrides = {};
 
-  // Compare current state to the backed-up main
-  if (currentDesign.backgroundColor !== _mainDesignBackup.backgroundColor) {
-    overrides.backgroundColor = currentDesign.backgroundColor;
-  }
-  if (currentDesign.libraryInfoText !== _mainDesignBackup.libraryInfoText) {
-    overrides.libraryInfoText = currentDesign.libraryInfoText;
-  }
-  if (currentDesign.libraryInfoColor !== _mainDesignBackup.libraryInfoColor) {
-    overrides.libraryInfoColor = currentDesign.libraryInfoColor;
-  }
-
-  // Gradient
-  var mainGradJson = _mainDesignBackup.gradient ? JSON.stringify(_mainDesignBackup.gradient) : null;
-  var currentGradJson = currentDesign.gradient ? JSON.stringify(currentDesign.gradient) : null;
-  if (mainGradJson !== currentGradJson) {
-    overrides.gradient = currentDesign.gradient ? JSON.parse(currentGradJson) : null;
-  }
-
-  // Template
-  if (currentDesign.templateId !== _mainDesignBackup.templateId) {
-    overrides.templateId = currentDesign.templateId;
-  }
-
-  // Text elements - compare by serialized content
-  var mainTextsJson = JSON.stringify(_mainDesignBackup.textElements.map(function(t) {
-    return { text: t.text, fontFamily: t.fontFamily, fontSize: t.fontSize, color: t.color,
-      bold: t.bold, italic: t.italic, align: t.align, x: t.x, y: t.y,
-      curved: t.curved, curveRadius: t.curveRadius };
-  }));
-  var currentTextsJson = JSON.stringify(currentDesign.textElements.map(function(t) {
-    return { text: t.text, fontFamily: t.fontFamily, fontSize: t.fontSize, color: t.color,
-      bold: t.bold, italic: t.italic, align: t.align, x: t.x, y: t.y,
-      curved: t.curved, curveRadius: t.curveRadius };
-  }));
-  if (mainTextsJson !== currentTextsJson) {
-    overrides.textElements = currentDesign.textElements.map(function(t) {
-      return { text: t.text, fontFamily: t.fontFamily, fontSize: t.fontSize, color: t.color,
-        bold: t.bold, italic: t.italic, align: t.align, x: t.x, y: t.y,
-        curved: t.curved, curveRadius: t.curveRadius };
-    });
-  }
-
-  // Image elements - compare normalized serialized payloads
-  var mainImgsJson = JSON.stringify((_mainDesignBackup.imageElements || []).map(function(img) {
-    return (typeof serializeImageElement === 'function') ? serializeImageElement(img) : img;
-  }));
-  var currentImgsJson = JSON.stringify((currentDesign.imageElements || []).map(function(img) {
-    return (typeof serializeImageElement === 'function') ? serializeImageElement(img) : img;
-  }));
-  if (mainImgsJson !== currentImgsJson) {
-    overrides.imageElements = (currentDesign.imageElements || []).map(function(img) {
-      return (typeof serializeImageElement === 'function') ? serializeImageElement(img) : img;
-    });
-  }
+  // Diff _slotEditDesign against currentDesign to compute sparse overrides
+  var overrides = _computeOverrides(currentDesign, _slotEditDesign);
 
   var selectionToRestore = [slotIndex];
 
@@ -1093,7 +1043,6 @@ function finishSlotEdit() {
   if (_editingGroup) {
     selectionToRestore = _editingGroup.slots.slice();
     _editingGroup.slots.forEach(function(idx) {
-      // Set the overrides directly, replacing any existing ones instead of merging
       if (Object.keys(overrides).length === 0) {
         setSlotOverrides(idx, {});
       } else {
@@ -1105,22 +1054,12 @@ function finishSlotEdit() {
     setSlotOverrides(slotIndex, overrides);
   }
 
-  // Restore the main design
-  currentDesign.templateId = _mainDesignBackup.templateId;
-  currentDesign.backgroundColor = _mainDesignBackup.backgroundColor;
-  currentDesign.templateDraw = _mainDesignBackup.templateDraw;
-  currentDesign.gradient = _mainDesignBackup.gradient;
-  currentDesign.textElements = _mainDesignBackup.textElements;
-  currentDesign.imageElements = _mainDesignBackup.imageElements;
-  currentDesign.libraryInfoText = _mainDesignBackup.libraryInfoText;
-  currentDesign.libraryInfoColor = _mainDesignBackup.libraryInfoColor;
-
   // Reset sidebar to main values
   syncSidebarToDesign(currentDesign);
 
-  // Clean up
+  // Clean up — clear the slot edit design
+  _slotEditDesign = null;
   _editingSlotIndex = null;
-  _mainDesignBackup = null;
   selectedElement = null;
   hideImageControls();
   removeSlotEditBanner();

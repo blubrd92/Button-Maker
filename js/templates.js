@@ -289,12 +289,13 @@ function applyTemplate(templateId) {
 
   if (typeof pushUndo === 'function') pushUndo();
 
-  // Update the current design state
-  currentDesign.templateId = templateId;
-  currentDesign.backgroundColor = template.backgroundColor;
-  currentDesign.templateDraw = template.draw;
+  // Update the active design state (main or slot edit)
+  var target = getActiveDesign();
+  target.templateId = templateId;
+  target.backgroundColor = template.backgroundColor;
+  target.templateDraw = template.draw;
   // Clear gradient so it doesn't override the template on save/load
-  currentDesign.gradient = null;
+  target.gradient = null;
 
   // Update UI
   document.getElementById('bg-color-picker').value = template.backgroundColor;

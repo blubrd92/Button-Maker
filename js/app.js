@@ -187,7 +187,7 @@ function initTopLevelControls() {
       if (currentMode === 'sheet') {
         preserveBrandTextOnCustomSlots();
       }
-      currentDesign.libraryInfoText = e.target.value;
+      getActiveDesign().libraryInfoText = e.target.value;
       renderDesignCanvas();
       if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
         refreshSheetThumbnails();
@@ -218,7 +218,7 @@ function initTopLevelControls() {
         if (currentMode === 'sheet') {
           preserveBrandTextOnCustomSlots();
         }
-        currentDesign.libraryInfoColor = color;
+        getActiveDesign().libraryInfoColor = color;
         renderDesignCanvas();
         if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
           refreshSheetThumbnails();
@@ -239,7 +239,7 @@ function initTopLevelControls() {
       if (currentMode === 'sheet') {
         preserveBrandTextOnCustomSlots();
       }
-      currentDesign.libraryInfoColor = e.target.value;
+      getActiveDesign().libraryInfoColor = e.target.value;
       renderDesignCanvas();
       if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
         refreshSheetThumbnails();
@@ -309,10 +309,11 @@ function initTopLevelControls() {
         });
         refreshSheetThumbnails();
       } else {
-        currentDesign.gradient = null;
-        currentDesign.templateDraw = null;
+        var target = getActiveDesign();
+        target.gradient = null;
+        target.templateDraw = null;
         clearGradientPresetHighlight();
-        handleBackgroundColorChange(currentDesign.backgroundColor);
+        handleBackgroundColorChange(target.backgroundColor);
       }
     }
   });
@@ -374,10 +375,11 @@ function initTopLevelControls() {
         return;
       }
       
-      if (currentDesign.gradient && currentDesign.gradient.stops) {
+      var activeD = getActiveDesign();
+      if (activeD.gradient && activeD.gradient.stops) {
         var direction = document.getElementById('gradient-direction').value;
-        currentDesign.gradient.direction = direction;
-        currentDesign.templateDraw = buildGradientDrawFunction(currentDesign.gradient);
+        activeD.gradient.direction = direction;
+        activeD.templateDraw = buildGradientDrawFunction(activeD.gradient);
         renderDesignCanvas();
         if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
           refreshSheetThumbnails();
@@ -570,16 +572,17 @@ function applyGradientFromUI() {
     preserveBackgroundOnCustomSlots();
   }
 
-  currentDesign.gradient = {
+  var target = getActiveDesign();
+  target.gradient = {
     color1: color1,
     color2: color2,
-    stops: null,  
+    stops: null,
     direction: direction,
     preset: null
   };
 
-  currentDesign.templateDraw = buildGradientDrawFunction(currentDesign.gradient);
-  currentDesign.templateId = null;
+  target.templateDraw = buildGradientDrawFunction(target.gradient);
+  target.templateId = null;
   renderDesignCanvas();
   if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
     refreshSheetThumbnails();
@@ -655,9 +658,10 @@ function applyGradientPreset(presetName) {
     if (currentMode === 'sheet') {
       preserveBackgroundOnCustomSlots();
     }
-    currentDesign.gradient = grad;
-    currentDesign.templateDraw = buildGradientDrawFunction(currentDesign.gradient);
-    currentDesign.templateId = null;
+    var target = getActiveDesign();
+    target.gradient = grad;
+    target.templateDraw = buildGradientDrawFunction(target.gradient);
+    target.templateId = null;
     renderDesignCanvas();
     if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
       refreshSheetThumbnails();
@@ -954,6 +958,10 @@ function computeFitToScreenZoom() {
 }
 
 function resetDesignToDefaults() {
+  // Clear slot edit state if active
+  _slotEditDesign = null;
+  _editingSlotIndex = null;
+
   currentDesign.templateId = 'blank';
   currentDesign.backgroundColor = CONFIG.DEFAULTS.backgroundColor;
   currentDesign.templateDraw = null;
