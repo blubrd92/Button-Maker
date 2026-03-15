@@ -283,6 +283,36 @@ function initTopLevelControls() {
     }
   });
 
+  // Gradient color2 swatches
+  var gradSwatchContainer = document.getElementById('gradient-color2-swatches');
+  CONFIG.COLOR_PALETTE.forEach(function(color) {
+    var swatch = document.createElement('div');
+    swatch.className = 'color-swatch';
+    swatch.style.backgroundColor = color;
+    swatch.dataset.color = color;
+
+    if (color === '#FFFFFF') {
+      swatch.style.borderColor = '#ccc';
+    }
+
+    swatch.addEventListener('click', function() {
+      if (typeof pushUndo === 'function') pushUndo('gradient-color2');
+      clearGradientPresetHighlight();
+      document.getElementById('bg-gradient-color2').value = color;
+      if (document.getElementById('toggle-gradient').checked) {
+        if (shouldApplyBackgroundToAllButtons()) {
+          applyBackgroundSettingsToAllButtons();
+        } else if (currentMode === 'sheet' && selectedSlots.length > 0) {
+          applyGradientOverrideToSelectedSlots();
+        } else {
+          applyGradientFromUI();
+        }
+      }
+    });
+
+    gradSwatchContainer.appendChild(swatch);
+  });
+
   document.getElementById('bg-gradient-color2').addEventListener('input', function() {
     if (typeof pushUndo === 'function') pushUndo('gradient-color2');
     if (document.getElementById('toggle-gradient').checked) {
