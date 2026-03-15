@@ -555,6 +555,14 @@ function applyBackgroundSettingsToAllButtons() {
     currentDesign.templateDraw = null;
   }
 
+  // Sync to slot edit design so exiting slot edit won't create a stale override
+  if (_slotEditDesign) {
+    _slotEditDesign.backgroundColor = currentDesign.backgroundColor;
+    _slotEditDesign.templateId = currentDesign.templateId;
+    _slotEditDesign.gradient = currentDesign.gradient;
+    _slotEditDesign.templateDraw = currentDesign.templateDraw;
+  }
+
   clearBackgroundOverridesForAllSlots();
   refreshAfterGlobalSectionApply();
 }
@@ -562,6 +570,11 @@ function applyBackgroundSettingsToAllButtons() {
 function applyBrandTextSettingsToAllButtons() {
   currentDesign.libraryInfoText = document.getElementById('library-info-input').value;
   currentDesign.libraryInfoColor = document.getElementById('library-info-color').value;
+  // Sync to slot edit design so exiting slot edit won't create a stale override
+  if (_slotEditDesign) {
+    _slotEditDesign.libraryInfoText = currentDesign.libraryInfoText;
+    _slotEditDesign.libraryInfoColor = currentDesign.libraryInfoColor;
+  }
   clearBrandTextOverridesForAllSlots();
   refreshAfterGlobalSectionApply();
 }
@@ -656,6 +669,13 @@ function applyGradientPreset(presetName) {
     currentDesign.backgroundColor = grad.color1;
     currentDesign.templateDraw = buildGradientDrawFunction(currentDesign.gradient);
     currentDesign.templateId = null;
+    // Sync to slot edit design so exiting slot edit won't create a stale override
+    if (_slotEditDesign) {
+      _slotEditDesign.backgroundColor = currentDesign.backgroundColor;
+      _slotEditDesign.templateId = currentDesign.templateId;
+      _slotEditDesign.gradient = currentDesign.gradient;
+      _slotEditDesign.templateDraw = currentDesign.templateDraw;
+    }
     clearBackgroundOverridesForAllSlots();
     refreshAfterGlobalSectionApply();
   } else if (currentMode === 'sheet' && selectedSlots.length > 0) {
