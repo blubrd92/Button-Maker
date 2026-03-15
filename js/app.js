@@ -134,6 +134,12 @@ function initTopLevelControls() {
       if (typeof recalculateOverrideImageBaseDimensions === 'function') {
         recalculateOverrideImageBaseDimensions();
       }
+      // Also recalculate _slotEditDesign images if editing a slot
+      if (_slotEditDesign && _slotEditDesign.imageElements) {
+        _slotEditDesign.imageElements.forEach(function(imgEl) {
+          refreshImageElementGeometryForCurrentSize(imgEl);
+        });
+      }
       
       if (currentMode === 'sheet') {
         // Re-render the sheet with the new dimensions
