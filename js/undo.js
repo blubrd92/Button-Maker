@@ -4,7 +4,7 @@
  * Undo/redo history for Button Maker.
  *
  * Approach:
- *   - Snapshots capture serialized master design + slot overrides + sheet name
+ *   - Snapshots capture serialized master design + slot overrides + sheet name + button size
  *   - currentDesign is ALWAYS the main design (never swapped during slot editing)
  *   - During slot editing, _slotEditDesign holds the in-progress merged design;
  *     snapshots diff it against currentDesign to compute the editing slot's overrides
@@ -52,7 +52,7 @@ function _captureSnapshot() {
 
   var name = (typeof sheetName !== 'undefined') ? sheetName : '';
 
-  return JSON.stringify({ master: master, slots: slots, sheetName: name });
+  return JSON.stringify({ master: master, slots: slots, sheetName: name, buttonSize: CONFIG.currentButtonSize });
 }
 
 function _serializeOverrides(overrides) {
@@ -142,6 +142,17 @@ function _restoreSnapshot(json) {
       if (nameInput) nameInput.value = sheetName;
     }
 
+    // --- Restore button size ---
+    var restoredSize = snap.buttonSize || '1.5';
+    var sizeChanged = (restoredSize !== CONFIG.currentButtonSize);
+    if (sizeChanged) {
+      CONFIG.currentButtonSize = restoredSize;
+      var sizeSelect = document.getElementById('button-size-select');
+      if (sizeSelect) sizeSelect.value = restoredSize;
+      if (typeof recalculateImageBaseDimensions === 'function') recalculateImageBaseDimensions();
+      if (typeof recalculateOverrideImageBaseDimensions === 'function') recalculateOverrideImageBaseDimensions();
+    }
+
     // --- Deselect and sync UI ---
     selectedElement = null;
     if (typeof hideImageControls === 'function') hideImageControls();
@@ -151,8 +162,21 @@ function _restoreSnapshot(json) {
     // --- Re-render ---
     if (typeof renderDesignCanvas === 'function') renderDesignCanvas();
     if (typeof currentMode !== 'undefined' && currentMode === 'sheet') {
-      if (typeof refreshSheetThumbnails === 'function') refreshSheetThumbnails();
+      if (sizeChanged) {
+        if (typeof computeFitToScreenZoom === 'function') sheetZoom = computeFitToScreenZoom();
+        if (typeof renderSheetView === 'function') renderSheetView();
+        if (typeof applyZoom === 'function') applyZoom();
+      } else {
+        if (typeof refreshSheetThumbnails === 'function') refreshSheetThumbnails();
+      }
       if (typeof updateSheetSelectionUI === 'function') updateSheetSelectionUI();
+    }
+
+    // Clamp selectedSlots to valid range for restored layout
+    if (sizeChanged) {
+      var newLayout = getCurrentLayout();
+      var maxSlots = newLayout.cols * newLayout.rows;
+      selectedSlots = selectedSlots.filter(function(idx) { return idx < maxSlots; });
     }
   } finally {
     _isUndoRestoring = false;
