@@ -123,12 +123,9 @@ function initTopLevelControls() {
   var sizeSelect = document.getElementById('button-size-select');
   if (sizeSelect) {
     sizeSelect.addEventListener('change', function(e) {
-      // If editing a specific slot's design, finish that edit first so
-      // overrides are saved before the layout changes underneath us.
-      if (_editingSlotIndex !== null && _slotEditDesign &&
-          typeof finishSlotEdit === 'function') {
-        finishSlotEdit();
-      }
+      // Size selector is disabled during slot editing (see editSlotInDesignMode),
+      // so we shouldn't reach here mid-edit. Guard defensively just in case.
+      if (_editingSlotIndex !== null) return;
 
       CONFIG.currentButtonSize = e.target.value;
 

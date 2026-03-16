@@ -948,6 +948,11 @@ function editSlotInDesignMode(slotIndex) {
     showImageControls(0);
   }
 
+  // Disable size selector — changing size during slot editing would
+  // discard overrides for slots that don't exist in the new layout.
+  var sizeSelect = document.getElementById('button-size-select');
+  if (sizeSelect) sizeSelect.disabled = true;
+
   // Show the "editing slot" banner
   showSlotEditBanner(slotIndex);
 
@@ -1028,6 +1033,8 @@ function finishSlotEdit() {
     removeSlotEditBanner();
     _slotEditDesign = null;
     _editingSlotIndex = null;
+    var sizeEl = document.getElementById('button-size-select');
+    if (sizeEl) sizeEl.disabled = false;
     return;
   }
   if (typeof pushUndo === 'function') pushUndo();
@@ -1063,6 +1070,10 @@ function finishSlotEdit() {
   selectedElement = null;
   hideImageControls();
   removeSlotEditBanner();
+
+  // Re-enable size selector
+  var sizeSelect = document.getElementById('button-size-select');
+  if (sizeSelect) sizeSelect.disabled = false;
 
   // Switch back to sheet mode
   selectedSlots = selectionToRestore;

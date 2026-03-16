@@ -306,6 +306,8 @@ function _clearSlotEditState() {
   _editingSlotIndex = null;
   if (typeof _editingGroup !== 'undefined') _editingGroup = null;
   if (typeof removeSlotEditBanner === 'function') removeSlotEditBanner();
+  var sizeSelect = document.getElementById('button-size-select');
+  if (sizeSelect) sizeSelect.disabled = false;
 }
 
 /**
