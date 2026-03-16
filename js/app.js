@@ -127,6 +127,7 @@ function initTopLevelControls() {
       // so we shouldn't reach here mid-edit. Guard defensively just in case.
       if (_editingSlotIndex !== null) return;
 
+      if (typeof pushUndo === 'function') pushUndo();
       CONFIG.currentButtonSize = e.target.value;
 
       // Force all existing images to adapt to the new size geometry:
