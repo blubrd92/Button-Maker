@@ -123,8 +123,15 @@ function initTopLevelControls() {
   var sizeSelect = document.getElementById('button-size-select');
   if (sizeSelect) {
     sizeSelect.addEventListener('change', function(e) {
+      // If editing a specific slot's design, finish that edit first so
+      // overrides are saved before the layout changes underneath us.
+      if (_editingSlotIndex !== null && _slotEditDesign &&
+          typeof finishSlotEdit === 'function') {
+        finishSlotEdit();
+      }
+
       CONFIG.currentButtonSize = e.target.value;
-      
+
       // Force all existing images to adapt to the new size geometry:
       // - master design images
       // - custom slot override images
@@ -134,22 +141,23 @@ function initTopLevelControls() {
       if (typeof recalculateOverrideImageBaseDimensions === 'function') {
         recalculateOverrideImageBaseDimensions();
       }
-      // Also recalculate _slotEditDesign images if editing a slot
-      if (_slotEditDesign && _slotEditDesign.imageElements) {
-        _slotEditDesign.imageElements.forEach(function(imgEl) {
-          refreshImageElementGeometryForCurrentSize(imgEl);
-        });
-      }
-      
+
       if (currentMode === 'sheet') {
         // Re-render the sheet with the new dimensions
-        sheetZoom = computeFitToScreenZoom(); 
+        sheetZoom = computeFitToScreenZoom();
         renderSheetView();
         applyZoom();
       } else {
         // Re-render the design canvas
         renderDesignCanvas();
       }
+
+      // Clamp selectedSlots to the new layout's valid range
+      var newLayout = getCurrentLayout();
+      var maxSlots = newLayout.cols * newLayout.rows;
+      selectedSlots = selectedSlots.filter(function(idx) {
+        return idx < maxSlots;
+      });
     });
   }
 
