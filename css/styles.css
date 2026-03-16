@@ -363,7 +363,7 @@ body {
   color: white;
   padding: 8px 14px;
   border-radius: var(--radius);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
   display: flex;
@@ -389,7 +389,7 @@ body {
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   transition: all var(--transition-fast);
   min-width: 120px;
   justify-content: center;
