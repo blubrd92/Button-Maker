@@ -390,6 +390,7 @@ body {
   transition: all var(--transition-fast);
   min-width: 75px;
   justify-content: center;
+  box-shadow: none;
 }
 
 .btn-header:hover {
