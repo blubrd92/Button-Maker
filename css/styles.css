@@ -286,30 +286,16 @@ body {
 /* Standard Buttons */
 
 .btn {
-  padding: 10px 16px;
   border: none;
-  background: white;
-  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 10px 16px;
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--text-color);
   cursor: pointer;
-  border-radius: var(--radius);
   transition: all var(--transition-fast);
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: 6px;
-  box-shadow: var(--shadow-sm);
-}
-
-.btn:hover {
-  background: var(--border-light);
-  transform: translateY(-1px);
-}
-
-.btn:active {
-  transform: translateY(0);
 }
 
 .btn:disabled {
@@ -319,10 +305,12 @@ body {
   box-shadow: none;
 }
 
-.btn:focus,
-.btn-header:focus,
-.btn-header-primary:focus {
-  outline: 2px solid #5c6bc0;
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn:focus {
+  outline: 2px solid var(--primary-color);
   outline-offset: 2px;
 }
 
@@ -341,6 +329,16 @@ body {
 .btn-small {
   padding: 6px 10px;
   font-size: 0.8rem;
+  background: white;
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  justify-content: center;
+}
+
+.btn-small:hover {
+  background: var(--border-light);
+  transform: translateY(-1px);
 }
 
 .btn-full {
@@ -398,6 +396,11 @@ body {
   transform: translateY(-1px);
 }
 
+.btn-header:focus {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
 .btn-header-primary {
   background-color: var(--success-color);
   border: none;
@@ -420,6 +423,11 @@ body {
   background-color: var(--success-hover);
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(67, 160, 71, 0.4);
+}
+
+.btn-header-primary:focus {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
 }
 
 /* Sidebar Specific Scaling */
