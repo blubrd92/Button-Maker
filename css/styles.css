@@ -35,8 +35,6 @@
 
 *, *::before, *::after {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
 body {
@@ -379,7 +377,7 @@ body {
   background-color: rgba(255,255,255,0.1);
   border: none;
   color: white;
-  padding: 10px 16px;
+  padding: 8px 16px;
   border-radius: var(--radius);
   font-size: 0.85rem;
   font-weight: 600;
@@ -406,7 +404,7 @@ body {
   background-color: var(--success-color);
   border: none;
   color: white;
-  padding: 10px 16px;
+  padding: 8px 16px;
   border-radius: var(--radius);
   font-size: 0.85rem;
   cursor: pointer;
