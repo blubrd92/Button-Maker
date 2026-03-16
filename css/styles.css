@@ -377,9 +377,9 @@ body {
 /* Header Action Buttons (after .btn so they win in cascade) */
 .btn-header {
   background-color: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.15);
+  border: none;
   color: white;
-  padding: 8px 14px;
+  padding: 8px 16px;
   border-radius: var(--radius);
   font-size: 0.85rem;
   font-weight: 600;
