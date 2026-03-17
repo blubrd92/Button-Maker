@@ -40,6 +40,19 @@ let currentDesign = {
   libraryInfoColor: CONFIG.DEFAULTS.libraryInfoColor
 };
 
+// Separate design object used during slot editing.
+// When non-null, the user is editing a specific slot's merged design.
+// currentDesign always stays as the main/master design.
+var _slotEditDesign = null;
+
+/**
+ * Return the design currently being actively edited.
+ * During slot editing this is _slotEditDesign; otherwise currentDesign.
+ */
+function getActiveDesign() {
+  return _slotEditDesign || currentDesign;
+}
+
 // Track which element is currently selected for editing
 let selectedElement = null; // { type: 'text'|'image', index: number } or null
 
@@ -132,7 +145,8 @@ function renderDesignCanvas() {
   ctx.clearRect(0, 0, size, size);
 
   // ── 1. Background ──
-  drawDesignBackground(ctx, cx, cy, cutRadius, currentDesign);
+  var activeDesign = getActiveDesign();
+  drawDesignBackground(ctx, cx, cy, cutRadius, activeDesign);
 
   // ── 2. Wrap zone dimming ──
   // Dim the area between face and cut circles to indicate wrap zone
@@ -190,12 +204,13 @@ function drawGuideCircles(ctx, cx, cy, cutRadius, faceRadius, safeRadius) {
 function drawSelectionHighlight(ctx, cx, cy, scale) {
   if (!selectedElement) return;
 
+  var activeDesign = getActiveDesign();
   if (selectedElement.type === 'text') {
-    const textEl = currentDesign.textElements[selectedElement.index];
+    const textEl = activeDesign.textElements[selectedElement.index];
     if (!textEl) return;
     drawTextSelectionBox(ctx, textEl, cx, cy, scale);
   } else if (selectedElement.type === 'image') {
-    const imgEl = currentDesign.imageElements[selectedElement.index];
+    const imgEl = activeDesign.imageElements[selectedElement.index];
     if (!imgEl) return;
     drawImageSelectionBox(ctx, imgEl, cx, cy, scale);
   }
@@ -263,6 +278,10 @@ let dragOffset = { x: 0, y: 0 };
 // Set to true on mousedown if an element was hit, so the click handler knows
 let lastMouseDownHitElement = false;
 
+// Track whether undo has been pushed for the current drag/resize gesture.
+// Set to false on mousedown, flipped to true on first mousemove that mutates.
+let _dragUndoPushed = false;
+
 /**
  * Handle mouse down on the canvas: select or start dragging an element.
  */
@@ -283,12 +302,15 @@ function handleCanvasMouseDown(e) {
   var inchX = (mouseX - cx) / scale;
   var inchY = (mouseY - cy) / scale;
 
+  var activeDesign = getActiveDesign();
+
   // Check resize handles on currently selected image first
   if (selectedElement && selectedElement.type === 'image') {
-    var selImg = currentDesign.imageElements[selectedElement.index];
+    var selImg = activeDesign.imageElements[selectedElement.index];
     if (selImg) {
       var handle = getResizeHandle(mouseX, mouseY, selImg, cx, cy, scale);
       if (handle) {
+        _dragUndoPushed = false;
         isResizing = true;
         resizeCorner = handle;
         resizeStartPos = { x: mouseX, y: mouseY };
@@ -300,9 +322,10 @@ function handleCanvasMouseDown(e) {
   }
 
   // Check text elements (top to bottom in z-order, so iterate in reverse)
-  for (var i = currentDesign.textElements.length - 1; i >= 0; i--) {
-    var textEl = currentDesign.textElements[i];
+  for (var i = activeDesign.textElements.length - 1; i >= 0; i--) {
+    var textEl = activeDesign.textElements[i];
     if (isPointInTextElement(inchX, inchY, textEl)) {
+      _dragUndoPushed = false;
       selectedElement = { type: 'text', index: i };
       isDragging = true;
       lastMouseDownHitElement = true;
@@ -316,9 +339,10 @@ function handleCanvasMouseDown(e) {
   }
 
   // Check image elements
-  for (var j = currentDesign.imageElements.length - 1; j >= 0; j--) {
-    var imgEl = currentDesign.imageElements[j];
+  for (var j = activeDesign.imageElements.length - 1; j >= 0; j--) {
+    var imgEl = activeDesign.imageElements[j];
     if (isPointInImageElement(inchX, inchY, imgEl)) {
+      _dragUndoPushed = false;
       selectedElement = { type: 'image', index: j };
       isDragging = true;
       lastMouseDownHitElement = true;
@@ -354,9 +378,15 @@ function handleCanvasMouseMove(e) {
   const cx = CONFIG.CANVAS_DISPLAY_DIAMETER / 2;
   const cy = CONFIG.CANVAS_DISPLAY_DIAMETER / 2;
 
+  var activeDesign = getActiveDesign();
+
   // Handle resize dragging
   if (isResizing && selectedElement && selectedElement.type === 'image') {
-    const imgEl = currentDesign.imageElements[selectedElement.index];
+    if (!_dragUndoPushed) {
+      if (typeof pushUndo === 'function') pushUndo();
+      _dragUndoPushed = true;
+    }
+    const imgEl = activeDesign.imageElements[selectedElement.index];
     const dx = (mouseX - resizeStartPos.x) / scale;
     const dy = (mouseY - resizeStartPos.y) / scale;
 
@@ -404,27 +434,33 @@ function handleCanvasMouseMove(e) {
     const inchX = (mouseX - cx) / scale;
     const inchY = (mouseY - cy) / scale;
     let hovering = false;
-    for (let i = currentDesign.textElements.length - 1; i >= 0; i--) {
-      if (isPointInTextElement(inchX, inchY, currentDesign.textElements[i])) { hovering = true; break; }
+    for (let i = activeDesign.textElements.length - 1; i >= 0; i--) {
+      if (isPointInTextElement(inchX, inchY, activeDesign.textElements[i])) { hovering = true; break; }
     }
     if (!hovering) {
-      for (let j = currentDesign.imageElements.length - 1; j >= 0; j--) {
-        if (isPointInImageElement(inchX, inchY, currentDesign.imageElements[j])) { hovering = true; break; }
+      for (let j = activeDesign.imageElements.length - 1; j >= 0; j--) {
+        if (isPointInImageElement(inchX, inchY, activeDesign.imageElements[j])) { hovering = true; break; }
       }
     }
     canvas.style.cursor = hovering ? 'grab' : '';
     return;
   }
 
+  // Push undo once on first drag move
+  if (!_dragUndoPushed) {
+    if (typeof pushUndo === 'function') pushUndo();
+    _dragUndoPushed = true;
+  }
+
   const inchX = (mouseX - cx) / scale;
   const inchY = (mouseY - cy) / scale;
 
   if (selectedElement.type === 'text') {
-    const textEl = currentDesign.textElements[selectedElement.index];
+    const textEl = activeDesign.textElements[selectedElement.index];
     textEl.x = inchX - dragOffset.x;
     textEl.y = inchY - dragOffset.y;
   } else if (selectedElement.type === 'image') {
-    const imgEl = currentDesign.imageElements[selectedElement.index];
+    const imgEl = activeDesign.imageElements[selectedElement.index];
     imgEl.x = inchX - dragOffset.x;
     imgEl.y = inchY - dragOffset.y;
     constrainImagePosition(imgEl);
@@ -452,13 +488,14 @@ function handleCanvasMouseUp(e) {
  * @param {string} color - hex color string
  */
 function setBackgroundColor(color) {
-  currentDesign.backgroundColor = color;
+  var target = getActiveDesign();
+  target.backgroundColor = color;
 
   // When the user picks a custom color, we keep the template draw
   // function so patterns stay. If they want solid, they pick a solid template.
   // But if they use the color picker, override to solid:
-  currentDesign.templateDraw = null;
-  currentDesign.templateId = null;
+  target.templateDraw = null;
+  target.templateId = null;
 
   document.querySelectorAll('.template-card').forEach(function(card) {
     card.classList.remove('selected');

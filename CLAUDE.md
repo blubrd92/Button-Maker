@@ -26,6 +26,7 @@ Target users are library staff, but it's open to anyone.
 | `js/storage.js` | Save/load `.buttons` files, localStorage autosave |
 | `js/idb-storage.js` | IndexedDB layer for large image assets |
 | `js/pdf-export.js` | PDF generation at 300 DPI via jsPDF |
+| `js/undo.js` | Undo/redo history (Ctrl+Z / Ctrl+Y), snapshot/restore |
 | `js/templates.js` | Template definitions and helpers |
 | `index.html` | App shell, all UI controls, script loading |
 | `css/styles.css` | All styling |
@@ -46,7 +47,7 @@ Each size has: `cutDiameter`, `faceDiameter`, `safeDiameter`. Face is ~= nominal
 
 ## Script loading order (matters!)
 
-1. config.js → 2. templates.js → 3. canvas.js → 4. text-tool.js → 5. image-tool.js → 6. idb-storage.js → 7. storage.js → 8. pdf-export.js → 9. sheet-mode.js → 10. app.js
+1. config.js → 2. templates.js → 3. canvas.js → 4. text-tool.js → 5. image-tool.js → 6. idb-storage.js → 7. storage.js → 8. pdf-export.js → 9. sheet-mode.js → 10. undo.js → 11. app.js
 
 ## Automated validation
 

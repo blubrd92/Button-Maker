@@ -202,12 +202,13 @@ function applyOverridesToDesign(design, overrides) {
   }
   if (overrides.imageElements !== undefined) {
     design.imageElements = overrides.imageElements.map(function(img) {
-      var el = { ...img };
-      // Reconstruct imgObj if missing (overrides store data only)
-      if (!el.imgObj && el.dataUrl) {
-        el.imgObj = getOrCreateCachedImage(el.dataUrl);
+      // Hydrate fully so imgObj is reconstructed from assetId or dataUrl
+      if (!img.imgObj) {
+        return (typeof hydrateImageElement === 'function')
+          ? hydrateImageElement(img)
+          : { ...img };
       }
-      return el;
+      return { ...img };
     });
   }
   if (overrides.libraryInfoText !== undefined) {

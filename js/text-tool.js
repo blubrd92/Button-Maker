@@ -60,8 +60,8 @@ function addTextElement() {
     curveRadius: 100
   };
 
-  currentDesign.textElements.push(newText);
-  const index = currentDesign.textElements.length - 1;
+  getActiveDesign().textElements.push(newText);
+  const index = getActiveDesign().textElements.length - 1;
   selectedElement = { type: 'text', index };
   showTextControls(index);
   renderDesignCanvas();
@@ -73,7 +73,7 @@ function addTextElement() {
 function deleteSelectedText() {
   if (!selectedElement || selectedElement.type !== 'text') return;
 
-  currentDesign.textElements.splice(selectedElement.index, 1);
+  getActiveDesign().textElements.splice(selectedElement.index, 1);
   selectedElement = null;
   hideTextControls();
   renderDesignCanvas();
@@ -84,7 +84,7 @@ function deleteSelectedText() {
  * @param {number} index - index in currentDesign.textElements
  */
 function showTextControls(index) {
-  const textEl = currentDesign.textElements[index];
+  const textEl = getActiveDesign().textElements[index];
   if (!textEl) return;
 
   const controls = document.getElementById('text-controls');
@@ -130,7 +130,7 @@ function hideTextControls() {
  */
 function updateSelectedTextProperty(prop, value) {
   if (!selectedElement || selectedElement.type !== 'text') return;
-  const textEl = currentDesign.textElements[selectedElement.index];
+  const textEl = getActiveDesign().textElements[selectedElement.index];
   if (!textEl) return;
 
   textEl[prop] = value;
@@ -144,7 +144,7 @@ function updateSelectedTextProperty(prop, value) {
  * Called from canvas.js renderDesignCanvas().
  */
 function renderTextElements(ctx, cx, cy, scale) {
-  currentDesign.textElements.forEach(textEl => {
+  getActiveDesign().textElements.forEach(textEl => {
     renderSingleTextElement(ctx, cx, cy, scale, textEl, false);
   });
 }
@@ -289,9 +289,10 @@ function drawCurvedText(ctx, text, textX, textY, radius, fontSizePx, align) {
  * For screen rendering (editing canvas).
  */
 function renderLibraryInfoText(ctx, cx, cy, safeRadius, scale) {
-  if (!currentDesign.libraryInfoText) return;
+  var activeDesign = getActiveDesign();
+  if (!activeDesign.libraryInfoText) return;
   renderLibraryInfoTextInternal(ctx, cx, cy, safeRadius, scale,
-    currentDesign.libraryInfoText, currentDesign.libraryInfoColor, false);
+    activeDesign.libraryInfoText, activeDesign.libraryInfoColor, false);
 }
 
 /**
@@ -482,7 +483,7 @@ function initTextTool() {
   // Bold toggle
   document.getElementById('btn-bold').addEventListener('click', () => {
     if (!selectedElement || selectedElement.type !== 'text') return;
-    const textEl = currentDesign.textElements[selectedElement.index];
+    const textEl = getActiveDesign().textElements[selectedElement.index];
     textEl.bold = !textEl.bold;
     document.getElementById('btn-bold').classList.toggle('active', textEl.bold);
     renderDesignCanvas();
@@ -491,7 +492,7 @@ function initTextTool() {
   // Italic toggle
   document.getElementById('btn-italic').addEventListener('click', () => {
     if (!selectedElement || selectedElement.type !== 'text') return;
-    const textEl = currentDesign.textElements[selectedElement.index];
+    const textEl = getActiveDesign().textElements[selectedElement.index];
     textEl.italic = !textEl.italic;
     document.getElementById('btn-italic').classList.toggle('active', textEl.italic);
     renderDesignCanvas();

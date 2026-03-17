@@ -50,6 +50,7 @@ This creates a **main-design-plus-overrides** workflow rather than separate full
 | `js/storage.js` | Save/load logic for `.buttons` files and local autosave/session recovery | `config.js`, `canvas.js`, `sheet-mode.js`, `idb-storage.js` |
 | `js/pdf-export.js` | PDF generation, offscreen high-resolution rendering, sheet export pipeline, override merge | `config.js`, `canvas.js`, `sheet-mode.js`, jsPDF |
 | `js/sheet-mode.js` | Sheet preview, selection logic, per-button overrides, row/column tools, copy/paste, sheet naming | `config.js`, `canvas.js`, `pdf-export.js` |
+| `js/undo.js` | Undo/redo history stack, state snapshot/restore, coalescing | `config.js`, `canvas.js`, `storage.js`, `sheet-mode.js`, `image-tool.js` |
 | `js/app.js` | App initialization, mode management, zoom state, notifications, top-level event wiring | All modules |
 | `docs/BUTTON-SPECS.md` | Physical button measurements and print-zone reference | Docs only |
 
@@ -68,7 +69,8 @@ Scripts are loaded in dependency order from `index.html`:
 7. `storage.js`
 8. `pdf-export.js`
 9. `sheet-mode.js`
-10. `app.js`
+10. `undo.js`
+11. `app.js`
 
 This order matters because the app uses shared globals rather than a module bundler.
 

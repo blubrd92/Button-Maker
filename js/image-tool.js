@@ -399,6 +399,7 @@ function preserveImageOnCustomSlots() {
 }
 
 function processLoadedImage(dataUrl, img) {
+  if (typeof pushUndo === 'function') pushUndo();
   var imageElement = buildImageElement(dataUrl, img);
 
   if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof selectedSlots !== 'undefined' && selectedSlots.length > 0) {
@@ -420,21 +421,22 @@ function processLoadedImage(dataUrl, img) {
     return;
   }
 
-  currentDesign.imageElements = [imageElement];
+  getActiveDesign().imageElements = [imageElement];
   selectedElement = { type: 'image', index: 0 };
   showImageControls(0);
   renderDesignCanvas();
 }
 
 function deleteSelectedImage() {
-  currentDesign.imageElements = [];
+  if (typeof pushUndo === 'function') pushUndo();
+  getActiveDesign().imageElements = [];
   selectedElement = null;
   hideImageControls();
   renderDesignCanvas();
 }
 
 function showImageControls(index) {
-  var imgEl = currentDesign.imageElements[index];
+  var imgEl = getActiveDesign().imageElements[index];
   if (!imgEl) return;
 
   // Only show image controls in Design Mode
@@ -458,8 +460,9 @@ function hideImageControls() {
 }
 
 function applyImageScale(scalePercent) {
-  if (currentDesign.imageElements.length === 0) return;
-  var imgEl = currentDesign.imageElements[0];
+  var activeDesign = getActiveDesign();
+  if (activeDesign.imageElements.length === 0) return;
+  var imgEl = activeDesign.imageElements[0];
   var s = Math.max(1.0, scalePercent / 100);
   imgEl.imageScale = s;
   imgEl.width = imgEl.baseWidth * s;
@@ -484,7 +487,7 @@ function constrainImagePosition(imgEl) {
 // ─── Rendering ────────────────────────────────────────────────────
 
 function renderImagePlaceholder(ctx, cx, cy, scale) {
-  if (currentDesign.imageElements.length > 0) return;
+  if (getActiveDesign().imageElements.length > 0) return;
   ctx.save();
   ctx.fillStyle = 'rgba(0,0,0,0.25)';
   ctx.font = '14px Roboto, sans-serif';
@@ -496,7 +499,8 @@ function renderImagePlaceholder(ctx, cx, cy, scale) {
 
 function renderImageElements(ctx, cx, cy, scale) {
   renderImagePlaceholder(ctx, cx, cy, scale);
-  if (currentDesign.imageElements.length === 0) return;
+  var activeDesign = getActiveDesign();
+  if (activeDesign.imageElements.length === 0) return;
 
   var btnSize = getCurrentButtonSize();
   var safeRadius = (btnSize.safeDiameter / 2) * scale;
@@ -504,7 +508,7 @@ function renderImageElements(ctx, cx, cy, scale) {
   ctx.beginPath();
   ctx.arc(cx, cy, safeRadius, 0, Math.PI * 2);
   ctx.clip();
-  currentDesign.imageElements.forEach(function(imgEl) {
+  activeDesign.imageElements.forEach(function(imgEl) {
     renderSingleImageElement(ctx, cx, cy, scale, imgEl);
   });
   ctx.restore();
@@ -586,6 +590,7 @@ function initImageTool() {
   document.getElementById('btn-delete-image').addEventListener('click', deleteSelectedImage);
 
   document.getElementById('image-scale').addEventListener('input', function(e) {
+    if (typeof pushUndo === 'function') pushUndo('image-scale');
     var val = parseInt(e.target.value, 10);
     var display = document.getElementById('image-scale-display');
     if (display) display.textContent = val + '%';

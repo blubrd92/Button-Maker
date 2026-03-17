@@ -123,8 +123,13 @@ function initTopLevelControls() {
   var sizeSelect = document.getElementById('button-size-select');
   if (sizeSelect) {
     sizeSelect.addEventListener('change', function(e) {
+      // Size selector is disabled during slot editing (see editSlotInDesignMode),
+      // so we shouldn't reach here mid-edit. Guard defensively just in case.
+      if (_editingSlotIndex !== null) return;
+
+      if (typeof pushUndo === 'function') pushUndo();
       CONFIG.currentButtonSize = e.target.value;
-      
+
       // Force all existing images to adapt to the new size geometry:
       // - master design images
       // - custom slot override images
@@ -134,16 +139,23 @@ function initTopLevelControls() {
       if (typeof recalculateOverrideImageBaseDimensions === 'function') {
         recalculateOverrideImageBaseDimensions();
       }
-      
+
       if (currentMode === 'sheet') {
         // Re-render the sheet with the new dimensions
-        sheetZoom = computeFitToScreenZoom(); 
+        sheetZoom = computeFitToScreenZoom();
         renderSheetView();
         applyZoom();
       } else {
         // Re-render the design canvas
         renderDesignCanvas();
       }
+
+      // Clamp selectedSlots to the new layout's valid range
+      var newLayout = getCurrentLayout();
+      var maxSlots = newLayout.cols * newLayout.rows;
+      selectedSlots = selectedSlots.filter(function(idx) {
+        return idx < maxSlots;
+      });
     });
   }
 
@@ -160,6 +172,7 @@ function initTopLevelControls() {
     }
 
     swatch.addEventListener('click', function() {
+      if (typeof pushUndo === 'function') pushUndo('bg-color');
       clearGradientPresetHighlight();
       document.getElementById('bg-color-picker').value = color;
       handleBackgroundColorChange(color);
@@ -170,12 +183,14 @@ function initTopLevelControls() {
 
   // Background custom color picker
   document.getElementById('bg-color-picker').addEventListener('input', function(e) {
+    if (typeof pushUndo === 'function') pushUndo('bg-color-picker');
     clearGradientPresetHighlight();
     handleBackgroundColorChange(e.target.value);
   });
 
   // Brand text 
   document.getElementById('library-info-input').addEventListener('input', function(e) {
+    if (typeof pushUndo === 'function') pushUndo('brand-text');
     if (shouldApplyBrandTextToAllButtons()) {
       applyBrandTextSettingsToAllButtons();
     } else if (currentMode === 'sheet' && selectedSlots.length > 0) {
@@ -184,7 +199,7 @@ function initTopLevelControls() {
       if (currentMode === 'sheet') {
         preserveBrandTextOnCustomSlots();
       }
-      currentDesign.libraryInfoText = e.target.value;
+      getActiveDesign().libraryInfoText = e.target.value;
       renderDesignCanvas();
       if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
         refreshSheetThumbnails();
@@ -192,7 +207,42 @@ function initTopLevelControls() {
     }
   });
 
+  // Brand text color swatches
+  var brandSwatchContainer = document.getElementById('brand-text-color-swatches');
+  CONFIG.COLOR_PALETTE.forEach(function(color) {
+    var swatch = document.createElement('div');
+    swatch.className = 'color-swatch';
+    swatch.style.backgroundColor = color;
+    swatch.dataset.color = color;
+
+    if (color === '#FFFFFF') {
+      swatch.style.borderColor = '#ccc';
+    }
+
+    swatch.addEventListener('click', function() {
+      if (typeof pushUndo === 'function') pushUndo('brand-text-color');
+      document.getElementById('library-info-color').value = color;
+      if (shouldApplyBrandTextToAllButtons()) {
+        applyBrandTextSettingsToAllButtons();
+      } else if (currentMode === 'sheet' && selectedSlots.length > 0) {
+        applyOverrideToSelectedSlots('libraryInfoColor', color);
+      } else {
+        if (currentMode === 'sheet') {
+          preserveBrandTextOnCustomSlots();
+        }
+        getActiveDesign().libraryInfoColor = color;
+        renderDesignCanvas();
+        if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
+          refreshSheetThumbnails();
+        }
+      }
+    });
+
+    brandSwatchContainer.appendChild(swatch);
+  });
+
   document.getElementById('library-info-color').addEventListener('input', function(e) {
+    if (typeof pushUndo === 'function') pushUndo('brand-text-color');
     if (shouldApplyBrandTextToAllButtons()) {
       applyBrandTextSettingsToAllButtons();
     } else if (currentMode === 'sheet' && selectedSlots.length > 0) {
@@ -201,7 +251,7 @@ function initTopLevelControls() {
       if (currentMode === 'sheet') {
         preserveBrandTextOnCustomSlots();
       }
-      currentDesign.libraryInfoColor = e.target.value;
+      getActiveDesign().libraryInfoColor = e.target.value;
       renderDesignCanvas();
       if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
         refreshSheetThumbnails();
@@ -244,6 +294,7 @@ function initTopLevelControls() {
   // Gradient toggle
   renderGradientPresets();
   document.getElementById('toggle-gradient').addEventListener('change', function(e) {
+    if (typeof pushUndo === 'function') pushUndo();
     var gradientControls = document.getElementById('gradient-controls');
     gradientControls.classList.toggle('hidden', !e.target.checked);
     if (e.target.checked) {
@@ -270,15 +321,47 @@ function initTopLevelControls() {
         });
         refreshSheetThumbnails();
       } else {
-        currentDesign.gradient = null;
-        currentDesign.templateDraw = null;
+        var target = getActiveDesign();
+        target.gradient = null;
+        target.templateDraw = null;
         clearGradientPresetHighlight();
-        handleBackgroundColorChange(currentDesign.backgroundColor);
+        handleBackgroundColorChange(target.backgroundColor);
       }
     }
   });
 
+  // Gradient color2 swatches
+  var gradSwatchContainer = document.getElementById('gradient-color2-swatches');
+  CONFIG.COLOR_PALETTE.forEach(function(color) {
+    var swatch = document.createElement('div');
+    swatch.className = 'color-swatch';
+    swatch.style.backgroundColor = color;
+    swatch.dataset.color = color;
+
+    if (color === '#FFFFFF') {
+      swatch.style.borderColor = '#ccc';
+    }
+
+    swatch.addEventListener('click', function() {
+      if (typeof pushUndo === 'function') pushUndo('gradient-color2');
+      clearGradientPresetHighlight();
+      document.getElementById('bg-gradient-color2').value = color;
+      if (document.getElementById('toggle-gradient').checked) {
+        if (shouldApplyBackgroundToAllButtons()) {
+          applyBackgroundSettingsToAllButtons();
+        } else if (currentMode === 'sheet' && selectedSlots.length > 0) {
+          applyGradientOverrideToSelectedSlots();
+        } else {
+          applyGradientFromUI();
+        }
+      }
+    });
+
+    gradSwatchContainer.appendChild(swatch);
+  });
+
   document.getElementById('bg-gradient-color2').addEventListener('input', function() {
+    if (typeof pushUndo === 'function') pushUndo('gradient-color2');
     if (document.getElementById('toggle-gradient').checked) {
       clearGradientPresetHighlight();
       if (shouldApplyBackgroundToAllButtons()) {
@@ -292,6 +375,7 @@ function initTopLevelControls() {
   });
 
   document.getElementById('gradient-direction').addEventListener('change', function() {
+    if (typeof pushUndo === 'function') pushUndo();
     if (document.getElementById('toggle-gradient').checked) {
       if (shouldApplyBackgroundToAllButtons()) {
         applyBackgroundSettingsToAllButtons();
@@ -303,10 +387,11 @@ function initTopLevelControls() {
         return;
       }
       
-      if (currentDesign.gradient && currentDesign.gradient.stops) {
+      var activeD = getActiveDesign();
+      if (activeD.gradient && activeD.gradient.stops) {
         var direction = document.getElementById('gradient-direction').value;
-        currentDesign.gradient.direction = direction;
-        currentDesign.templateDraw = buildGradientDrawFunction(currentDesign.gradient);
+        activeD.gradient.direction = direction;
+        activeD.templateDraw = buildGradientDrawFunction(activeD.gradient);
         renderDesignCanvas();
         if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
           refreshSheetThumbnails();
@@ -317,12 +402,32 @@ function initTopLevelControls() {
     }
   });
 
+  // Undo/redo buttons and keyboard shortcuts
+  var undoBtn = document.getElementById('btn-undo');
+  var redoBtn = document.getElementById('btn-redo');
+  if (undoBtn) undoBtn.addEventListener('click', function() { undo(); });
+  if (redoBtn) redoBtn.addEventListener('click', function() { redo(); });
+  document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') {
+      e.preventDefault();
+      undo();
+    } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z') {
+      e.preventDefault();
+      redo();
+    } else if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+      e.preventDefault();
+      redo();
+    }
+  });
+
   // Zoom controls
   initZoomControls();
 
   // Reset button
   document.getElementById('btn-reset').addEventListener('click', function() {
     if (!confirm('Reset to defaults? This will clear the current design and all saved designs from browser storage.')) return;
+    if (typeof pushUndo === 'function') pushUndo();
     clearAllStorage();
     resetDesignToDefaults();
     sheetSlots = [];
@@ -456,6 +561,14 @@ function applyBackgroundSettingsToAllButtons() {
     currentDesign.templateDraw = null;
   }
 
+  // Sync to slot edit design so exiting slot edit won't create a stale override
+  if (_slotEditDesign) {
+    _slotEditDesign.backgroundColor = currentDesign.backgroundColor;
+    _slotEditDesign.templateId = currentDesign.templateId;
+    _slotEditDesign.gradient = currentDesign.gradient;
+    _slotEditDesign.templateDraw = currentDesign.templateDraw;
+  }
+
   clearBackgroundOverridesForAllSlots();
   refreshAfterGlobalSectionApply();
 }
@@ -463,6 +576,11 @@ function applyBackgroundSettingsToAllButtons() {
 function applyBrandTextSettingsToAllButtons() {
   currentDesign.libraryInfoText = document.getElementById('library-info-input').value;
   currentDesign.libraryInfoColor = document.getElementById('library-info-color').value;
+  // Sync to slot edit design so exiting slot edit won't create a stale override
+  if (_slotEditDesign) {
+    _slotEditDesign.libraryInfoText = currentDesign.libraryInfoText;
+    _slotEditDesign.libraryInfoColor = currentDesign.libraryInfoColor;
+  }
   clearBrandTextOverridesForAllSlots();
   refreshAfterGlobalSectionApply();
 }
@@ -479,16 +597,17 @@ function applyGradientFromUI() {
     preserveBackgroundOnCustomSlots();
   }
 
-  currentDesign.gradient = {
+  var target = getActiveDesign();
+  target.gradient = {
     color1: color1,
     color2: color2,
-    stops: null,  
+    stops: null,
     direction: direction,
     preset: null
   };
 
-  currentDesign.templateDraw = buildGradientDrawFunction(currentDesign.gradient);
-  currentDesign.templateId = null;
+  target.templateDraw = buildGradientDrawFunction(target.gradient);
+  target.templateId = null;
   renderDesignCanvas();
   if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
     refreshSheetThumbnails();
@@ -531,6 +650,7 @@ function applyGradientOverrideToSelectedSlots() {
 function applyGradientPreset(presetName) {
   var preset = GRADIENT_PRESETS[presetName];
   if (!preset) return;
+  if (typeof pushUndo === 'function') pushUndo();
 
   var direction = document.getElementById('gradient-direction').value;
 
@@ -555,6 +675,13 @@ function applyGradientPreset(presetName) {
     currentDesign.backgroundColor = grad.color1;
     currentDesign.templateDraw = buildGradientDrawFunction(currentDesign.gradient);
     currentDesign.templateId = null;
+    // Sync to slot edit design so exiting slot edit won't create a stale override
+    if (_slotEditDesign) {
+      _slotEditDesign.backgroundColor = currentDesign.backgroundColor;
+      _slotEditDesign.templateId = currentDesign.templateId;
+      _slotEditDesign.gradient = currentDesign.gradient;
+      _slotEditDesign.templateDraw = currentDesign.templateDraw;
+    }
     clearBackgroundOverridesForAllSlots();
     refreshAfterGlobalSectionApply();
   } else if (currentMode === 'sheet' && selectedSlots.length > 0) {
@@ -563,9 +690,10 @@ function applyGradientPreset(presetName) {
     if (currentMode === 'sheet') {
       preserveBackgroundOnCustomSlots();
     }
-    currentDesign.gradient = grad;
-    currentDesign.templateDraw = buildGradientDrawFunction(currentDesign.gradient);
-    currentDesign.templateId = null;
+    var target = getActiveDesign();
+    target.gradient = grad;
+    target.templateDraw = buildGradientDrawFunction(target.gradient);
+    target.templateId = null;
     renderDesignCanvas();
     if (typeof currentMode !== 'undefined' && currentMode === 'sheet' && typeof refreshSheetThumbnails === 'function') {
       refreshSheetThumbnails();
@@ -862,6 +990,10 @@ function computeFitToScreenZoom() {
 }
 
 function resetDesignToDefaults() {
+  // Clear slot edit state if active
+  _slotEditDesign = null;
+  _editingSlotIndex = null;
+
   currentDesign.templateId = 'blank';
   currentDesign.backgroundColor = CONFIG.DEFAULTS.backgroundColor;
   currentDesign.templateDraw = null;

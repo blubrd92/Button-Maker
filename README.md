@@ -29,6 +29,7 @@ The app supports nine button sizes from **1"** to **3"**, including the **2.375"
 - Local autosave / session recovery
 - PDF export for US Letter print sheets
 - Zoom controls for both design and sheet views
+- Undo/redo with Ctrl+Z / Ctrl+Y (or toolbar buttons)
 - Toast notifications for load/save feedback
 
 ## Supported Layouts
@@ -79,6 +80,7 @@ Button-Maker/
 │   ├── storage.js
 │   ├── pdf-export.js
 │   ├── sheet-mode.js
+│   ├── undo.js
 │   ├── app.js
 │   └── templates.js
 ├── lib/

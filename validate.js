@@ -171,6 +171,7 @@ const expectedOrder = [
   'js/storage.js',
   'js/pdf-export.js',
   'js/sheet-mode.js',
+  'js/undo.js',
   'js/app.js'
 ];
 
@@ -233,6 +234,7 @@ const criticalGlobals = {
   'js/storage.js': ['initStorage', 'serializeDesign', 'deserializeDesign', 'autoSaveState', 'autoRestoreState'],
   'js/pdf-export.js': ['generatePDF', 'initPDFExport', 'cloneDesignForRender', 'applyOverridesToDesign'],
   'js/sheet-mode.js': ['initSheetMode', 'renderSheetView', 'getSheetSlots', 'setSheetSlots', 'getSlotOverrides', 'setSlotOverrides', 'refreshSheetThumbnails'],
+  'js/undo.js': ['pushUndo', 'undo', 'redo', 'clearUndoHistory'],
   'js/app.js': ['initApp', 'showNotification', 'buildGradientDrawFunction']
 };
 
