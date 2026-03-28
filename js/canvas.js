@@ -259,8 +259,8 @@ function renderButtonDesign(ctx, cx, cy, scale, design, options = {}) {
     // Inset slightly to prevent clipping against the absolute edge of the canvas
     ctx.arc(cx, cy, cutRadius - (options.isPrint ? 2 : 0.5), 0, Math.PI * 2);
     ctx.strokeStyle = '#000000';
-    // 4 pixels at 300 DPI is a clean, highly visible line
-    ctx.lineWidth = options.isPrint ? 4 : 1;
+    // ~1/75 inch line width for print, scales with DPI
+    ctx.lineWidth = options.isPrint ? Math.round(CONFIG.DPI / 75) : 1;
     ctx.stroke();
   }
 

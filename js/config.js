@@ -7,7 +7,7 @@
 const CONFIG = {
 
   // Print resolution
-  DPI: 300,             
+  DPI: 600,             
   SCREEN_DPI: 96,       
 
   // Canvas display settings

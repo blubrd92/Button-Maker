@@ -6,7 +6,7 @@
  * Responsibilities:
  * - Tiling button designs onto US Letter pages
  * - Drawing cut line guides (toggleable)
- * - Rendering all design elements at 300 DPI for print accuracy
+ * - Rendering all design elements at print DPI for accuracy
  *
  * Depends on:
  * - config.js (button dimensions, layout constants, DPI, PDF settings)
@@ -55,7 +55,7 @@ function generatePDF(options) {
   var totalButtons = layout.cols * layout.rows;
   var buttonDesigns = getButtonDesignsForExport(totalButtons);
 
-  // Each button rendered at 300 DPI as an offscreen canvas image
+  // Each button rendered at CONFIG.DPI as an offscreen canvas image
   var printPixels = Math.ceil(btnSize.cutDiameter * CONFIG.DPI);
 
   try {
