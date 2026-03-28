@@ -62,7 +62,8 @@ function generatePDF(options) {
     var doc = new jsPDFConstructor({
       orientation: 'portrait',
       unit: 'in',
-      format: 'letter'
+      format: 'letter',
+      compress: CONFIG.PDF.compress
     });
 
     for (var row = 0; row < layout.rows; row++) {
@@ -79,6 +80,12 @@ function generatePDF(options) {
         var printCx = printPixels / 2;
         var printCy = printPixels / 2;
 
+        // Fill white background for JPEG (no transparency support)
+        if ((CONFIG.PDF.imageFormat || 'JPEG') === 'JPEG') {
+          offCtx.fillStyle = '#ffffff';
+          offCtx.fillRect(0, 0, printPixels, printPixels);
+        }
+
         renderButtonDesign(offCtx, printCx, printCy, printScale, design, {
           showCutGuide: showCutGuides,
           isPrint: true
@@ -87,8 +94,12 @@ function generatePDF(options) {
         var cellX = CONFIG.PAGE.margin + columnInset + col * (btnSize.cutDiameter + columnGutter);
         var cellY = CONFIG.PAGE.margin + rowInset + row * (btnSize.cutDiameter + rowGutter);
 
-        var imgData = offCanvas.toDataURL('image/png');
-        doc.addImage(imgData, 'PNG', cellX, cellY, btnSize.cutDiameter, btnSize.cutDiameter);
+        var imgFormat = CONFIG.PDF.imageFormat || 'JPEG';
+        var imgMime = imgFormat === 'JPEG' ? 'image/jpeg' : 'image/png';
+        var imgData = imgFormat === 'JPEG'
+          ? offCanvas.toDataURL(imgMime, CONFIG.PDF.imageQuality || 0.92)
+          : offCanvas.toDataURL(imgMime);
+        doc.addImage(imgData, imgFormat, cellX, cellY, btnSize.cutDiameter, btnSize.cutDiameter);
       }
     }
 
