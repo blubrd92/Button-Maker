@@ -353,7 +353,7 @@ function handleImageUpload(file) {
     var img = new Image();
 
     img.onload = function() {
-      var MAX_SIZE = 1200;
+      var MAX_SIZE = 1600;
       var finalDataUrl = rawDataUrl;
       var w = img.naturalWidth;
       var h = img.naturalHeight;
