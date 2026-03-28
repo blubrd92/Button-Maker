@@ -606,6 +606,16 @@ function renderSheetView() {
           e.stopPropagation();
           editSlotInDesignMode(idx);
         });
+        cell.addEventListener('dragover', function(e) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'copy';
+        });
+        cell.addEventListener('drop', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var file = getImageFileFromDrop(e);
+          if (file) handleSheetCellImageDrop(file, idx);
+        });
       })(slotIndex);
 
       grid.appendChild(cell);
