@@ -121,13 +121,13 @@
           },
         },
         {
-          target: '#toggle-gradient',
+          target: '#gradient-toggle-row',
           text: "Enable gradients for a more dynamic look. Choose a second color, pick a preset, or set the gradient direction.",
           prepare: function() {
             ensureSidebarOpen();
             scrollSidebarTo('background-section');
             // Scroll a bit further so the gradient toggle is visible
-            var el = document.getElementById('toggle-gradient');
+            var el = document.getElementById('gradient-toggle-row');
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           },
         },
@@ -140,11 +140,11 @@
           },
         },
         {
-          target: '#apply-background-to-all',
+          target: '#apply-bg-row',
           text: "Check 'Apply to all' to push your background or brand text changes to every button on the sheet at once.",
           prepare: function() {
             ensureSidebarOpen();
-            var el = document.getElementById('apply-background-to-all');
+            var el = document.getElementById('apply-bg-row');
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           },
         },
