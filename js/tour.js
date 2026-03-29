@@ -198,7 +198,7 @@
         },
         {
           target: '#sheet-view',
-          text: "This is your button sheet, exactly how it will print. Each circle is one button. Click any button to select it, or Shift-click to select a range. I've customized each row with a different design \u2014 like Dragon Balls with 1 to 5 stars!",
+          text: "This is your button sheet, exactly how it will print. Each circle is one button. Click any button to select it, or Shift-click to select a range. I've customized each row with a different number of stars to show how per-button overrides work.",
           padding: 4,
           prepare: function() {
             ensureMode('sheet');
