@@ -214,11 +214,29 @@
           },
         },
         {
+          target: '#sheet-controls',
+          text: "When you select buttons, this toolbar appears with handy actions: Edit a button's design, Copy and Paste between buttons, Apply to Row or Column, Reset to Main, and more.",
+          padding: 6,
+          prepare: function() {
+            ensureMode('sheet');
+            // Select a button so the toolbar buttons become visible
+            if (typeof selectedSlots !== 'undefined' && typeof updateSheetSelectionUI === 'function') {
+              selectedSlots.length = 0;
+              selectedSlots.push(0);
+              updateSheetSelectionUI();
+              if (typeof updateSheetOverridePanel === 'function') updateSheetOverridePanel();
+            }
+          },
+        },
+        {
           target: '#btn-design-mode',
           text: "Switch back to Design mode to edit the Main Design. Any changes there automatically update all non-customized buttons on the sheet.",
           prepare: function() {
             ensureSidebarOpen();
             scrollSidebarTo('general-section');
+            // Clear sheet selection before switching back
+            if (typeof selectedSlots !== 'undefined') selectedSlots.length = 0;
+            if (typeof updateSheetSelectionUI === 'function') updateSheetSelectionUI();
             setTimeout(function() { ensureMode('design'); }, 400);
           },
         },
