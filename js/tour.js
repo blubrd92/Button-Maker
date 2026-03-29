@@ -37,7 +37,7 @@
       steps: [
         {
           target: '#design-canvas-wrapper',
-          text: "Welcome to Button Maker! This tool helps you design and print sheets of pinback buttons. Let me show you around.",
+          text: "Welcome to Button Maker! This tool helps you design and print sheets of pinback buttons. Let me show you around. If you have a design loaded, don't worry, it will be saved and restored when the tour ends.",
           padding: 4,
         },
         {
@@ -105,11 +105,20 @@
       steps: [
         {
           target: '#image-section',
-          text: "Upload an image to place on your button. Once uploaded, you can drag it to reposition and use the scale slider to resize.",
+          text: "Upload an image to place on your button. Once uploaded, you can drag it to reposition and use the scale slider to resize. Let me add a sample image so you can see how it works.",
           prepare: function() {
             ensureSidebarOpen();
             ensureMode('design');
             scrollSidebarTo('image-section');
+            setTimeout(function() { loadDemoImage(); }, 500);
+          },
+        },
+        {
+          target: '#design-canvas-wrapper',
+          text: "The image fills the button face automatically. You can scale it up with the slider and drag it around to reposition.",
+          padding: 4,
+          prepare: function() {
+            ensureMode('design');
           },
         },
         {
@@ -196,7 +205,7 @@
         },
         {
           target: '#sheet-view',
-          text: "Selected buttons can be customized individually. Change their background, image, or brand text without affecting the others. A blue dot marks customized buttons.",
+          text: "Selected buttons can be customized individually. Change their background, image, or brand text without affecting the others. A purple dot marks customized buttons.",
           padding: 4,
           prepare: function() {
             ensureMode('sheet');
@@ -255,6 +264,8 @@
   var preTourMode = null;
   var preTourSidebarCollapsed = null;
   var preTourDesignSnapshot = null;
+  var preTourUndoStack = null;
+  var preTourRedoStack = null;
 
   // DOM refs (created once)
   var modalOverlay = null;
@@ -284,6 +295,28 @@
       var sheetBtn = document.getElementById('btn-sheet-mode');
       if (sheetBtn) sheetBtn.click();
     }
+  }
+
+  // Simple star SVG used as a demo image during the tour
+  var DEMO_IMAGE_SVG =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">' +
+      '<circle cx="200" cy="200" r="200" fill="#FFD54F"/>' +
+      '<polygon points="200,60 234,150 330,150 254,210 280,300 200,245 120,300 146,210 70,150 166,150" fill="#FF7043"/>' +
+    '</svg>';
+
+  function loadDemoImage() {
+    var dataUrl = 'data:image/svg+xml;base64,' + btoa(DEMO_IMAGE_SVG);
+    var img = new Image();
+    img.onload = function() {
+      if (typeof buildImageElement === 'function') {
+        var imageElement = buildImageElement(dataUrl, img);
+        currentDesign.imageElements = [imageElement];
+        if (typeof renderDesignCanvas === 'function') renderDesignCanvas();
+        // Show scale controls
+        if (typeof showImageControls === 'function') showImageControls(0);
+      }
+    };
+    img.src = dataUrl;
   }
 
   function setDemoBackground(color) {
@@ -512,6 +545,13 @@
       preTourDesignSnapshot = serializeDesign(currentDesign);
     }
 
+    // Save and clear undo/redo stacks so demo changes don't pollute history
+    if (typeof _undoStack !== 'undefined') {
+      preTourUndoStack = _undoStack.slice();
+      preTourRedoStack = _redoStack.slice();
+      if (typeof clearUndoHistory === 'function') clearUndoHistory();
+    }
+
     // Mark body as tour-active (enables blocker)
     document.body.classList.add('tour-active');
 
@@ -637,6 +677,15 @@
     if (preTourDesignSnapshot && typeof deserializeDesign === 'function') {
       deserializeDesign(preTourDesignSnapshot);
       preTourDesignSnapshot = null;
+    }
+
+    // Restore undo/redo stacks
+    if (preTourUndoStack !== null && typeof _undoStack !== 'undefined') {
+      _undoStack = preTourUndoStack;
+      _redoStack = preTourRedoStack;
+      preTourUndoStack = null;
+      preTourRedoStack = null;
+      if (typeof _updateUndoRedoButtons === 'function') _updateUndoRedoButtons();
     }
 
     // Restore pre-tour mode
