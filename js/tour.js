@@ -44,7 +44,6 @@
           target: '#left-sidebar',
           text: "This is your control panel. It has everything you need: button size, image upload, background colors, and brand text.",
           prepare: function() { ensureSidebarOpen(); },
-          padding: 0,
         },
         {
           target: '.header-actions',
@@ -74,7 +73,7 @@
         },
         {
           target: '#mode-toggle',
-          text: "Switch between Design and Sheet modes. Design mode edits the master button that sets the default look. Sheet mode shows the full print layout.",
+          text: "Switch between Design and Sheet modes. Design mode edits the default design. Sheet mode shows the full print layout.",
           prepare: function() {
             ensureSidebarOpen();
             scrollSidebarTo('general-section');
@@ -82,7 +81,7 @@
         },
         {
           target: '#quick-ref-link',
-          text: "Click Quick Reference to see cut diameters for every button size — handy when setting up your button press.",
+          text: "Click Quick Reference to see cut diameters for every button size. Handy when setting up your button press.",
           prepare: function() {
             ensureSidebarOpen();
             scrollSidebarTo('general-section');
@@ -112,7 +111,6 @@
             ensureMode('design');
             scrollSidebarTo('image-section');
           },
-          padding: 0,
         },
         {
           target: '#background-section',
@@ -121,7 +119,6 @@
             ensureSidebarOpen();
             scrollSidebarTo('background-section');
           },
-          padding: 0,
         },
         {
           target: '#toggle-gradient',
@@ -136,12 +133,11 @@
         },
         {
           target: '#brand-text-section',
-          text: "Add curved text along the bottom edge of your button — perfect for a library name, event, or slogan.",
+          text: "Add curved text along the bottom edge of your button. Perfect for a library name, event, or slogan.",
           prepare: function() {
             ensureSidebarOpen();
             scrollSidebarTo('brand-text-section');
           },
-          padding: 0,
         },
         {
           target: '#apply-background-to-all',
@@ -172,7 +168,7 @@
         },
         {
           target: '#sheet-view',
-          text: "This is your button sheet — exactly how it will print. Each circle is one button. Click any button to select it, or Shift-click to select a range.",
+          text: "This is your button sheet, exactly how it will print. Each circle is one button. Click any button to select it, or Shift-click to select a range.",
           padding: 4,
           prepare: function() {
             ensureMode('sheet');
@@ -180,7 +176,7 @@
         },
         {
           target: '#sheet-view',
-          text: "Selected buttons can be customized individually — change their background, image, or brand text without affecting the others. A blue dot marks customized buttons.",
+          text: "Selected buttons can be customized individually. Change their background, image, or brand text without affecting the others. A blue dot marks customized buttons.",
           padding: 4,
           prepare: function() {
             ensureMode('sheet');
@@ -188,7 +184,7 @@
         },
         {
           target: '#btn-design-mode',
-          text: "Switch back to Design mode to edit the master button. Any changes there automatically update all non-customized buttons on the sheet.",
+          text: "Switch back to Design mode to edit the default design. Any changes there automatically update all non-customized buttons on the sheet.",
           prepare: function() {
             ensureSidebarOpen();
             scrollSidebarTo('general-section');
@@ -528,7 +524,7 @@
       spotlight.classList.remove('visible');
       panel.classList.remove('visible');
 
-      // Blocker is always active (on-rails) — no interactive or hoverable steps
+      // Blocker is always active (on-rails), no interactive or hoverable steps
       blocker.classList.remove('interactive');
       blocker.classList.remove('hoverable');
 
