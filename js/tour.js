@@ -114,10 +114,21 @@
         },
         {
           target: '#background-section',
-          text: "Pick a background color from the palette, or use the custom color picker. This fills the entire button face behind your image.",
+          text: "Pick a background color from the palette, or use the custom color picker. This fills the entire button face behind your image. Watch the canvas as I set a color for you.",
           prepare: function() {
             ensureSidebarOpen();
+            ensureMode('design');
             scrollSidebarTo('background-section');
+            setTimeout(function() { setDemoBackground('#e53935'); }, 500);
+          },
+        },
+        {
+          target: '#design-canvas-wrapper',
+          text: "See how the background fills the button? You can pick any color you like. Let me try another one.",
+          padding: 4,
+          prepare: function() {
+            ensureMode('design');
+            setTimeout(function() { setDemoBackground('#5c6bc0'); }, 500);
           },
         },
         {
@@ -126,17 +137,26 @@
           prepare: function() {
             ensureSidebarOpen();
             scrollSidebarTo('background-section');
-            // Scroll a bit further so the gradient toggle is visible
             var el = document.getElementById('gradient-toggle-row');
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           },
         },
         {
           target: '#brand-text-section',
-          text: "Add curved text along the bottom edge of your button. Perfect for a library name, event, or slogan.",
+          text: "Add curved text along the bottom edge of your button. Perfect for a library name, event, or slogan. Let me add some example text.",
           prepare: function() {
             ensureSidebarOpen();
+            ensureMode('design');
             scrollSidebarTo('brand-text-section');
+            setTimeout(function() { setDemoBrandText('Your Library', '#FFFFFF'); }, 500);
+          },
+        },
+        {
+          target: '#design-canvas-wrapper',
+          text: "There it is! The curved text appears along the bottom edge. You can change the text and color anytime.",
+          padding: 4,
+          prepare: function() {
+            ensureMode('design');
           },
         },
         {
@@ -234,6 +254,7 @@
   // Pre-tour state for restoration
   var preTourMode = null;
   var preTourSidebarCollapsed = null;
+  var preTourDesignSnapshot = null;
 
   // DOM refs (created once)
   var modalOverlay = null;
@@ -263,6 +284,28 @@
       var sheetBtn = document.getElementById('btn-sheet-mode');
       if (sheetBtn) sheetBtn.click();
     }
+  }
+
+  function setDemoBackground(color) {
+    if (typeof setBackgroundColor === 'function') {
+      setBackgroundColor(color);
+    }
+    document.getElementById('bg-color-picker').value = color;
+    if (typeof updateBackgroundSwatches === 'function') {
+      updateBackgroundSwatches(color);
+    }
+  }
+
+  function setDemoBrandText(text, color) {
+    var input = document.getElementById('library-info-input');
+    if (input) input.value = text;
+    currentDesign.libraryInfoText = text;
+    if (color) {
+      var colorInput = document.getElementById('library-info-color');
+      if (colorInput) colorInput.value = color;
+      currentDesign.libraryInfoColor = color;
+    }
+    if (typeof renderDesignCanvas === 'function') renderDesignCanvas();
   }
 
   function scrollSidebarTo(sectionId) {
@@ -464,6 +507,11 @@
     var sidebar = document.getElementById('left-sidebar');
     preTourSidebarCollapsed = sidebar ? sidebar.classList.contains('collapsed') : false;
 
+    // Snapshot the current design so demo changes can be reverted
+    if (typeof serializeDesign === 'function') {
+      preTourDesignSnapshot = serializeDesign(currentDesign);
+    }
+
     // Mark body as tour-active (enables blocker)
     document.body.classList.add('tour-active');
 
@@ -584,6 +632,12 @@
     // Hide spotlight and panel
     spotlight.classList.remove('visible');
     panel.classList.remove('visible');
+
+    // Restore the design from snapshot (reverts any demo changes)
+    if (preTourDesignSnapshot && typeof deserializeDesign === 'function') {
+      deserializeDesign(preTourDesignSnapshot);
+      preTourDesignSnapshot = null;
+    }
 
     // Restore pre-tour mode
     if (preTourMode) {
