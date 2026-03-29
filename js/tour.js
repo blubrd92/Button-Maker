@@ -364,9 +364,15 @@
                 overrides = overrides || {};
                 overrides.imageElements = [imageElement];
                 overrides.backgroundColor = rowColors[r] || '#FFC107';
-                overrides.gradient = null;
+                var darkerColors = ['#E65100', '#EF6C00', '#F57C00', '#FF8F00', '#FFA000'];
+                overrides.gradient = {
+                  color1: rowColors[r] || '#FFC107',
+                  color2: darkerColors[r] || '#E65100',
+                  stops: null,
+                  direction: 'top-bottom',
+                  preset: null
+                };
                 overrides.templateId = null;
-                overrides.templateDraw = null;
                 setSlotOverrides(slotIndex, overrides);
               }
             }
