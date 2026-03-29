@@ -73,7 +73,7 @@
         },
         {
           target: '#mode-toggle',
-          text: "Switch between Design and Sheet modes. Design mode edits the default design. Sheet mode shows the full print layout.",
+          text: "Switch between Design and Sheet modes. Design mode edits the Main Design. Sheet mode shows the full print layout.",
           prepare: function() {
             ensureSidebarOpen();
             scrollSidebarTo('general-section');
@@ -142,12 +142,13 @@
         },
         {
           target: '#gradient-toggle-row',
-          text: "Enable gradients for a more dynamic look. Choose a second color, pick a preset, or set the gradient direction.",
+          text: "Enable gradients for a more dynamic look. I've turned one on so you can see. Choose a second color, pick a preset, or set the gradient direction.",
           prepare: function() {
             ensureSidebarOpen();
             scrollSidebarTo('background-section');
             var el = document.getElementById('gradient-toggle-row');
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(function() { setDemoGradient('#FF7043', '#e53935', 'top-bottom'); }, 500);
           },
         },
         {
@@ -157,7 +158,7 @@
             ensureSidebarOpen();
             ensureMode('design');
             scrollSidebarTo('brand-text-section');
-            setTimeout(function() { setDemoBrandText('Your Library', '#FFFFFF'); }, 500);
+            setTimeout(function() { setDemoBrandText("Your Org's Name", '#FFFFFF'); }, 500);
           },
         },
         {
@@ -197,15 +198,16 @@
         },
         {
           target: '#sheet-view',
-          text: "This is your button sheet, exactly how it will print. Each circle is one button. Click any button to select it, or Shift-click to select a range.",
+          text: "This is your button sheet, exactly how it will print. Each circle is one button. Click any button to select it, or Shift-click to select a range. I've customized each row with a different design \u2014 like Dragon Balls with 1 to 5 stars!",
           padding: 4,
           prepare: function() {
             ensureMode('sheet');
+            setTimeout(function() { loadDemoRowImages(); }, 400);
           },
         },
         {
           target: '#sheet-view',
-          text: "Selected buttons can be customized individually. Change their background, image, or brand text without affecting the others. A purple dot marks customized buttons.",
+          text: "See the different star counts and colors? Each button can be customized individually. Change their background, image, or brand text without affecting the others. A purple dot marks customized buttons.",
           padding: 4,
           prepare: function() {
             ensureMode('sheet');
@@ -213,7 +215,7 @@
         },
         {
           target: '#btn-design-mode',
-          text: "Switch back to Design mode to edit the default design. Any changes there automatically update all non-customized buttons on the sheet.",
+          text: "Switch back to Design mode to edit the Main Design. Any changes there automatically update all non-customized buttons on the sheet.",
           prepare: function() {
             ensureSidebarOpen();
             scrollSidebarTo('general-section');
@@ -297,12 +299,87 @@
     }
   }
 
-  // Simple star SVG used as a demo image during the tour
+  // Simple star SVG used as a demo image during the tour (single star)
   var DEMO_IMAGE_SVG =
     '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">' +
       '<circle cx="200" cy="200" r="200" fill="#FFD54F"/>' +
       '<polygon points="200,60 234,150 330,150 254,210 280,300 200,245 120,300 146,210 70,150 166,150" fill="#FF7043"/>' +
     '</svg>';
+
+  // Generate a star polygon SVG string centered at (cx, cy) with given scale
+  function makeStarPolygon(cx, cy, scale) {
+    var outerR = 60 * scale;
+    var innerR = 24 * scale;
+    var points = [];
+    for (var i = 0; i < 10; i++) {
+      var angle = (Math.PI / 2) + (i * Math.PI / 5);
+      var r = (i % 2 === 0) ? outerR : innerR;
+      points.push((cx + r * Math.cos(angle)).toFixed(1) + ',' + (cy - r * Math.sin(angle)).toFixed(1));
+    }
+    return '<polygon points="' + points.join(' ') + '" fill="#FF7043"/>';
+  }
+
+  // Generate an SVG with `count` stars (1–5) arranged in a circle — Dragon Ball style
+  function generateStarSVG(count) {
+    var positions = {
+      1: [[200, 200]],
+      2: [[140, 200], [260, 200]],
+      3: [[200, 130], [130, 265], [270, 265]],
+      4: [[200, 120], [120, 210], [280, 210], [200, 300]],
+      5: [[200, 110], [120, 180], [280, 180], [145, 290], [255, 290]]
+    };
+    var starScale = count <= 2 ? 1.0 : (count <= 3 ? 0.8 : 0.65);
+    var pts = positions[count] || positions[1];
+    var stars = '';
+    for (var i = 0; i < pts.length; i++) {
+      stars += makeStarPolygon(pts[i][0], pts[i][1], starScale);
+    }
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">' +
+      '<circle cx="200" cy="200" r="200" fill="#FFD54F"/>' +
+      stars +
+      '</svg>';
+  }
+
+  // Load per-row Dragon Ball images into sheet slot overrides
+  function loadDemoRowImages() {
+    var layout = typeof getCurrentLayout === 'function' ? getCurrentLayout() : { cols: 4, rows: 5 };
+    var cols = layout.cols;
+    var rows = layout.rows;
+    var rowColors = ['#FF6F00', '#FF8F00', '#FFA000', '#FFB300', '#FFC107'];
+    var loaded = 0;
+    var totalRows = Math.min(rows, 5);
+
+    for (var row = 0; row < totalRows; row++) {
+      (function(r) {
+        var svg = generateStarSVG(r + 1);
+        var dataUrl = 'data:image/svg+xml;base64,' + btoa(svg);
+        var img = new Image();
+        img.onload = function() {
+          if (typeof buildImageElement === 'function') {
+            var imageElement = buildImageElement(dataUrl, img);
+            for (var c = 0; c < cols; c++) {
+              var slotIndex = r * cols + c;
+              if (typeof setSlotOverrides === 'function') {
+                var overrides = typeof getSlotOverrides === 'function' ? getSlotOverrides(slotIndex) : {};
+                overrides = overrides || {};
+                overrides.imageElements = [imageElement];
+                overrides.backgroundColor = rowColors[r] || '#FFC107';
+                overrides.gradient = null;
+                overrides.templateId = null;
+                overrides.templateDraw = null;
+                setSlotOverrides(slotIndex, overrides);
+              }
+            }
+          }
+          loaded++;
+          if (loaded === totalRows && typeof refreshSheetThumbnails === 'function') {
+            refreshSheetThumbnails();
+          }
+        };
+        img.src = dataUrl;
+      })(row);
+    }
+  }
 
   function loadDemoImage() {
     var dataUrl = 'data:image/svg+xml;base64,' + btoa(DEMO_IMAGE_SVG);
@@ -327,6 +404,20 @@
     if (typeof updateBackgroundSwatches === 'function') {
       updateBackgroundSwatches(color);
     }
+  }
+
+  function setDemoGradient(color1, color2, direction) {
+    document.getElementById('toggle-gradient').checked = true;
+    document.getElementById('gradient-controls').classList.remove('hidden');
+    document.getElementById('bg-color-picker').value = color1;
+    document.getElementById('bg-gradient-color2').value = color2;
+    document.getElementById('gradient-direction').value = direction;
+    var target = typeof getActiveDesign === 'function' ? getActiveDesign() : currentDesign;
+    target.backgroundColor = color1;
+    target.gradient = { color1: color1, color2: color2, stops: null, direction: direction, preset: null };
+    target.templateDraw = buildGradientDrawFunction(target.gradient);
+    target.templateId = null;
+    if (typeof renderDesignCanvas === 'function') renderDesignCanvas();
   }
 
   function setDemoBrandText(text, color) {
@@ -545,6 +636,19 @@
       preTourDesignSnapshot = serializeDesign(currentDesign);
     }
 
+    // Persist snapshot to sessionStorage so a mid-tour page refresh
+    // doesn't lose the user's real design (beforeunload would autosave
+    // the demo state otherwise).
+    try {
+      var snapshot = {
+        design: preTourDesignSnapshot,
+        slots: typeof getSheetSlots === 'function' ? getSheetSlots() : [],
+        mode: preTourMode,
+        sidebarCollapsed: preTourSidebarCollapsed
+      };
+      sessionStorage.setItem('buttonmaker-tour-snapshot', JSON.stringify(snapshot));
+    } catch (e) { /* storage full or unavailable — non-critical */ }
+
     // Save and clear undo/redo stacks so demo changes don't pollute history
     if (typeof _undoStack !== 'undefined') {
       preTourUndoStack = _undoStack.slice();
@@ -679,6 +783,19 @@
       preTourDesignSnapshot = null;
     }
 
+    // Restore sheet slot overrides from the snapshot saved at tour start
+    try {
+      var saved = sessionStorage.getItem('buttonmaker-tour-snapshot');
+      if (saved) {
+        var snap = JSON.parse(saved);
+        if (snap.slots && typeof setSheetSlots === 'function') {
+          setSheetSlots(snap.slots);
+          if (typeof refreshSheetThumbnails === 'function') refreshSheetThumbnails();
+        }
+      }
+      sessionStorage.removeItem('buttonmaker-tour-snapshot');
+    } catch (e) { /* non-critical */ }
+
     // Restore undo/redo stacks
     if (preTourUndoStack !== null && typeof _undoStack !== 'undefined') {
       _undoStack = preTourUndoStack;
@@ -780,6 +897,30 @@
      INIT
      ---------------------------------------------------------------- */
   function init() {
+    // Recover from a mid-tour page refresh: if the user hit F5 while
+    // the tour was running, the in-memory snapshot was lost and the
+    // autosave captured demo state.  Restore the real design here.
+    try {
+      var saved = sessionStorage.getItem('buttonmaker-tour-snapshot');
+      if (saved) {
+        var snap = JSON.parse(saved);
+        sessionStorage.removeItem('buttonmaker-tour-snapshot');
+        // Delay to let the normal app init finish first
+        setTimeout(function() {
+          if (snap.design && typeof deserializeDesign === 'function') {
+            deserializeDesign(snap.design);
+          }
+          if (snap.slots && typeof setSheetSlots === 'function') {
+            setSheetSlots(snap.slots);
+            if (typeof refreshSheetThumbnails === 'function') refreshSheetThumbnails();
+          }
+          if (snap.mode && snap.mode !== 'design') {
+            ensureMode(snap.mode);
+          }
+        }, 500);
+      }
+    } catch (e) { /* non-critical */ }
+
     // Wire the header tour button
     var tourBtn = document.getElementById('tour-button');
     if (tourBtn) {
