@@ -37,7 +37,7 @@
       steps: [
         {
           target: '#design-canvas-wrapper',
-          text: "Welcome to Button Maker! This tool helps you design and print sheets of pinback buttons. Let me show you around. If you have a design loaded, don't worry, it will be saved and restored when the tour ends.",
+          text: "Welcome to Button Maker! This tool helps you design and print sheets of pinback buttons. Let me show you around. If you have a design loaded, don't worry, it will be saved and restored when the tour ends. Use the arrow buttons below to navigate through the tour.",
           padding: 4,
         },
         {
