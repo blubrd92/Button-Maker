@@ -6,7 +6,7 @@
  * Responsibilities:
  * - Tiling button designs onto US Letter pages
  * - Drawing cut line guides (toggleable)
- * - Rendering all design elements at 300 DPI for print accuracy
+ * - Rendering all design elements at print DPI for accuracy
  *
  * Depends on:
  * - config.js (button dimensions, layout constants, DPI, PDF settings)
@@ -55,14 +55,15 @@ function generatePDF(options) {
   var totalButtons = layout.cols * layout.rows;
   var buttonDesigns = getButtonDesignsForExport(totalButtons);
 
-  // Each button rendered at 300 DPI as an offscreen canvas image
+  // Each button rendered at CONFIG.DPI as an offscreen canvas image
   var printPixels = Math.ceil(btnSize.cutDiameter * CONFIG.DPI);
 
   try {
     var doc = new jsPDFConstructor({
       orientation: 'portrait',
       unit: 'in',
-      format: 'letter'
+      format: 'letter',
+      compress: CONFIG.PDF.compress
     });
 
     for (var row = 0; row < layout.rows; row++) {
@@ -79,6 +80,12 @@ function generatePDF(options) {
         var printCx = printPixels / 2;
         var printCy = printPixels / 2;
 
+        // Fill white background for JPEG (no transparency support)
+        if ((CONFIG.PDF.imageFormat || 'JPEG') === 'JPEG') {
+          offCtx.fillStyle = '#ffffff';
+          offCtx.fillRect(0, 0, printPixels, printPixels);
+        }
+
         renderButtonDesign(offCtx, printCx, printCy, printScale, design, {
           showCutGuide: showCutGuides,
           isPrint: true
@@ -87,8 +94,12 @@ function generatePDF(options) {
         var cellX = CONFIG.PAGE.margin + columnInset + col * (btnSize.cutDiameter + columnGutter);
         var cellY = CONFIG.PAGE.margin + rowInset + row * (btnSize.cutDiameter + rowGutter);
 
-        var imgData = offCanvas.toDataURL('image/png');
-        doc.addImage(imgData, 'PNG', cellX, cellY, btnSize.cutDiameter, btnSize.cutDiameter);
+        var imgFormat = CONFIG.PDF.imageFormat || 'JPEG';
+        var imgMime = imgFormat === 'JPEG' ? 'image/jpeg' : 'image/png';
+        var imgData = imgFormat === 'JPEG'
+          ? offCanvas.toDataURL(imgMime, CONFIG.PDF.imageQuality || 0.92)
+          : offCanvas.toDataURL(imgMime);
+        doc.addImage(imgData, imgFormat, cellX, cellY, btnSize.cutDiameter, btnSize.cutDiameter);
       }
     }
 

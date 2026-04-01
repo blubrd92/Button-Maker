@@ -172,6 +172,7 @@ const expectedOrder = [
   'js/pdf-export.js',
   'js/sheet-mode.js',
   'js/undo.js',
+  'js/tour.js',
   'js/app.js'
 ];
 

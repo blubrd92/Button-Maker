@@ -606,6 +606,16 @@ function renderSheetView() {
           e.stopPropagation();
           editSlotInDesignMode(idx);
         });
+        cell.addEventListener('dragover', function(e) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'copy';
+        });
+        cell.addEventListener('drop', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var file = getImageFileFromDrop(e);
+          if (file) handleSheetCellImageDrop(file, idx);
+        });
       })(slotIndex);
 
       grid.appendChild(cell);
@@ -1037,12 +1047,20 @@ function finishSlotEdit() {
     if (sizeEl) sizeEl.disabled = false;
     return;
   }
+
+  // Save reference to the edited design before clearing, so pushUndo
+  // captures the PRE-edit state for the first slot (not the in-progress
+  // edits). Without this, undo would restore the first slot to its
+  // already-edited state instead of reverting it.
+  var editedDesign = _slotEditDesign;
+  _slotEditDesign = null;
+
   if (typeof pushUndo === 'function') pushUndo();
 
   var slotIndex = _editingSlotIndex;
 
-  // Diff _slotEditDesign against currentDesign to compute sparse overrides
-  var overrides = _computeOverrides(currentDesign, _slotEditDesign);
+  // Diff the saved edited design against currentDesign to compute sparse overrides
+  var overrides = _computeOverrides(currentDesign, editedDesign);
 
   var selectionToRestore = [slotIndex];
 
@@ -1064,8 +1082,7 @@ function finishSlotEdit() {
   // Reset sidebar to main values
   syncSidebarToDesign(currentDesign);
 
-  // Clean up — clear the slot edit design
-  _slotEditDesign = null;
+  // Clean up
   _editingSlotIndex = null;
   selectedElement = null;
   hideImageControls();

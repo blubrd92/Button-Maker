@@ -344,7 +344,12 @@ function recalculateOverrideImageBaseDimensions() {
   }
 }
 
-function handleImageUpload(file) {
+/**
+ * Read and optionally downscale an image file, then pass the result to a callback.
+ * @param {File} file - Image file to process
+ * @param {function(string, Image)} callback - Called with (dataUrl, imgElement)
+ */
+function readAndScaleImageFile(file, callback) {
   if (!file) return;
 
   var reader = new FileReader();
@@ -353,8 +358,7 @@ function handleImageUpload(file) {
     var img = new Image();
 
     img.onload = function() {
-      var MAX_SIZE = 1200;
-      var finalDataUrl = rawDataUrl;
+      var MAX_SIZE = 1600;
       var w = img.naturalWidth;
       var h = img.naturalHeight;
 
@@ -370,15 +374,15 @@ function handleImageUpload(file) {
 
         var mimeType = file.type === 'image/jpeg' ? 'image/jpeg' : 'image/png';
         var quality = mimeType === 'image/jpeg' ? 0.9 : undefined;
-        finalDataUrl = canvas.toDataURL(mimeType, quality);
+        var finalDataUrl = canvas.toDataURL(mimeType, quality);
 
         var downscaledImg = new Image();
         downscaledImg.onload = function() {
-          processLoadedImage(finalDataUrl, downscaledImg);
+          callback(finalDataUrl, downscaledImg);
         };
         downscaledImg.src = finalDataUrl;
       } else {
-        processLoadedImage(finalDataUrl, img);
+        callback(rawDataUrl, img);
       }
     };
 
@@ -386,6 +390,10 @@ function handleImageUpload(file) {
   };
 
   reader.readAsDataURL(file);
+}
+
+function handleImageUpload(file) {
+  readAndScaleImageFile(file, processLoadedImage);
 }
 
 function preserveImageOnCustomSlots() {
@@ -596,4 +604,64 @@ function initImageTool() {
     if (display) display.textContent = val + '%';
     applyImageScale(val);
   });
+
+  // Drag-and-drop on design canvas
+  var canvas = document.getElementById('design-canvas');
+  canvas.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  });
+  canvas.addEventListener('drop', function(e) {
+    e.preventDefault();
+    var file = getImageFileFromDrop(e);
+    if (file) handleImageUpload(file);
+  });
+}
+
+/**
+ * Extract the first image file from a drop event, if any.
+ */
+function getImageFileFromDrop(e) {
+  var files = e.dataTransfer ? e.dataTransfer.files : null;
+  if (!files || files.length === 0) return null;
+  for (var i = 0; i < files.length; i++) {
+    if (files[i].type.match(/^image\//)) return files[i];
+  }
+  return null;
+}
+
+/**
+ * Handle an image file drop onto a sheet cell.
+ * If the slot is part of the current selection, apply to all selected slots.
+ * Otherwise, apply as a single-slot override.
+ */
+function handleSheetCellImageDrop(file, slotIndex) {
+  readAndScaleImageFile(file, function(dataUrl, img) {
+    applyDroppedImageToSlots(dataUrl, img, slotIndex);
+  });
+}
+
+function applyDroppedImageToSlots(dataUrl, img, slotIndex) {
+  if (typeof pushUndo === 'function') pushUndo();
+  var imageElement = buildImageElement(dataUrl, img);
+  var serialized = [serializeImageElement(imageElement)];
+
+  // If dropped slot is part of current selection, apply to all selected
+  if (typeof selectedSlots !== 'undefined' && selectedSlots.length > 0 && selectedSlots.indexOf(slotIndex) !== -1) {
+    applyOverrideToSelectedSlots('imageElements', serialized);
+    if (typeof showNotification === 'function') {
+      showNotification('Image applied to ' + selectedSlots.length + ' button(s).', 'success');
+    }
+  } else {
+    // Apply to just the dropped slot
+    var slot = sheetSlots[slotIndex];
+    if (slot) {
+      slot.overrides.imageElements = serialized;
+      if (typeof refreshSheetThumbnails === 'function') refreshSheetThumbnails();
+      if (typeof updateSheetSelectionUI === 'function') updateSheetSelectionUI();
+      if (typeof showNotification === 'function') {
+        showNotification('Image applied to button ' + (slotIndex + 1) + '.', 'success');
+      }
+    }
+  }
 }

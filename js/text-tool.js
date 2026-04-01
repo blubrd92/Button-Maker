@@ -307,7 +307,7 @@ function renderLibraryInfoTextWithDesign(ctx, cx, cy, safeRadius, scale, design,
 /**
  * Internal: render library info curved text along the bottom of the safe zone.
  *
- * For print rendering (isPrint=true), we render at 300 DPI internally
+ * For print rendering (isPrint=true), we render at print DPI internally
  * to keep the small text crisp. For screen, we render at canvas scale.
  *
  * @param {CanvasRenderingContext2D} ctx
