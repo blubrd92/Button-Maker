@@ -889,6 +889,7 @@ function removeMainDesignBanner() {
 }
 
 function enterSheetMode() {
+  currentMode = 'sheet';
   removeMainDesignBanner();
   document.getElementById('design-canvas-wrapper').classList.add('hidden');
   document.getElementById('sheet-view').classList.remove('hidden');
@@ -897,6 +898,7 @@ function enterSheetMode() {
 }
 
 function exitSheetMode() {
+  currentMode = 'design';
   document.getElementById('sheet-view').classList.add('hidden');
   document.getElementById('design-canvas-wrapper').classList.remove('hidden');
   selectedSlots = [];
