@@ -230,7 +230,7 @@
         },
         {
           target: '#btn-design-mode',
-          text: "Switch back to Design mode to edit the Main Design. Any changes there automatically update all non-customized buttons on the sheet.",
+          text: "Switch back to Design mode to edit the Main Design. You can also edit it from Sheet mode when no button is selected. Either way, changes to the Main Design automatically update all non-customized buttons on the sheet.",
           prepare: function() {
             ensureSidebarOpen();
             scrollSidebarTo('general-section');
