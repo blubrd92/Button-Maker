@@ -707,45 +707,45 @@
     var section = SECTIONS[currentSectionId];
     var step = section.steps[currentStepIndex];
 
-    // Run prepare if defined
+    // Hide spotlight/panel immediately so text doesn't flash before fade-out
+    spotlight.classList.remove('visible');
+    panel.classList.remove('visible');
+
+    // Run prepare if defined (mode switches, scrolls, etc.)
     if (step.prepare) step.prepare();
 
     // Small delay for DOM to settle after prepare
     setTimeout(function() {
       var target = step.target ? document.querySelector(step.target) : null;
 
-      // Panel content
-      var sectionLabel = panel.querySelector('.tour-panel-section');
-      var message = panel.querySelector('.tour-panel-message');
-      var counter = panel.querySelector('.tour-step-counter');
-      var prevBtn = panel.querySelector('.tour-prev-btn');
-      var nextBtn = panel.querySelector('.tour-next-btn');
-
-      sectionLabel.textContent = section.title;
-      message.textContent = step.text;
-
-      var gIdx = globalStepIndex();
-      var total = totalSteps();
-      counter.textContent = (gIdx + 1) + ' / ' + total;
-
-      prevBtn.disabled = (gIdx === 0);
-      nextBtn.textContent = (gIdx === total - 1) ? 'Finish' : 'Next';
-
       // Scroll target into view only if step didn't handle its own scrolling via prepare
       if (target && !step.prepare) {
         target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
       }
 
-      // Hide spotlight/panel during transition to avoid stale positions
-      spotlight.classList.remove('visible');
-      panel.classList.remove('visible');
-
       // Blocker is always active (on-rails), no interactive or hoverable steps
       blocker.classList.remove('interactive');
       blocker.classList.remove('hoverable');
 
-      // Wait for scroll to settle before positioning
+      // Wait for scroll to settle + panel fade-out, then update content and show
       setTimeout(function() {
+        // Update panel content (panel is now fully hidden)
+        var sectionLabel = panel.querySelector('.tour-panel-section');
+        var message = panel.querySelector('.tour-panel-message');
+        var counter = panel.querySelector('.tour-step-counter');
+        var prevBtn = panel.querySelector('.tour-prev-btn');
+        var nextBtn = panel.querySelector('.tour-next-btn');
+
+        sectionLabel.textContent = section.title;
+        message.textContent = step.text;
+
+        var gIdx = globalStepIndex();
+        var total = totalSteps();
+        counter.textContent = (gIdx + 1) + ' / ' + total;
+
+        prevBtn.disabled = (gIdx === 0);
+        nextBtn.textContent = (gIdx === total - 1) ? 'Finish' : 'Next';
+
         positionSpotlight(target, step.padding);
         positionPanel(target);
         spotlight.classList.add('visible');
