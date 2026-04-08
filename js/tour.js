@@ -375,8 +375,8 @@
     var layout = typeof getCurrentLayout === 'function' ? getCurrentLayout() : { cols: 4, rows: 5 };
     var cols = layout.cols;
     var rows = layout.rows;
-    var rowColors =   ['#F57C00', '#FB8C00', '#FFA000', '#FFB300', '#FFC107'];
-    var darkerColors = ['#EF6C00', '#F57C00', '#FB8C00', '#FFA000', '#FFB300'];
+    var rowColors =   ['#EF6C00', '#F57C00', '#FB8C00', '#FFA726', '#FFC107'];
+    var darkerColors = ['#BF360C', '#D84315', '#E65100', '#EF6C00', '#F57C00'];
     var loaded = 0;
     var totalRows = Math.min(rows, 5);
 
