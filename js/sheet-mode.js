@@ -492,13 +492,18 @@ function renderSheetView() {
   var outerWrapper = document.createElement('div');
   outerWrapper.className = 'sheet-outer-wrapper';
   
-  // Listen for clicks on the void to clear selection
-  outerWrapper.addEventListener('click', function(e) {
-    var isVoid = e.target.classList.contains('sheet-outer-wrapper') || 
-                 e.target.classList.contains('sheet-main-area') || 
-                 e.target.classList.contains('sheet-page') || 
-                 e.target.classList.contains('sheet-grid');
-    if (isVoid && selectedSlots.length > 0) {
+  // Listen for clicks on the void to clear selection (page whitespace
+  // and grey scroll area outside the sheet)
+  var scrollContainer = document.getElementById('canvas-area-scroll');
+  scrollContainer.addEventListener('click', function(e) {
+    if (currentMode !== 'sheet' || selectedSlots.length === 0) return;
+    var isVoid = e.target.classList.contains('sheet-outer-wrapper') ||
+                 e.target.classList.contains('sheet-main-area') ||
+                 e.target.classList.contains('sheet-page') ||
+                 e.target.classList.contains('sheet-grid') ||
+                 e.target.id === 'canvas-area-scroll' ||
+                 e.target.id === 'sheet-view';
+    if (isVoid) {
       selectedSlots = [];
       updateSheetSelectionUI();
       updateSheetOverridePanel();
