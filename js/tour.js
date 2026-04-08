@@ -376,7 +376,7 @@
     var cols = layout.cols;
     var rows = layout.rows;
     var rowColors =   ['#FBC02D', '#FDD835', '#FFEE58', '#FFF176', '#FFF59D'];
-    var darkerColors = ['#E65100', '#EF6C00', '#F57C00', '#FB8C00', '#FFA726'];
+    var darkerColors = ['#FFA726', '#FB8C00', '#F57C00', '#EF6C00', '#E65100'];
     var loaded = 0;
     var totalRows = Math.min(rows, 5);
 
