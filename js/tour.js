@@ -171,7 +171,7 @@
         },
         {
           target: '#apply-bg-row',
-          text: "Check 'Apply to all' to push your background or brand text changes to every button on the sheet at once.",
+          text: "'Apply to all' pushes background or brand text changes to every button on the sheet, including ones with custom designs. Leave it unchecked if you want to keep your per-button customizations.",
           prepare: function() {
             ensureSidebarOpen();
             var el = document.getElementById('apply-bg-row');
