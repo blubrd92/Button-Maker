@@ -347,7 +347,7 @@ function renderSheetView() {
     '<button class="btn btn-small" id="btn-edit-selected" style="display:none;">Edit</button>' +
     '<button class="btn btn-small" id="btn-copy-design" style="display:none;">Copy</button>' +
     '<button class="btn btn-small" id="btn-paste-design" style="display:none;">Paste</button>' +
-    '<button class="btn btn-small" id="btn-clear-selection" style="display:none;">Clear Selection</button>';
+    '<button class="btn btn-small" id="btn-clear-selection" style="display:none;">Deselect</button>';
 
   // Wire up the new controls (use querySelector on controlsDiv since it's not in the DOM yet)
   controlsDiv.querySelector('#btn-sheet-reset').addEventListener('click', function() {
