@@ -39,21 +39,24 @@
           target: '#design-canvas-wrapper',
           text: "Welcome to Button Maker! This tool helps you design and print sheets of pinback buttons. Let me show you around. If you have a design loaded, don't worry, it will be saved and restored when the tour ends.",
           padding: 4,
+          prepare: function() { ensureMode('design'); },
         },
         {
           target: '#left-sidebar',
           text: "This is your control panel. It has everything you need: button size, image upload, background colors, and brand text.",
-          prepare: function() { ensureSidebarOpen(); },
+          prepare: function() { ensureMode('design'); ensureSidebarOpen(); },
         },
         {
           target: '.header-actions',
           text: "These are your main actions. Load a saved project, Save your work, Reset to start fresh, or Generate a PDF when you're ready to print.",
           padding: 6,
+          prepare: function() { ensureMode('design'); },
         },
         {
           target: '#zoom-controls',
           text: "Use these controls to zoom in and out, fit the canvas to your screen, and undo or redo changes.",
           padding: 6,
+          prepare: function() { ensureMode('design'); },
         },
       ]
     },
@@ -67,6 +70,7 @@
           target: '#button-size-select',
           text: "Choose your button size here. Button Maker supports 9 sizes from 1 inch to 3 inches. The layout and print grid adjust automatically.",
           prepare: function() {
+            ensureMode('design');
             ensureSidebarOpen();
             scrollSidebarTo('general-section');
           },
@@ -75,6 +79,7 @@
           target: '#mode-toggle',
           text: "Switch between Design and Sheet modes. Design mode edits the Main Design. Sheet mode shows the full print layout.",
           prepare: function() {
+            ensureMode('design');
             ensureSidebarOpen();
             scrollSidebarTo('general-section');
           },
@@ -83,6 +88,7 @@
           target: '#quick-ref-link',
           text: "Click Quick Reference to see cut diameters for every button size. Handy when setting up your button press.",
           prepare: function() {
+            ensureMode('design');
             ensureSidebarOpen();
             scrollSidebarTo('general-section');
           },
@@ -144,6 +150,7 @@
           target: '#gradient-toggle-row',
           text: "Enable gradients for a more dynamic look. I've turned one on so you can see. Choose a second color, pick a preset, or set the gradient direction.",
           prepare: function() {
+            ensureMode('design');
             ensureSidebarOpen();
             scrollSidebarTo('background-section');
             var el = document.getElementById('gradient-toggle-row');
@@ -173,6 +180,7 @@
           target: '#apply-bg-row',
           text: "'Apply to all' pushes background or brand text changes to every button on the sheet, including ones with custom designs. Leave it unchecked if you want to keep your per-button customizations.",
           prepare: function() {
+            ensureMode('design');
             ensureSidebarOpen();
             var el = document.getElementById('apply-bg-row');
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -252,20 +260,24 @@
           target: '#btn-save',
           text: "Save your work as a .buttons file anytime. It stores everything: images, colors, overrides, and layout.",
           padding: 6,
+          prepare: function() { ensureMode('design'); },
         },
         {
           target: '#btn-load',
           text: "Load a previously saved .buttons file to pick up where you left off.",
           padding: 6,
+          prepare: function() { ensureMode('design'); },
         },
         {
           target: '#btn-export',
           text: "When you're happy with your design, hit Generate PDF. Print at Default or Actual Size scale for best results. Your buttons are ready to press!",
           padding: 6,
+          prepare: function() { ensureMode('design'); },
         },
         {
           target: null,
           text: "That's everything! You're all set to make some great buttons. Click the tour button in the header anytime to revisit these tips.",
+          prepare: function() { ensureMode('design'); },
         },
       ]
     }
@@ -363,7 +375,8 @@
     var layout = typeof getCurrentLayout === 'function' ? getCurrentLayout() : { cols: 4, rows: 5 };
     var cols = layout.cols;
     var rows = layout.rows;
-    var rowColors = ['#FF6F00', '#FF8F00', '#FFA000', '#FFB300', '#FFC107'];
+    var rowColors =   ['#F57C00', '#FB8C00', '#FFA000', '#FFB300', '#FFC107'];
+    var darkerColors = ['#EF6C00', '#F57C00', '#FB8C00', '#FFA000', '#FFB300'];
     var loaded = 0;
     var totalRows = Math.min(rows, 5);
 
@@ -382,10 +395,9 @@
                 overrides = overrides || {};
                 overrides.imageElements = [imageElement];
                 overrides.backgroundColor = rowColors[r] || '#FFC107';
-                var darkerColors = ['#E65100', '#EF6C00', '#F57C00', '#FF8F00', '#FFA000'];
                 overrides.gradient = {
                   color1: rowColors[r] || '#FFC107',
-                  color2: darkerColors[r] || '#E65100',
+                  color2: darkerColors[r] || '#EF6C00',
                   stops: null,
                   direction: 'top-bottom',
                   preset: null
@@ -421,6 +433,15 @@
   }
 
   function setDemoBackground(color) {
+    // Clear gradient so solid color shows (important when navigating backwards
+    // from the gradient step)
+    var target = typeof getActiveDesign === 'function' ? getActiveDesign() : currentDesign;
+    target.gradient = null;
+    var gradToggle = document.getElementById('toggle-gradient');
+    if (gradToggle) gradToggle.checked = false;
+    var gradControls = document.getElementById('gradient-controls');
+    if (gradControls) gradControls.classList.add('hidden');
+
     if (typeof setBackgroundColor === 'function') {
       setBackgroundColor(color);
     }
