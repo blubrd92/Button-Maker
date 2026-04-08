@@ -685,9 +685,23 @@
     // doesn't lose the user's real design (beforeunload would autosave
     // the demo state otherwise).
     try {
+      // Properly serialize slot overrides so image assets survive
+      // JSON round-tripping (imgObj is a DOM element that becomes {}
+      // after stringify, which then fools hydration truthy checks).
+      var rawSlots = typeof getSheetSlots === 'function' ? getSheetSlots() : [];
+      var serializedSlots = rawSlots.map(function(slot) {
+        return {
+          slotIndex: slot.slotIndex,
+          row: slot.row,
+          col: slot.col,
+          overrides: typeof _serializeOverrides === 'function'
+            ? _serializeOverrides(slot.overrides)
+            : slot.overrides
+        };
+      });
       var snapshot = {
         design: preTourDesignSnapshot,
-        slots: typeof getSheetSlots === 'function' ? getSheetSlots() : [],
+        slots: serializedSlots,
         mode: preTourMode,
         sidebarCollapsed: preTourSidebarCollapsed
       };
@@ -834,7 +848,19 @@
       if (saved) {
         var snap = JSON.parse(saved);
         if (snap.slots && typeof setSheetSlots === 'function') {
-          setSheetSlots(snap.slots);
+          // Hydrate overrides so image assets are reconstructed from
+          // assetId (the serialize step stripped imgObj for JSON safety)
+          var hydratedSlots = snap.slots.map(function(slot) {
+            return {
+              slotIndex: slot.slotIndex,
+              row: slot.row,
+              col: slot.col,
+              overrides: typeof _hydrateOverrides === 'function'
+                ? _hydrateOverrides(slot.overrides)
+                : slot.overrides
+            };
+          });
+          setSheetSlots(hydratedSlots);
           if (typeof refreshSheetThumbnails === 'function') refreshSheetThumbnails();
         }
       }
@@ -956,7 +982,17 @@
             deserializeDesign(snap.design);
           }
           if (snap.slots && typeof setSheetSlots === 'function') {
-            setSheetSlots(snap.slots);
+            var hydratedSlots = snap.slots.map(function(slot) {
+              return {
+                slotIndex: slot.slotIndex,
+                row: slot.row,
+                col: slot.col,
+                overrides: typeof _hydrateOverrides === 'function'
+                  ? _hydrateOverrides(slot.overrides)
+                  : slot.overrides
+              };
+            });
+            setSheetSlots(hydratedSlots);
             if (typeof refreshSheetThumbnails === 'function') refreshSheetThumbnails();
           }
           if (snap.mode && snap.mode !== 'design') {
