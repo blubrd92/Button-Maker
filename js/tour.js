@@ -296,6 +296,8 @@
   var preTourMode = null;
   var preTourSidebarCollapsed = null;
   var preTourDesignSnapshot = null;
+  var preTourImageAssets = null;
+  var preTourSlots = null;
   var preTourUndoStack = null;
   var preTourRedoStack = null;
 
@@ -676,32 +678,37 @@
     var sidebar = document.getElementById('left-sidebar');
     preTourSidebarCollapsed = sidebar ? sidebar.classList.contains('collapsed') : false;
 
-    // Snapshot the current design so demo changes can be reverted
+    // Snapshot the current design, image assets, and slot overrides so
+    // demo changes can be reverted.  The asset bundle must be built BEFORE
+    // serializeDesign because deserializeDesign() wipes the in-memory
+    // image registry — without the bundle all images are lost on restore.
+    var rawSlots = typeof getSheetSlots === 'function' ? getSheetSlots() : [];
+    if (typeof buildSerializedImageAssetBundle === 'function') {
+      preTourImageAssets = buildSerializedImageAssetBundle(currentDesign, rawSlots);
+    }
     if (typeof serializeDesign === 'function') {
       preTourDesignSnapshot = serializeDesign(currentDesign);
     }
+    // Keep properly serialized slots in memory (primary restore path).
+    // sessionStorage is only a backup for mid-tour page refresh.
+    preTourSlots = rawSlots.map(function(slot) {
+      return {
+        slotIndex: slot.slotIndex,
+        row: slot.row,
+        col: slot.col,
+        overrides: typeof _serializeOverrides === 'function'
+          ? _serializeOverrides(slot.overrides)
+          : slot.overrides
+      };
+    });
 
     // Persist snapshot to sessionStorage so a mid-tour page refresh
-    // doesn't lose the user's real design (beforeunload would autosave
-    // the demo state otherwise).
+    // doesn't lose the user's real design.
     try {
-      // Properly serialize slot overrides so image assets survive
-      // JSON round-tripping (imgObj is a DOM element that becomes {}
-      // after stringify, which then fools hydration truthy checks).
-      var rawSlots = typeof getSheetSlots === 'function' ? getSheetSlots() : [];
-      var serializedSlots = rawSlots.map(function(slot) {
-        return {
-          slotIndex: slot.slotIndex,
-          row: slot.row,
-          col: slot.col,
-          overrides: typeof _serializeOverrides === 'function'
-            ? _serializeOverrides(slot.overrides)
-            : slot.overrides
-        };
-      });
       var snapshot = {
         design: preTourDesignSnapshot,
-        slots: serializedSlots,
+        assets: preTourImageAssets,
+        slots: preTourSlots,
         mode: preTourMode,
         sidebarCollapsed: preTourSidebarCollapsed
       };
@@ -836,36 +843,34 @@
     spotlight.classList.remove('visible');
     panel.classList.remove('visible');
 
-    // Restore the design from snapshot (reverts any demo changes)
+    // Restore the design from snapshot (reverts any demo changes).
+    // Pass the saved image asset bundle so the registry is repopulated
+    // (deserializeDesign wipes it via restoreSerializedImageAssets).
     if (preTourDesignSnapshot && typeof deserializeDesign === 'function') {
-      deserializeDesign(preTourDesignSnapshot);
+      deserializeDesign(preTourDesignSnapshot, preTourImageAssets);
       preTourDesignSnapshot = null;
+      preTourImageAssets = null;
     }
 
-    // Restore sheet slot overrides from the snapshot saved at tour start
-    try {
-      var saved = sessionStorage.getItem('buttonmaker-tour-snapshot');
-      if (saved) {
-        var snap = JSON.parse(saved);
-        if (snap.slots && typeof setSheetSlots === 'function') {
-          // Hydrate overrides so image assets are reconstructed from
-          // assetId (the serialize step stripped imgObj for JSON safety)
-          var hydratedSlots = snap.slots.map(function(slot) {
-            return {
-              slotIndex: slot.slotIndex,
-              row: slot.row,
-              col: slot.col,
-              overrides: typeof _hydrateOverrides === 'function'
-                ? _hydrateOverrides(slot.overrides)
-                : slot.overrides
-            };
-          });
-          setSheetSlots(hydratedSlots);
-          if (typeof refreshSheetThumbnails === 'function') refreshSheetThumbnails();
-        }
-      }
-      sessionStorage.removeItem('buttonmaker-tour-snapshot');
-    } catch (e) { /* non-critical */ }
+    // Restore sheet slot overrides from the in-memory snapshot.
+    // Hydrate overrides so imgObj is reconstructed from assetId
+    // (the serialize step stripped imgObj for JSON safety).
+    if (preTourSlots && typeof setSheetSlots === 'function') {
+      var hydratedSlots = preTourSlots.map(function(slot) {
+        return {
+          slotIndex: slot.slotIndex,
+          row: slot.row,
+          col: slot.col,
+          overrides: typeof _hydrateOverrides === 'function'
+            ? _hydrateOverrides(slot.overrides)
+            : slot.overrides
+        };
+      });
+      setSheetSlots(hydratedSlots);
+      if (typeof refreshSheetThumbnails === 'function') refreshSheetThumbnails();
+    }
+    preTourSlots = null;
+    try { sessionStorage.removeItem('buttonmaker-tour-snapshot'); } catch (e) {}
 
     // Restore undo/redo stacks
     if (preTourUndoStack !== null && typeof _undoStack !== 'undefined') {
@@ -979,7 +984,7 @@
         // Delay to let the normal app init finish first
         setTimeout(function() {
           if (snap.design && typeof deserializeDesign === 'function') {
-            deserializeDesign(snap.design);
+            deserializeDesign(snap.design, snap.assets || null);
           }
           if (snap.slots && typeof setSheetSlots === 'function') {
             var hydratedSlots = snap.slots.map(function(slot) {
