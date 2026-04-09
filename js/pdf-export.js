@@ -125,7 +125,7 @@ function generatePDF(options) {
     doc.save(filename);
 
     if (typeof showNotification === 'function') {
-      showNotification('PDF saved!', 'success', true);
+      showNotification('PDF download started!', 'success', true);
     }
 
   } catch (err) {
