@@ -212,7 +212,7 @@ const CONFIG = {
   PDF: {
     showCutGuides: true,         // whether to draw cut circles on the PDF
     pointsPerInch: 72,           // jsPDF uses 72 points per inch
-    imageFormat: 'JPEG',         // 'JPEG' for smaller files, 'PNG' for lossless
+    imageFormat: 'PNG',          // 'PNG' for crisp circle edges, 'JPEG' for smaller files
     imageQuality: 0.92,          // JPEG quality (0–1), ignored for PNG
     compress: true               // enable deflate compression in PDF stream
   }
