@@ -528,30 +528,14 @@ function renderImageElementsWithDesign(ctx, cx, cy, scale, design) {
 
   var btnSize = getCurrentButtonSize();
   var safeRadius = (btnSize.safeDiameter / 2) * scale;
-
-  // Use compositing instead of clip() for the circular mask.
-  // clip() on arc paths produces subtle aliasing artifacts at ~45°
-  // where the rasterizer transitions between horizontal/vertical stepping.
-  // Compositing does per-pixel alpha blending for clean edges at all angles.
-  var tempCanvas = document.createElement('canvas');
-  tempCanvas.width = ctx.canvas.width;
-  tempCanvas.height = ctx.canvas.height;
-  var tempCtx = tempCanvas.getContext('2d');
-  tempCtx.imageSmoothingEnabled = true;
-  tempCtx.imageSmoothingQuality = 'high';
-
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, safeRadius, 0, Math.PI * 2);
+  ctx.clip();
   imgs.forEach(function(imgEl) {
-    renderSingleImageElement(tempCtx, cx, cy, scale, imgEl);
+    renderSingleImageElement(ctx, cx, cy, scale, imgEl);
   });
-
-  // Mask: keep only pixels inside the circle
-  tempCtx.globalCompositeOperation = 'destination-in';
-  tempCtx.beginPath();
-  tempCtx.arc(cx, cy, safeRadius, 0, Math.PI * 2);
-  tempCtx.fill();
-
-  // Draw masked result onto the main canvas
-  ctx.drawImage(tempCanvas, 0, 0);
+  ctx.restore();
 }
 
 function renderSingleImageElement(ctx, cx, cy, scale, imgEl) {
