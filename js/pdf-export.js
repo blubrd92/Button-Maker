@@ -62,6 +62,13 @@ function generatePDF(options) {
   var printPixels = Math.ceil(btnSize.cutDiameter * CONFIG.DPI);
   if (printPixels % 2 !== 0) printPixels++;
 
+  // Show notification and defer the heavy rendering so the browser
+  // has a chance to paint the message before the synchronous loop blocks.
+  if (typeof showNotification === 'function') {
+    showNotification('Generating PDF, please wait\u2026', 'info', false);
+  }
+
+  setTimeout(function() {
   try {
     var doc = new jsPDFConstructor({
       orientation: 'portrait',
@@ -117,10 +124,19 @@ function generatePDF(options) {
     var filename = sizeSlug + ' - ' + baseName + '.pdf';
     doc.save(filename);
 
+    if (typeof showNotification === 'function') {
+      showNotification('PDF saved!', 'success', true);
+    }
+
   } catch (err) {
     console.error('PDF generation failed:', err);
-    alert('PDF generation failed: ' + err.message);
+    if (typeof showNotification === 'function') {
+      showNotification('PDF generation failed: ' + err.message, 'error', true);
+    } else {
+      alert('PDF generation failed: ' + err.message);
+    }
   }
+  }, 50);
 }
 
 /**
