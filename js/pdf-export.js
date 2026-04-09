@@ -55,8 +55,12 @@ function generatePDF(options) {
   var totalButtons = layout.cols * layout.rows;
   var buttonDesigns = getButtonDesignsForExport(totalButtons);
 
-  // Each button rendered at CONFIG.DPI as an offscreen canvas image
+  // Each button rendered at CONFIG.DPI as an offscreen canvas image.
+  // Force even pixel count so the center falls on an integer pixel,
+  // which prevents asymmetric anti-aliasing on arc clip paths (the
+  // half-pixel center causes jagged edges in some quadrants).
   var printPixels = Math.ceil(btnSize.cutDiameter * CONFIG.DPI);
+  if (printPixels % 2 !== 0) printPixels++;
 
   try {
     var doc = new jsPDFConstructor({
@@ -75,6 +79,8 @@ function generatePDF(options) {
         offCanvas.width = printPixels;
         offCanvas.height = printPixels;
         var offCtx = offCanvas.getContext('2d');
+        offCtx.imageSmoothingEnabled = true;
+        offCtx.imageSmoothingQuality = 'high';
 
         var printScale = CONFIG.DPI;
         var printCx = printPixels / 2;
