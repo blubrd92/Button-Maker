@@ -572,9 +572,6 @@ input[type="checkbox"], input[type="radio"] {
   margin-top: 14px;
   padding-top: 12px;
   border-top: 1px dashed var(--border-color);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
 }
 
 .guide-options-heading {
@@ -583,14 +580,60 @@ input[type="checkbox"], input[type="radio"] {
   text-transform: uppercase;
   letter-spacing: 0.4px;
   color: var(--text-light);
-  margin: 0 0 4px;
+  margin: 0 0 8px;
+}
+
+.guide-options-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.guide-option {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-light);
+  background-color: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.guide-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+
+.guide-option:hover {
+  border-color: var(--primary-color);
+  color: var(--text-color);
+}
+
+.guide-option:has(input:checked) {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  color: #fff;
+}
+
+.guide-option:has(input:focus-visible) {
+  box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 .guide-options-note {
   font-size: 12px;
   color: var(--text-light);
   line-height: 1.4;
-  margin: 4px 0 0;
+  margin: 8px 0 0;
 }
 
 /* Canvas Wrapper */

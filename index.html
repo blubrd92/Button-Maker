@@ -103,28 +103,30 @@
           <button class="btn btn-small btn-danger" id="btn-delete-image">Remove Image</button>
         </div>
 
-        <div class="guide-options" role="radiogroup" aria-label="Design guide overlay">
+        <div class="guide-options">
           <h3 class="guide-options-heading">Design Guides</h3>
-          <label class="radio-label">
-            <input type="radio" name="design-guide" value="none" checked>
-            <span>None</span>
-          </label>
-          <label class="radio-label">
-            <input type="radio" name="design-guide" value="crosshair">
-            <span>Crosshair</span>
-          </label>
-          <label class="radio-label">
-            <input type="radio" name="design-guide" value="thirds">
-            <span>Rule of thirds</span>
-          </label>
-          <label class="radio-label">
-            <input type="radio" name="design-guide" value="grid">
-            <span>Grid</span>
-          </label>
-          <label class="radio-label">
-            <input type="radio" name="design-guide" value="diagonal">
-            <span>Diagonal</span>
-          </label>
+          <div class="guide-options-buttons" role="radiogroup" aria-label="Design guide overlay">
+            <label class="guide-option">
+              <input type="radio" name="design-guide" value="none" checked>
+              <span>None</span>
+            </label>
+            <label class="guide-option">
+              <input type="radio" name="design-guide" value="crosshair">
+              <span>Crosshair</span>
+            </label>
+            <label class="guide-option">
+              <input type="radio" name="design-guide" value="thirds">
+              <span>Thirds</span>
+            </label>
+            <label class="guide-option">
+              <input type="radio" name="design-guide" value="grid">
+              <span>Grid</span>
+            </label>
+            <label class="guide-option">
+              <input type="radio" name="design-guide" value="diagonal">
+              <span>Diagonal</span>
+            </label>
+          </div>
           <p class="guide-options-note">Screen-only — these lines do not print on the PDF.</p>
         </div>
       </div>
