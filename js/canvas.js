@@ -199,8 +199,6 @@ function drawDesignGuideOverlay(ctx, cx, cy, r, mode) {
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.clip();
 
-  ctx.strokeStyle = style.color;
-  ctx.lineWidth = style.lineWidth;
   ctx.setLineDash(style.dashPattern);
 
   var left = cx - r;
@@ -208,33 +206,36 @@ function drawDesignGuideOverlay(ctx, cx, cy, r, mode) {
   var top = cy - r;
   var bottom = cy + r;
 
+  ctx.beginPath();
   if (mode === 'thirds') {
     var third = (2 * r) / 3;
-    ctx.beginPath();
     ctx.moveTo(left + third, top);     ctx.lineTo(left + third, bottom);
     ctx.moveTo(left + 2 * third, top); ctx.lineTo(left + 2 * third, bottom);
     ctx.moveTo(left, top + third);     ctx.lineTo(right, top + third);
     ctx.moveTo(left, top + 2 * third); ctx.lineTo(right, top + 2 * third);
-    ctx.stroke();
   } else if (mode === 'grid') {
     // 8x8 grid across the face bounding box
     var step = (2 * r) / 8;
-    ctx.beginPath();
     for (var i = 1; i < 8; i++) {
       ctx.moveTo(left + i * step, top);
       ctx.lineTo(left + i * step, bottom);
       ctx.moveTo(left, top + i * step);
       ctx.lineTo(right, top + i * step);
     }
-    ctx.stroke();
   } else if (mode === 'diagonal') {
-    ctx.beginPath();
     ctx.moveTo(left, top);    ctx.lineTo(right, bottom);
     ctx.moveTo(left, bottom); ctx.lineTo(right, top);
     ctx.moveTo(left, cy);     ctx.lineTo(right, cy);
     ctx.moveTo(cx, top);      ctx.lineTo(cx, bottom);
-    ctx.stroke();
   }
+
+  // White halo underneath keeps dark lines readable on dark/busy images.
+  ctx.strokeStyle = style.haloColor;
+  ctx.lineWidth = style.haloWidth;
+  ctx.stroke();
+  ctx.strokeStyle = style.color;
+  ctx.lineWidth = style.lineWidth;
+  ctx.stroke();
 
   ctx.restore();
 }

@@ -177,9 +177,11 @@ const CONFIG = {
   // 'none' | 'crosshair' | 'thirds' | 'grid' | 'diagonal'
   designGuide: "none",
   DESIGN_GUIDE_STYLE: {
-    color: "rgba(120, 120, 120, 0.55)",
-    lineWidth: 1,
-    dashPattern: [4, 4]
+    color: "rgba(20, 20, 20, 0.85)",
+    haloColor: "rgba(255, 255, 255, 0.75)",
+    lineWidth: 1.25,
+    haloWidth: 3,
+    dashPattern: [5, 4]
   },
 
   // Font list
