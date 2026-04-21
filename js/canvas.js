@@ -172,8 +172,76 @@ function renderDesignCanvas() {
     drawGuideCircles(ctx, cx, cy, cutRadius, faceRadius, safeRadius);
   }
 
-  // ── 7. Selection highlight ──
+  // ── 7. Design-aid overlay (crosshair/thirds/grid/diagonal) ──
+  // Clipped to face so it doesn't bleed into the wrap zone.
+  drawDesignGuideOverlay(ctx, cx, cy, faceRadius, CONFIG.designGuide);
+
+  // ── 8. Selection highlight ──
   drawSelectionHighlight(ctx, cx, cy, scale);
+}
+
+/**
+ * Draw an optional design-aid overlay over the button face.
+ * Screen-only — never called from PDF export.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} cx - center x
+ * @param {number} cy - center y
+ * @param {number} r - face radius (overlay is clipped to this circle)
+ * @param {string} mode - 'none' | 'crosshair' | 'thirds' | 'grid' | 'diagonal'
+ */
+function drawDesignGuideOverlay(ctx, cx, cy, r, mode) {
+  if (!mode || mode === 'none') return;
+
+  var style = CONFIG.DESIGN_GUIDE_STYLE;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.clip();
+
+  ctx.strokeStyle = style.color;
+  ctx.lineWidth = style.lineWidth;
+  ctx.setLineDash(style.dashPattern);
+
+  var left = cx - r;
+  var right = cx + r;
+  var top = cy - r;
+  var bottom = cy + r;
+
+  if (mode === 'crosshair') {
+    ctx.beginPath();
+    ctx.moveTo(left, cy); ctx.lineTo(right, cy);
+    ctx.moveTo(cx, top);  ctx.lineTo(cx, bottom);
+    ctx.stroke();
+  } else if (mode === 'thirds') {
+    var third = (2 * r) / 3;
+    ctx.beginPath();
+    ctx.moveTo(left + third, top);     ctx.lineTo(left + third, bottom);
+    ctx.moveTo(left + 2 * third, top); ctx.lineTo(left + 2 * third, bottom);
+    ctx.moveTo(left, top + third);     ctx.lineTo(right, top + third);
+    ctx.moveTo(left, top + 2 * third); ctx.lineTo(right, top + 2 * third);
+    ctx.stroke();
+  } else if (mode === 'grid') {
+    // 8x8 grid across the face bounding box
+    var step = (2 * r) / 8;
+    ctx.beginPath();
+    for (var i = 1; i < 8; i++) {
+      ctx.moveTo(left + i * step, top);
+      ctx.lineTo(left + i * step, bottom);
+      ctx.moveTo(left, top + i * step);
+      ctx.lineTo(right, top + i * step);
+    }
+    ctx.stroke();
+  } else if (mode === 'diagonal') {
+    ctx.beginPath();
+    ctx.moveTo(left, top);    ctx.lineTo(right, bottom);
+    ctx.moveTo(left, bottom); ctx.lineTo(right, top);
+    ctx.moveTo(left, cy);     ctx.lineTo(right, cy);
+    ctx.moveTo(cx, top);      ctx.lineTo(cx, bottom);
+    ctx.stroke();
+  }
+
+  ctx.restore();
 }
 
 /**

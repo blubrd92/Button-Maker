@@ -259,6 +259,15 @@ function initTopLevelControls() {
     }
   });
 
+  // Design-guide overlay radios (screen-only; not persisted, not in PDF)
+  document.querySelectorAll('input[name="design-guide"]').forEach(function(radio) {
+    radio.addEventListener('change', function(e) {
+      if (!e.target.checked) return;
+      CONFIG.designGuide = e.target.value;
+      renderDesignCanvas();
+    });
+  });
+
   // Mode toggle tracking
   document.getElementById('btn-design-mode').addEventListener('click', function() {
     currentMode = 'design';

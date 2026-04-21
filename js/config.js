@@ -173,6 +173,15 @@ const CONFIG = {
   guidesVisible: true,
   WRAP_ZONE_DIM: "rgba(0, 0, 0, 0.08)",
 
+  // Design-aid overlays (screen-only, never drawn on PDF).
+  // 'none' | 'crosshair' | 'thirds' | 'grid' | 'diagonal'
+  designGuide: "none",
+  DESIGN_GUIDE_STYLE: {
+    color: "rgba(120, 120, 120, 0.55)",
+    lineWidth: 1,
+    dashPattern: [4, 4]
+  },
+
   // Font list
   FONTS: [
     { family: "Roboto", category: "sans-serif" },
