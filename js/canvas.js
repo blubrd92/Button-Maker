@@ -188,7 +188,7 @@ function renderDesignCanvas() {
  * @param {number} cx - center x
  * @param {number} cy - center y
  * @param {number} r - face radius (overlay is clipped to this circle)
- * @param {string} mode - 'none' | 'crosshair' | 'thirds' | 'grid' | 'diagonal'
+ * @param {string} mode - 'none' | 'thirds' | 'grid' | 'diagonal'
  */
 function drawDesignGuideOverlay(ctx, cx, cy, r, mode) {
   if (!mode || mode === 'none') return;
@@ -208,12 +208,7 @@ function drawDesignGuideOverlay(ctx, cx, cy, r, mode) {
   var top = cy - r;
   var bottom = cy + r;
 
-  if (mode === 'crosshair') {
-    ctx.beginPath();
-    ctx.moveTo(left, cy); ctx.lineTo(right, cy);
-    ctx.moveTo(cx, top);  ctx.lineTo(cx, bottom);
-    ctx.stroke();
-  } else if (mode === 'thirds') {
+  if (mode === 'thirds') {
     var third = (2 * r) / 3;
     ctx.beginPath();
     ctx.moveTo(left + third, top);     ctx.lineTo(left + third, bottom);
